@@ -19,6 +19,9 @@
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://apis.google.com/js/api.js" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
 <style>
 :root {
@@ -26,8 +29,9 @@
   --dark: #0d1117;
   --sidebar: #161b22;
   --muted: #64748b;
-  --bg: #f8fafc;
+  --bg: #f4f6fa;
   --card: #ffffff;
+  --card-grad: linear-gradient(165deg, #ffffff 0%, #f8fafc 100%);
   --line: #e2e8f0;
   --green: #16a34a;
   --blue: #2563eb;
@@ -37,6 +41,9 @@
   --orange: #ea580c;
   --yellow: #ca8a04;
   --cancelada: #334155;
+  --font-display: 'Space Grotesk', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --title-shadow: 0 1px 0 rgba(255,255,255,0.6), 0 2px 5px rgba(15,23,42,0.08);
 }
 
 * {
@@ -46,10 +53,15 @@
 
 body {
   margin: 0;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-body);
   background: var(--bg);
   color: #0f172a;
+  -webkit-font-smoothing: antialiased;
 }
+
+h1, h2, h3, h4 { font-family: var(--font-display); letter-spacing: -0.01em; }
+h2, h3 { text-shadow: var(--title-shadow); }
+.kpi strong, .goal b, .cota-cell.cota-contemplada, .stage span { text-shadow: var(--title-shadow); }
 
 button, input, select, textarea { font: inherit; }
 button { cursor: pointer; border: 0; }
@@ -87,7 +99,7 @@ button { cursor: pointer; border: 0; }
 }
 .brand-badge .t1 { color: #fff; font-size: 16px; }
 .brand-badge .t2 { color: var(--red); font-size: 9px; }
-.brand-info h2 { font-size: 15px; margin: 0; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-info h2 { font-size: 15px; margin: 0; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 0 rgba(0,0,0,0.4); }
 .brand-info span { font-size: 11px; color: var(--muted); }
 
 .user-pill {
@@ -153,16 +165,30 @@ button { cursor: pointer; border: 0; }
 .page.active { display: block; }
 
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 18px; }
-.kpi, .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.03); }
-.kpi small { color: var(--muted); font-weight: 700; font-size: 11px; text-transform: uppercase; }
-.kpi strong { display: block; font-size: 22px; margin-top: 4px; font-weight: 800; overflow-wrap: break-word; line-height: 1.2; }
+.kpi, .card {
+  background: var(--card-grad);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(15,23,42,0.04), 0 6px 18px -10px rgba(15,23,42,0.12);
+  position: relative;
+}
+.kpi { overflow: hidden; }
+.kpi::before {
+  content: '';
+  position: absolute; inset: 0 0 auto 0; height: 3px;
+  background: linear-gradient(90deg, var(--red), transparent 75%);
+  opacity: .8;
+}
+.kpi small { color: var(--muted); font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: .04em; }
+.kpi strong { display: block; font-size: 22px; margin-top: 4px; font-weight: 800; overflow-wrap: break-word; line-height: 1.2; font-family: var(--font-display); }
 
 .grid2 { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 16px; }
 .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
 
 .btn {
   padding: 9px 13px;
-  border-radius: 8px;
+  border-radius: 9px;
   background: #e2e8f0;
   font-weight: 700;
   font-size: 13px;
@@ -170,7 +196,10 @@ button { cursor: pointer; border: 0; }
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  letter-spacing: -0.005em;
 }
+.btn:hover { filter: brightness(0.97); }
+.btn:active { transform: translateY(1px); }
 .btn.primary { background: var(--red); color: white; }
 .btn.green { background: var(--green); color: white; }
 .btn.danger { background: #fee2e2; color: #b91c1c; }
@@ -232,9 +261,51 @@ body.tour-active { overflow: hidden; }
 .b-gold { background: #fef3c7; color: #b45309; }
 .b-cancelada { background: #334155; color: #f1f5f9; border: 1px solid #1e293b; }
 
+/* ===== Busca Global ===== */
+.global-search { position: relative; min-width: 220px; }
+.global-search input {
+  margin-top: 0; padding: 9px 12px 9px 34px; border-radius: 9px; font-size: 13px;
+  background: #fff url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2364748b" stroke-width="2" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="21" y2="21"/></svg>') no-repeat 10px center;
+  background-size: 15px;
+}
+.global-search-results {
+  position: absolute; top: calc(100% + 6px); right: 0; width: 360px; max-width: 90vw;
+  max-height: 420px; overflow-y: auto; background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; box-shadow: 0 12px 32px rgba(15,23,42,0.18); z-index: 60; display: none;
+}
+.global-search-results.show { display: block; }
+.gs-group-label { font-size: 10.5px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 10px 14px 4px; }
+.gs-item { padding: 9px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 1px; border-bottom: 1px solid #f1f5f9; }
+.gs-item:hover { background: #f8fafc; }
+.gs-item b { font-size: 13px; }
+.gs-item span { font-size: 11.5px; color: var(--muted); }
+.gs-empty { padding: 16px 14px; text-align: center; color: var(--muted); font-size: 12.5px; }
+
 .pipeline { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; }
 .stage { min-width: 140px; background: #f8fafc; border: 1px solid var(--line); border-radius: 9px; padding: 10px; text-align: center; }
 .stage span { font-size: 22px; font-weight: 800; display: block; color: var(--red); }
+.stage small.pct { display: block; margin-top: 2px; font-size: 10.5px; color: var(--muted); font-weight: 700; }
+
+/* ===== Funil de conversão visual (barras decrescentes) ===== */
+.funil-row { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.funil-label { width: 120px; flex-shrink: 0; font-size: 12px; font-weight: 700; color: #334155; }
+.funil-track { flex: 1; background: #f1f5f9; border-radius: 6px; height: 22px; overflow: hidden; }
+.funil-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, var(--red), #f87171); display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; transition: width .3s; min-width: 2%; }
+.funil-fill span { color: #fff; font-size: 11px; font-weight: 800; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.funil-pct { width: 46px; text-align: right; flex-shrink: 0; font-size: 12px; font-weight: 800; color: var(--muted); }
+
+/* ===== Ranking de consultores ===== */
+.ranking-row { display: flex; align-items: center; gap: 12px; padding: 9px 4px; border-bottom: 1px solid #f1f5f9; }
+.ranking-row:last-child { border-bottom: 0; }
+.ranking-pos { width: 26px; height: 26px; border-radius: 50%; background: #f1f5f9; color: #475569; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.ranking-row.top1 .ranking-pos { background: linear-gradient(135deg,#fbbf24,#d97706); color: #fff; }
+.ranking-row.top2 .ranking-pos { background: linear-gradient(135deg,#cbd5e1,#94a3b8); color: #fff; }
+.ranking-row.top3 .ranking-pos { background: linear-gradient(135deg,#d6a36a,#b45309); color: #fff; }
+.ranking-info { flex: 1; min-width: 0; }
+.ranking-info b { font-size: 13px; display: block; }
+.ranking-bar-track { background: #f1f5f9; border-radius: 4px; height: 5px; margin-top: 4px; overflow: hidden; }
+.ranking-bar-fill { height: 100%; background: var(--red); border-radius: 4px; }
+.ranking-value { flex-shrink: 0; text-align: right; font-weight: 800; font-size: 13px; color: var(--green); font-family: var(--font-display); }
 
 .tab-pills { display: flex; gap: 8px; border-bottom: 2px solid var(--line); padding-bottom: 8px; margin-bottom: 16px; overflow-x: auto; }
 .tab-pill { background: #f1f5f9; color: #475569; border-radius: 8px; padding: 8px 14px; font-weight: 700; font-size: 13px; border: 0; }
@@ -785,6 +856,11 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     <span class="cloud-status" id="cloudStatusBadge" style="margin-left:8px">💾 Armazenamento Local Ativo</span>
   </div>
   <div class="row">
+    <div class="global-search" id="globalSearchBox">
+      <input type="text" id="globalSearchInput" placeholder="Buscar lead, venda, grupo/cota..." autocomplete="off"
+        oninput="onGlobalSearchInput()" onfocus="onGlobalSearchInput()">
+      <div class="global-search-results" id="globalSearchResults"></div>
+    </div>
     <button id="btnPrincipalUndo" class="btn" title="Desfazer última ação em Leads/Vendas (Ctrl+Z)" onclick="desfazerPrincipal()" style="padding:6px 10px;font-size:15px" disabled>↺</button>
     <button id="btnPrincipalRedo" class="btn" title="Refazer (Ctrl+Y)" onclick="refazerPrincipal()" style="padding:6px 10px;font-size:15px" disabled>↻</button>
     <button id="topPwaInstallBtn" class="btn blue" style="display:none;font-size:11.5px" onclick="triggerPwaInstall()">💻 Instalar App</button>
@@ -848,9 +924,10 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
   <div class="card" style="margin-bottom:16px">
     <div class="between" style="margin-bottom:12px">
       <h2>Pipeline Comercial (Funil)</h2>
-      <span class="badge b-purple">Etapas do Funil</span>
+      <span class="badge b-purple" id="dashFunilTaxaTotal">Etapas do Funil</span>
     </div>
     <div class="pipeline" id="pipeline"></div>
+    <div id="dashFunilVisual" style="margin-top:14px"></div>
   </div>
 
   <div class="card" style="margin-bottom:16px">
@@ -867,6 +944,14 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <span class="badge b-purple" id="dashChartTotalBadge">R$ 0</span>
     </div>
     <div id="dashVolumeChart"></div>
+  </div>
+
+  <div class="card" id="cardRankingConsultores" style="margin-bottom:16px;display:none">
+    <div class="between" style="margin-bottom:12px">
+      <h2>🏆 Ranking de Consultores</h2>
+      <span class="badge b-gold">Volume vendido no período</span>
+    </div>
+    <div id="rankingConsultoresList"></div>
   </div>
 
   <div class="card" id="cardMemberPerformance" style="margin-bottom:16px">
@@ -972,7 +1057,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         <option value="last">Últimos Cadastrados</option>
         <option value="az">Ordem Alfabética (A-Z)</option>
       </select>
-      <input style="max-width:180px" id="leadSearch" placeholder="Buscar lead..." oninput="renderLeads()">
+      <input style="max-width:180px" id="leadSearch" placeholder="Buscar lead, tag..." oninput="renderLeads()">
     </div>
   </div>
   <div style="overflow-x:auto"><table><thead><tr><th>Lead</th><th>Contato</th><th>Nascimento</th><th>Origem</th><th>Responsável / Criador</th><th>Lead Score</th><th>Visibilidade</th><th>Etapa</th><th>Comentários</th><th>Ações</th></tr></thead><tbody id="leadTable"></tbody></table></div>
@@ -1103,7 +1188,16 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         </div>
       </div>
       <div class="kpi" style="border-left:4px solid var(--green)"><small>Líquido Recebido (após imposto)</small><strong id="comisLiquidoTotal" style="color:var(--green)">R$ 0,00</strong></div>
+      <div class="kpi" style="border-left:4px solid var(--purple)"><small>Projeção Próx. 3 Meses</small><strong id="comisProjecao3Meses" style="color:var(--purple)">R$ 0,00</strong></div>
     </div>
+  </div>
+
+  <div class="card" id="cardParcelasVencidas" style="margin-bottom:16px;display:none;border:1px solid #fecaca;background:#fef2f2">
+    <div class="between" style="margin-bottom:8px">
+      <h3 style="margin:0;color:#991b1b">⚠️ Parcelas Vencidas Sem Marcar como Recebidas</h3>
+      <span class="badge b-red" id="parcelasVencidasCount">0</span>
+    </div>
+    <div id="parcelasVencidasList" style="display:flex;flex-direction:column;gap:6px"></div>
   </div>
 
   <div class="card" style="margin-bottom:16px">
@@ -3267,6 +3361,49 @@ async function createOfficialGoogleMeetEvent(meetingData) {
   }
 }
 
+// Atualiza a DATA/HORÁRIO do evento já existente no Google Calendar (usado no
+// reagendamento) -- sincronização de mão dupla: antes só CRIAVA o evento lá,
+// agora reagendar ou excluir no CRM também reflete na conta Google conectada.
+// Silenciosamente não faz nada se não tiver token ou não tiver um evento do
+// Google vinculado (reunião criada sem integração, por exemplo).
+async function updateGoogleCalendarEventTime(googleEventId, newDateStr) {
+  if (!googleAccessToken || !googleEventId) return false;
+  const start = new Date(newDateStr);
+  if (isNaN(start.getTime())) return false;
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  try {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`, {
+      method: 'PATCH',
+      headers: { 'Authorization': `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        start: { dateTime: start.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+        end: { dateTime: end.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+      })
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('Não foi possível atualizar o evento no Google Calendar:', err);
+    return false;
+  }
+}
+
+// Exclui o evento correspondente no Google Calendar quando o agendamento é
+// excluído aqui no CRM.
+async function deleteGoogleCalendarEvent(googleEventId) {
+  if (!googleAccessToken || !googleEventId) return false;
+  try {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${googleEventId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${googleAccessToken}` }
+    });
+    // 410 Gone = já tinha sido excluído lá, também conta como sucesso pro nosso lado
+    return res.ok || res.status === 410;
+  } catch (err) {
+    console.warn('Não foi possível excluir o evento no Google Calendar:', err);
+    return false;
+  }
+}
+
 function buildGoogleCalendarUrl(title, startDateStr, desc, meetUrl) {
   if (!startDateStr) return '#';
   const start = new Date(startDateStr);
@@ -3777,6 +3914,78 @@ const PAGE_TITLES = {
   agenda: 'Agenda Comercial', usuarios: 'Equipe & Hierarquia', configuracoes: 'Configurações',
   consultoresVendas: 'Consultores & Vendas', indicesGrupo: 'INCC e INPC'
 };
+
+// ================== BUSCA GLOBAL ==================
+// Um único campo no topo que busca simultaneamente em Leads, Vendas
+// (grupo/cota/cliente) e Agendamentos -- pra não precisar caçar em cada aba
+// separadamente qual tem o filtro certo.
+let globalSearchDebounce = null;
+function onGlobalSearchInput(){
+  clearTimeout(globalSearchDebounce);
+  globalSearchDebounce = setTimeout(renderGlobalSearchResults, 150);
+}
+
+function renderGlobalSearchResults(){
+  const box = document.getElementById('globalSearchResults');
+  const termo = (document.getElementById('globalSearchInput')?.value || '').trim().toLowerCase();
+  if(!box) return;
+  if(termo.length < 2){ box.classList.remove('show'); box.innerHTML = ''; return; }
+
+  const leadsMatch = (db.leads || []).filter(l => canUserAccessLead(l) && (
+    (l.nome||'').toLowerCase().includes(termo) || (l.tel||'').replace(/\D/g,'').includes(termo.replace(/\D/g,'')||'\0')
+  )).slice(0, 6);
+
+  const vendasMatch = (db.sales || []).filter(s => (
+    (s.lead||'').toLowerCase().includes(termo) || String(s.grupo||'').toLowerCase().includes(termo) || String(s.cota||'').toLowerCase().includes(termo)
+  )).slice(0, 6);
+
+  const agendaMatch = (db.meetings || []).filter(m => canUserAccessMeeting(m) && (
+    (m.lead||'').toLowerCase().includes(termo) || (m.obj||'').toLowerCase().includes(termo)
+  )).slice(0, 6);
+
+  let html = '';
+  if(leadsMatch.length){
+    html += '<div class="gs-group-label">👤 Leads & Carteira</div>';
+    html += leadsMatch.map(l => `<div class="gs-item" onclick="globalSearchGoTo('lead','${l.id}')"><b>${esc(l.nome)}</b><span>${esc(l.tel||'sem telefone')} · ${esc(l.stage||'-')}</span></div>`).join('');
+  }
+  if(vendasMatch.length){
+    html += '<div class="gs-group-label">💰 Vendas / Cotas</div>';
+    html += vendasMatch.map(s => `<div class="gs-item" onclick="globalSearchGoTo('venda','${s.id}')"><b>${esc(s.lead||'-')}</b><span>Grupo ${esc(s.grupo||'-')} · Cota ${esc(s.cota||'-')} · ${Number(s.valor||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}${s.cancelada?' · Cancelada':''}</span></div>`).join('');
+  }
+  if(agendaMatch.length){
+    html += '<div class="gs-group-label">📅 Agenda</div>';
+    html += agendaMatch.map(m => `<div class="gs-item" onclick="globalSearchGoTo('agenda','${m.id}')"><b>${esc(m.lead)}</b><span>${esc(m.obj||'-')} · ${m.date ? new Date(m.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '-'}</span></div>`).join('');
+  }
+  if(!html) html = '<div class="gs-empty">Nenhum resultado para "' + esc(termo) + '".</div>';
+
+  box.innerHTML = html;
+  box.classList.add('show');
+}
+
+function globalSearchGoTo(tipo, id){
+  const box = document.getElementById('globalSearchResults');
+  if(box) box.classList.remove('show');
+  const input = document.getElementById('globalSearchInput');
+  if(input) input.value = '';
+
+  if(tipo === 'lead'){
+    openLead(id);
+  } else if(tipo === 'venda'){
+    abrirEdicaoCotaPorVenda(id);
+  } else if(tipo === 'agenda'){
+    const btnAgenda = document.querySelector(".sidebar .nav button[onclick*=\"show('agenda'\"]");
+    show('agenda', btnAgenda);
+    openEventActionModal(id, 'meeting');
+  }
+}
+
+document.addEventListener('click', (e) => {
+  const box = document.getElementById('globalSearchBox');
+  if(box && !box.contains(e.target)){
+    const results = document.getElementById('globalSearchResults');
+    if(results) results.classList.remove('show');
+  }
+});
 
 function show(id,btn){
   document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
@@ -4775,6 +4984,14 @@ function renderComissoes(){
   let totalVol = 0, totalPrevisto = 0, totalRecebido = 0, totalCancelado = 0, totalGeralVendido = 0;
   const monthlyTotals = {};
 
+  // Janela dos próximos 3 meses (mês atual + 2 seguintes) pra projeção, e "hoje"
+  // pra detectar parcela vencida -- usados no loop de parcelas logo abaixo.
+  const hojeRef = new Date(); hojeRef.setHours(0,0,0,0);
+  const inicioJanela = new Date(hojeRef.getFullYear(), hojeRef.getMonth(), 1);
+  const fimJanela = new Date(hojeRef.getFullYear(), hojeRef.getMonth() + 3, 0, 23, 59, 59);
+  let projecao3Meses = 0;
+  const parcelasVencidas = [];
+
   salesList.forEach(s => {
     const valorSale = Number(s.valor || 0);
     totalGeralVendido += valorSale;
@@ -4788,6 +5005,13 @@ function renderComissoes(){
         if(!monthlyTotals[key]) monthlyTotals[key] = { label: item.dateLabel, total: 0, received: 0 };
         monthlyTotals[key].total += item.value;
         if(item.paid) monthlyTotals[key].received += item.value;
+
+        if(item.fullDate >= inicioJanela && item.fullDate <= fimJanela){
+          projecao3Meses += item.value;
+        }
+        if(!item.paid && !s.cancelada && item.fullDate < hojeRef){
+          parcelasVencidas.push({ lead: s.lead, saleId: s.id, month: item.month, value: item.value, dateLabel: item.dateLabel, fullDate: item.fullDate });
+        }
       }
     });
   });
@@ -4814,6 +5038,35 @@ function renderComissoes(){
   if(impEl) impEl.textContent = impostoTotal.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
   const liqEl = document.getElementById('comisLiquidoTotal');
   if(liqEl) liqEl.textContent = totalLiquido.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const proj3El = document.getElementById('comisProjecao3Meses');
+  if(proj3El) proj3El.textContent = projecao3Meses.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+
+  // Alerta de parcelas que já passaram da data prevista e ainda não foram
+  // marcadas como recebidas -- fácil de esquecer de checar manualmente mês a mês.
+  const cardVencidas = document.getElementById('cardParcelasVencidas');
+  const listaVencidas = document.getElementById('parcelasVencidasList');
+  const countVencidas = document.getElementById('parcelasVencidasCount');
+  if(cardVencidas && listaVencidas){
+    if(parcelasVencidas.length){
+      parcelasVencidas.sort((a,b) => a.fullDate - b.fullDate);
+      cardVencidas.style.display = '';
+      if(countVencidas) countVencidas.textContent = parcelasVencidas.length;
+      listaVencidas.innerHTML = parcelasVencidas.map(p => `
+        <div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid #fecaca;border-radius:8px;padding:8px 12px">
+          <div>
+            <b style="font-size:13px">${esc(p.lead||'-')}</b>
+            <small class="muted" style="display:block">Parcela ${p.month} · vencida em ${esc(p.dateLabel)}</small>
+          </div>
+          <div class="row">
+            <b style="color:#b91c1c">${Number(p.value).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</b>
+            <button class="btn" style="font-size:11px" onclick="abrirEdicaoCotaPorVenda('${p.saleId}')">Ver Cota</button>
+          </div>
+        </div>`).join('');
+    } else {
+      cardVencidas.style.display = 'none';
+      listaVencidas.innerHTML = '';
+    }
+  }
 
   const flowContainer = document.getElementById('monthlyFlowSummary');
   const monthSearch = document.getElementById('comissaoMonthSearch')?.value || '';
@@ -6091,6 +6344,7 @@ function openLead(id=null){
         <div class="field"><label>Data de Nascimento</label><input type="date" id="fNasc" value="${l.nasc||''}"></div>
         <div class="field"><label>Cidade</label><input id="fCidade" value="${esc(l.cidade||'')}"></div>
         <div class="field"><label>Segmento / Profissão</label><input id="fProf" value="${esc(l.prof||'')}"></div>
+        <div class="field"><label>Tags (separe por vírgula)</label><input id="fTags" placeholder="ex: indicação quente, já tem outro consórcio" value="${esc((l.tags||[]).join(', '))}"></div>
         <div class="field">
           <label>🔒 Visibilidade do Lead</label>
           <select id="fIsPublic" ${!isOwner ? 'disabled style="background:#f1f5f9"' : ''}>
@@ -6165,7 +6419,8 @@ function saveLead(id){
     indicador: document.getElementById('fOrigem')?.value === 'Indicação' ? (document.getElementById('fIndicador')?.value || '') : '',
     scoreCategory: document.getElementById('fScore')?.value || 'Morno',
     stage: document.getElementById('fStage')?.value || 'Prospecção',
-    isPublic: document.getElementById('fIsPublic')?.value === 'true'
+    isPublic: document.getElementById('fIsPublic')?.value === 'true',
+    tags: (document.getElementById('fTags')?.value || '').split(',').map(t => t.trim()).filter(Boolean)
   });
 
   if(!id){ db.leads.push(base); db.contacts++; }
@@ -6203,6 +6458,37 @@ function deleteLead(id){
   }
 }
 
+// Sugere a próxima ação pra um lead com base na etapa do funil em que está
+// e no tempo parado nela -- um empurrãozinho pra não deixar lead esfriar.
+// Baseado em l.created (data de cadastro) e nos agendamentos vinculados a
+// ele, que têm data confiável (comentários guardam data só em texto
+// formatado, não dá pra usar com segurança aqui).
+function sugerirProximaAcaoLead(l){
+  const stage = l.stage || 'Prospecção';
+  if(stage === 'Cliente fechado' || stage === 'Cliente não fechado') return null;
+
+  const diasCriado = l.created ? Math.floor((Date.now() - new Date(l.created).getTime()) / 86400000) : 0;
+  const reunioesDoLead = (db.meetings || []).filter(m => (m.lead||'').trim().toLowerCase() === (l.nome||'').trim().toLowerCase());
+  const temReuniaoFutura = reunioesDoLead.some(m => m.status === 'Ativo' && new Date(m.date) > new Date());
+  const temReuniaoPassadaAberta = reunioesDoLead.some(m => m.status === 'Ativo' && new Date(m.date) <= new Date());
+
+  if(stage === 'Prospecção'){
+    if(temReuniaoFutura) return null;
+    if(diasCriado >= 2) return `📅 Agendar reunião — parado há ${diasCriado}d`;
+    return null;
+  }
+  if(stage === 'Agendado'){
+    if(temReuniaoPassadaAberta) return '🔄 Atualizar status pós-reunião';
+    if(temReuniaoFutura) return null;
+    return '📅 Verificar agendamento';
+  }
+  if(stage === 'Negociação'){
+    if(diasCriado >= 5) return '💬 Fazer follow-up';
+    return null;
+  }
+  return null;
+}
+
 function renderLeads(){
   const q = (document.getElementById('leadSearch')?.value||'').toLowerCase();
   const filterU = document.getElementById('leadFilterUser')?.value || 'all';
@@ -6217,7 +6503,7 @@ function renderLeads(){
   const accessible = db.leads.filter(canUserAccessLead);
 
   let rows = accessible.filter(l=>{
-    const matchText = [l.nome,l.tel,l.cidade,l.prof,l.origem,l.indicador].join(' ').toLowerCase().includes(q);
+    const matchText = [l.nome,l.tel,l.cidade,l.prof,l.origem,l.indicador,...(l.tags||[])].join(' ').toLowerCase().includes(q);
     const matchUser = filterU === 'all' || l.responsavel === filterU;
     const matchScore = filterScore === 'all' || (l.scoreCategory || 'Morno') === filterScore;
     const matchStage = filterStage === 'all' || (l.stage || 'Prospecção') === filterStage;
@@ -6238,15 +6524,18 @@ function renderLeads(){
     const isOwner = l.createdBy === currentUser.id || canCurrentUserViewAllLeads() || getSubordinateUserIds(currentUser.id).includes(l.createdBy);
     const visibilityBtn = isOwner ? `<button class="btn ${l.isPublic!==false?'green':'gray'}" style="font-size:11px" onclick="toggleLeadVisibility('${l.id}')">${l.isPublic!==false ? '👥 Público' : '🔒 Privado'}</button>` : (l.isPublic!==false ? '<span class="badge b-green">👥</span>' : '<span class="badge b-gray">🔒</span>');
 
+    const tagsHtml = (l.tags && l.tags.length) ? `<div style="margin-top:3px">${l.tags.map(t=>`<span class="badge b-gray" style="margin:0 3px 3px 0;font-size:10px">${esc(t)}</span>`).join('')}</div>` : '';
+    const proximaAcao = sugerirProximaAcaoLead(l);
+
     return `<tr>
-      <td><b style="cursor:pointer;text-decoration:underline dotted" title="Abrir cadastro do cliente" onclick="openLead('${l.id}')">${esc(l.nome)}</b>${(l.origem==='Indicação' && l.indicador) ? ` <span class="muted" style="font-size:11px">(ind ${esc(l.indicador)})</span>` : ''}<br><small style="color:var(--muted)">${esc(l.cidade||'-')}</small></td>
+      <td><b style="cursor:pointer;text-decoration:underline dotted" title="Abrir cadastro do cliente" onclick="openLead('${l.id}')">${esc(l.nome)}</b>${(l.origem==='Indicação' && l.indicador) ? ` <span class="muted" style="font-size:11px">(ind ${esc(l.indicador)})</span>` : ''}<br><small style="color:var(--muted)">${esc(l.cidade||'-')}</small>${tagsHtml}</td>
       <td>${esc(l.tel||'-')}${linkWhatsAppTel(l.tel)}</td>
       <td>${l.nasc ? new Date(l.nasc+'T00:00:00').toLocaleDateString('pt-BR') : '-'}</td>
       <td><span class="badge b-purple">${esc(l.origem||'Indicação')}</span></td>
       <td><span class="badge b-blue" style="cursor:pointer" title="Abrir cadastro do vendedor" onclick="abrirCadastroVendedor('${esc(l.responsavel||'')}')">👤 ${esc(l.responsavel||'Geral')}</span></td>
       <td>${scoreBadge}</td>
       <td>${visibilityBtn}</td>
-      <td><span class="badge b-purple">${esc(l.stage||'Prospecção')}</span></td>
+      <td><span class="badge b-purple">${esc(l.stage||'Prospecção')}</span>${proximaAcao ? `<br><span class="badge b-gold" style="margin-top:4px;font-size:10px" title="Próxima ação sugerida">${esc(proximaAcao)}</span>` : ''}</td>
       <td><button class="btn" onclick="openLeadCommentsModal('${l.id}')">💬 Notas (${comCount})</button></td>
       <td>
         <div class="row">
@@ -7603,6 +7892,7 @@ function openLeadCommentsModal(leadId){
       ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none">📲 WhatsApp</a>` : ''}
       ${telLink ? `<a class="btn blue" href="${telLink}" style="text-decoration:none">📞 Ligar</a>` : ''}
       <button class="btn purple" onclick="openMeeting('${esc(l.nome)}')">📅 Lembrete na Agenda</button>
+      <button class="btn gray" onclick="exportarMuralPDF('${l.id}')">📄 Exportar PDF</button>
       ${!waLink && !telLink ? '<small class="muted">Cadastre um telefone válido pra habilitar WhatsApp e ligação.</small>' : ''}
     </div>
   `;
@@ -7634,6 +7924,62 @@ function openLeadCommentsModal(leadId){
 // Pequena etiqueta mostrando de onde veio cada comentário do Mural de Negociação:
 // escrito à mão na própria aba Lead, escrito na Agenda, ou lançado sozinho pelo
 // sistema (ação automática, ex: agendamento, venda fechada, cota cancelada/contemplada).
+// Exporta o histórico completo do Mural de Negociação de um lead (comentários
+// manuais + registros automáticos do sistema) em PDF, pra prestar contas a
+// um gestor ou documentar a negociação fora do CRM. Texto puro via jsPDF
+// (não é print de tela), então sai nítido e com o texto selecionável/pesquisável.
+function exportarMuralPDF(leadId){
+  const l = db.leads.find(x => x.id === leadId);
+  if(!l) return;
+  if(!window.jspdf){ return alert('Biblioteca de PDF ainda não carregou — tente novamente em alguns segundos.'); }
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' });
+  const margemEsq = 16, larguraUtil = 210 - 32;
+  let y = 20;
+
+  const novaLinhaSeNecessario = (alturaNecessaria) => {
+    if(y + alturaNecessaria > 285){ pdf.addPage(); y = 20; }
+  };
+
+  pdf.setFont('helvetica', 'bold'); pdf.setFontSize(16);
+  pdf.text('Mural de Negociação', margemEsq, y); y += 8;
+  pdf.setFontSize(11); pdf.setFont('helvetica', 'normal');
+  pdf.text(`Lead: ${l.nome || '-'}`, margemEsq, y); y += 5.5;
+  if(l.tel){ pdf.text(`Telefone: ${l.tel}`, margemEsq, y); y += 5.5; }
+  pdf.text(`Responsável: ${l.responsavel || '-'}   |   Etapa: ${l.stage || 'Prospecção'}`, margemEsq, y); y += 5.5;
+  pdf.text(`Exportado em: ${new Date().toLocaleString('pt-BR')}`, margemEsq, y); y += 4;
+  pdf.setDrawColor(200); pdf.line(margemEsq, y, margemEsq + larguraUtil, y); y += 8;
+
+  const comentarios = l.comments || [];
+  if(!comentarios.length){
+    pdf.setFont('helvetica', 'italic'); pdf.setFontSize(11);
+    pdf.text('Nenhum comentário registrado ainda.', margemEsq, y);
+  } else {
+    comentarios.forEach(c => {
+      novaLinhaSeNecessario(16);
+      const origemTxt = c.origem === 'auto' ? '[Automático]' : (c.origem === 'reuniao' ? '[Agenda]' : '[Manual]');
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(10.5);
+      pdf.text(`${c.author || 'Sistema'}  ${origemTxt}`, margemEsq, y);
+      pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9);
+      pdf.setTextColor(120);
+      pdf.text(String(c.date || ''), margemEsq + larguraUtil, y, { align: 'right' });
+      pdf.setTextColor(30);
+      y += 5;
+      const linhas = pdf.splitTextToSize(String(c.text || ''), larguraUtil);
+      linhas.forEach(linha => {
+        novaLinhaSeNecessario(5.5);
+        pdf.setFontSize(10.5);
+        pdf.text(linha, margemEsq, y);
+        y += 5;
+      });
+      y += 4;
+    });
+  }
+
+  const nomeArquivo = `mural-${(l.nome||'lead').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,'')}.pdf`;
+  pdf.save(nomeArquivo);
+}
+
 function origemLabelComentario(origem){
   if(origem === 'auto') return '🤖 Automático';
   if(origem === 'reuniao') return '📅 Agenda';
@@ -8283,9 +8629,65 @@ function renderDashboard(){
       <td>${s.cancelada?'<span class="badge b-cancelada">Cancelada</span>':'<span class="badge b-green">Ativa</span>'}</td>
     </tr>`).join('') || '<tr><td colspan="8"><div class="empty-state"><span class="emoji">🏆</span>Nenhuma cota registrada no período.</div></td></tr>';
 
-  document.getElementById('pipeline').innerHTML = stages.map(s => `
-    <div class="stage"><small style="color:var(--muted);font-weight:bold">${s}</small><span>${baseLeads.filter(l=>l.stage===s).length}</span></div>
+  const funilLeadsBase = filteredLeads.length ? filteredLeads : baseLeads;
+  const stageCounts = stages.map(s => funilLeadsBase.filter(l => (l.stage||'Prospecção') === s).length);
+  document.getElementById('pipeline').innerHTML = stages.map((s, i) => `
+    <div class="stage">
+      <small style="color:var(--muted);font-weight:bold">${s}</small>
+      <span>${stageCounts[i]}</span>
+      <small class="pct">${funilLeadsBase.length ? Math.round(stageCounts[i]/funilLeadsBase.length*100) : 0}% do total</small>
+    </div>
   `).join('');
+
+  // Funil visual: barras decrescentes mostrando quantos leads chegaram a
+  // cada etapa e a taxa de conversão relativa à primeira etapa (Prospecção).
+  const funilVisualBox = document.getElementById('dashFunilVisual');
+  const funilTaxaBadge = document.getElementById('dashFunilTaxaTotal');
+  if(funilVisualBox){
+    const base = funilLeadsBase.length || 1;
+    funilVisualBox.innerHTML = stages.map((s, i) => {
+      const pct = Math.round(stageCounts[i] / base * 100);
+      return `<div class="funil-row">
+        <div class="funil-label">${esc(s)}</div>
+        <div class="funil-track"><div class="funil-fill" style="width:${Math.max(pct,3)}%"><span>${stageCounts[i]}</span></div></div>
+        <div class="funil-pct">${pct}%</div>
+      </div>`;
+    }).join('');
+    const fechados = funilLeadsBase.filter(l => l.stage === 'Cliente fechado').length;
+    if(funilTaxaBadge) funilTaxaBadge.textContent = funilLeadsBase.length ? `Conversão total: ${Math.round(fechados/funilLeadsBase.length*100)}%` : 'Etapas do Funil';
+  }
+
+  // Ranking de consultores por volume vendido no período -- só faz sentido
+  // pra quem enxerga mais de um consultor (líder de equipe ou visão geral).
+  const rankingCard = document.getElementById('cardRankingConsultores');
+  if(rankingCard){
+    if(canSeeGeneral || isLeader){
+      let rankingUsersList = canSeeGeneral ? usersList : usersList.filter(u => subIds.includes(u.id) || u.nome === currentUser?.nome);
+      if (filtroConsultor !== 'all') rankingUsersList = rankingUsersList.filter(u => u.nome === filtroConsultor);
+      const ranking = rankingUsersList.map(u => {
+        const uSales = filteredSales.filter(s => s.responsavel === u.nome && !s.cancelada);
+        return { nome: u.nome, volume: uSales.reduce((acc, s) => acc + Number(s.valor || 0), 0), qtd: uSales.length };
+      }).filter(r => r.volume > 0 || r.qtd > 0).sort((a,b) => b.volume - a.volume);
+
+      if(ranking.length > 1){
+        rankingCard.style.display = '';
+        const maxVol = ranking[0].volume || 1;
+        document.getElementById('rankingConsultoresList').innerHTML = ranking.map((r, i) => `
+          <div class="ranking-row ${i===0?'top1':i===1?'top2':i===2?'top3':''}">
+            <div class="ranking-pos">${i+1}º</div>
+            <div class="ranking-info">
+              <b>${esc(r.nome)}</b>
+              <div class="ranking-bar-track"><div class="ranking-bar-fill" style="width:${Math.max(r.volume/maxVol*100,3)}%"></div></div>
+            </div>
+            <div class="ranking-value">${Number(r.volume).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}<br><small class="muted" style="font-weight:600">${r.qtd} cota${r.qtd===1?'':'s'}</small></div>
+          </div>`).join('');
+      } else {
+        rankingCard.style.display = 'none';
+      }
+    } else {
+      rankingCard.style.display = 'none';
+    }
+  }
 
   document.getElementById('goalText').textContent = `${db.leads.length}`;
   
@@ -8604,8 +9006,10 @@ function reopenMeetingAction(id){
   const item = db.meetings.find(x=>x.id===id);
   if(item){ item.status = 'Ativo'; save(); closeModal(); renderAgenda(); }
 }
-function deleteEventAction(id){
+async function deleteEventAction(id){
   if(confirm('Excluir?')){
+    const item = db.meetings.find(x=>x.id===id);
+    if(item && item.googleEventId) await deleteGoogleCalendarEvent(item.googleEventId);
     db.meetings = db.meetings.filter(x=>x.id!==id);
     save(); closeModal(); renderAgenda();
   }
@@ -8624,7 +9028,7 @@ function openRescheduleModal(id){
   `);
 }
 
-function saveReschedule(id){
+async function saveReschedule(id){
   const newDate = document.getElementById('newDateVal')?.value;
   if(!newDate) return alert('Selecione data e hora.');
   const newColor = document.getElementById('newColorVal')?.value;
@@ -8634,6 +9038,7 @@ function saveReschedule(id){
     if(newColor) item.color = newColor;
     registrarAcaoAutomaticaLead(item.lead, `🔄 Reagendado para ${new Date(newDate).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}`);
     save(); closeModal(); renderAgenda();
+    if(item.googleEventId) await updateGoogleCalendarEventTime(item.googleEventId, newDate);
   }
 }
 
