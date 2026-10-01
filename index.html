@@ -904,8 +904,8 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         oninput="onGlobalSearchInput()" onfocus="onGlobalSearchInput()">
       <div class="global-search-results" id="globalSearchResults"></div>
     </div>
-    <button id="btnPrincipalUndo" class="btn" title="Desfazer última ação em Leads/Vendas (Ctrl+Z)" onclick="desfazerPrincipal()" style="padding:6px 10px;font-size:15px" disabled>↺</button>
-    <button id="btnPrincipalRedo" class="btn" title="Refazer (Ctrl+Y)" onclick="refazerPrincipal()" style="padding:6px 10px;font-size:15px" disabled>↻</button>
+    <button id="btnPrincipalUndo" class="btn" title="Desfazer a última ação (Ctrl+Z)" onclick="desfazerPrincipal()" style="padding:6px 10px;font-size:15px">↺</button>
+    <button id="btnPrincipalRedo" class="btn" title="Refazer (Ctrl+Y)" onclick="refazerPrincipal()" style="padding:6px 10px;font-size:15px">↻</button>
     <button id="topPwaInstallBtn" class="btn blue" style="display:none;font-size:11.5px" onclick="triggerPwaInstall()">💻 Instalar App</button>
     <div class="notif-btn" onclick="openNotificationsModal()">
       <span id="notifBellIcon">🔔</span> <span class="notif-badge" id="notifBadgeCount">0</span>
@@ -2942,6 +2942,7 @@ async function carregarDaNuvem() {
       persistirChave(KEY_NOTIFS, JSON.stringify(notifications), notifications);
       persistirChave(KEY_INFOS, JSON.stringify(infoPosts), infoPosts);
       localStorage.setItem(KEY_ULTIMA_MODIFICACAO, String(timestampNuvem));
+      reiniciarBaseDoHistorico(true);
 
       // Ressincroniza o usuário logado com a lista que acabou de vir da nuvem
       // (senão o currentUser fica com dados velhos e permissões desatualizadas).
@@ -3685,7 +3686,7 @@ async function processarFilaGoogle(){
     }
     db.googleExclusoesPendentes = restantes;
   } finally { __filaGoogleRodando = false; }
-  if (mudou) { save(); if (typeof renderAgenda === 'function') renderAgenda(); }
+  if (mudou) { saveSemHistorico(); if (typeof renderAgenda === 'function') renderAgenda(); }
   updateGoogleAuthStatus();
 }
 async function sincronizarGoogleAgora(){
@@ -3897,6 +3898,7 @@ function initAuth(){
       updateGoogleAuthStatus();
     }, 1000);
 
+    reiniciarBaseDoHistorico(true);
     carregarDaNuvem();
   } else {
     const authScreen = document.getElementById('authScreen');
@@ -4000,6 +4002,7 @@ function logout(){
 }
 
 function save(){
+  registrarMudancaNoHistorico();
   lastLocalSaveTime = Date.now();
   marcarModificacaoLocal();
   persistirChave(KEY_DB, JSON.stringify(db), db);
@@ -4023,44 +4026,87 @@ function save(){
 let principalUndoStack = [];
 let principalRedoStack = [];
 const PRINCIPAL_HISTORICO_MAX = 20;
+const HISTORICO_TAMANHO_MAX = 6 * 1024 * 1024; // acima disso não guarda (evita travar o aparelho)
+let __estadoHistorico = null;     // "foto" do último estado salvo
+let __historicoPausado = false;   // true durante desfazer/refazer e salvamentos automáticos
 
-function registrarHistoricoPrincipal(){
-  try {
-    principalUndoStack.push(JSON.stringify({ leads: db.leads, sales: db.sales }));
+function fotoDoEstado(){
+  try { return JSON.stringify({ db: db, infoPosts: infoPosts }); } catch (e) { return null; }
+}
+// Define o ponto de partida (ao abrir o CRM e quando chegam dados novos da nuvem)
+function reiniciarBaseDoHistorico(limparPilhas){
+  __estadoHistorico = fotoDoEstado();
+  if (limparPilhas) { principalUndoStack = []; principalRedoStack = []; }
+  atualizarBotoesHistoricoPrincipal();
+}
+// Chamado no começo de todo save(): se algo mudou desde a última foto, guarda a anterior
+function registrarMudancaNoHistorico(){
+  const atual = fotoDoEstado();
+  if (atual === null) return;
+  if (__estadoHistorico !== null && !__historicoPausado && atual !== __estadoHistorico && __estadoHistorico.length <= HISTORICO_TAMANHO_MAX) {
+    principalUndoStack.push(__estadoHistorico);
     if (principalUndoStack.length > PRINCIPAL_HISTORICO_MAX) principalUndoStack.shift();
     principalRedoStack = [];
-    atualizarBotoesHistoricoPrincipal();
-  } catch(e) { /* memória cheia ou dado não serializável — undo fica indisponível pra essa ação */ }
+  }
+  __estadoHistorico = atual;
+  atualizarBotoesHistoricoPrincipal();
 }
+// Salva sem criar um passo de "desfazer" (para tarefas automáticas, como a fila do Google)
+function saveSemHistorico(){
+  __historicoPausado = true;
+  try { save(); } finally { __historicoPausado = false; }
+}
+
+// Mantida por compatibilidade: as ações antigas chamavam isso ANTES de alterar os dados.
+// Agora o registro é automático dentro do save(), então aqui não precisa fazer nada.
+function registrarHistoricoPrincipal(){}
 
 function atualizarBotoesHistoricoPrincipal(){
   const btnU = document.getElementById('btnPrincipalUndo');
   const btnR = document.getElementById('btnPrincipalRedo');
-  if (btnU) btnU.disabled = principalUndoStack.length === 0;
-  if (btnR) btnR.disabled = principalRedoStack.length === 0;
+  if (btnU) btnU.style.opacity = principalUndoStack.length ? '1' : '.45';
+  if (btnR) btnR.style.opacity = principalRedoStack.length ? '1' : '.45';
+}
+
+function aplicarEstadoDoHistorico(json){
+  const estado = JSON.parse(json);
+  // Mantém o Google Agenda coerente: reunião que some no desfazer é apagada lá;
+  // reunião que volta é recriada lá (se o Google estiver conectado).
+  try {
+    if (typeof googleLigado === 'function' && googleLigado()) {
+      const antes = new Set((db.meetings || []).map(m => m.googleEventId).filter(Boolean));
+      const depois = new Set(((estado.db || {}).meetings || []).map(m => m.googleEventId).filter(Boolean));
+      const pend = new Set([...(db.googleExclusoesPendentes || []), ...((estado.db || {}).googleExclusoesPendentes || [])]);
+      antes.forEach(id => { if (!depois.has(id)) pend.add(id); });
+      ((estado.db || {}).meetings || []).forEach(m => {
+        if (m.googleEventId && !antes.has(m.googleEventId)) { m.googleEventId = null; m.meetUrl = ''; m.googlePendente = true; }
+      });
+      estado.db.googleExclusoesPendentes = [...pend];
+    }
+  } catch (e) {}
+  db = estado.db;
+  if (Array.isArray(estado.infoPosts)) infoPosts = estado.infoPosts;
+  __historicoPausado = true;
+  try { save(); } finally { __historicoPausado = false; }
+  atualizarBotoesHistoricoPrincipal();
+  if (typeof processarFilaGoogle === 'function') setTimeout(processarFilaGoogle, 500);
 }
 
 function desfazerPrincipal(){
-  if (!principalUndoStack.length) return;
-  const atual = JSON.stringify({ leads: db.leads, sales: db.sales });
-  const estado = JSON.parse(principalUndoStack.pop());
-  db.leads = estado.leads;
-  db.sales = estado.sales;
-  principalRedoStack.push(atual);
-  save();
-  atualizarBotoesHistoricoPrincipal();
+  if (!principalUndoStack.length) return showToast('Não há nada para desfazer.');
+  const atual = fotoDoEstado();
+  const anterior = principalUndoStack.pop();
+  if (atual) principalRedoStack.push(atual);
+  aplicarEstadoDoHistorico(anterior);
   showToast('↺ Última ação desfeita.');
 }
 
 function refazerPrincipal(){
-  if (!principalRedoStack.length) return;
-  const atual = JSON.stringify({ leads: db.leads, sales: db.sales });
-  const estado = JSON.parse(principalRedoStack.pop());
-  db.leads = estado.leads;
-  db.sales = estado.sales;
-  principalUndoStack.push(atual);
-  save();
-  atualizarBotoesHistoricoPrincipal();
+  if (!principalRedoStack.length) return showToast('Não há nada para refazer.');
+  const atual = fotoDoEstado();
+  const proximo = principalRedoStack.pop();
+  if (atual) principalUndoStack.push(atual);
+  aplicarEstadoDoHistorico(proximo);
   showToast('↻ Ação refeita.');
 }
 
