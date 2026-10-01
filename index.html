@@ -246,7 +246,7 @@ body.tour-active { overflow: hidden; }
   align-items: center;
   justify-content: center;
   padding: 16px;
-  z-index: 100;
+  z-index: 250; /* acima da tela de login (200), senão "Esqueci a senha" abre escondido */
 }
 .modal.show { display: flex; }
 .modalbox { background: white; border-radius: 14px; max-width: 850px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 22px; }
@@ -1983,6 +1983,12 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <div class="field"><label>Nova Senha</label><input type="password" id="cfgNewPass"></div>
       <div class="field"><label>Confirmar Nova Senha</label><input type="password" id="cfgConfirmPass"></div>
       <button class="btn" onclick="changeUserPassword()">Atualizar Senha</button>
+
+      <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
+      <h3>🛟 Código de Recuperação de Senha</h3>
+      <p class="muted" style="font-size:12px;margin-bottom:8px">Funciona sem internet. Se você esquecer a senha, use este código em "Esqueci a senha" na tela de login.</p>
+      <div id="eloStatusCodigo" style="font-size:12.5px;font-weight:700;margin-bottom:10px"></div>
+      <button class="btn primary" onclick="eloGerarMeuCodigo()">Gerar código de recuperação</button>
     </div>
 
     <div class="card">
@@ -2022,13 +2028,26 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
   </div>
 
   <div class="card" style="margin-top:20px">
-    <h2>☁️ Sincronização com a Nuvem</h2>
+    <h2>☁️ Nuvem segura</h2>
     <p class="muted" style="font-size:13px;margin-bottom:10px">
-      O CRM sincroniza automaticamente com a nuvem sempre que você salva algo. Use o botão abaixo
-      se quiser forçar uma sincronização agora (por exemplo, ao trocar de aparelho e querer garantir
-      que está vendo a versão mais recente).
+      Seus dados só vão para a nuvem depois que você entra com a conta da nuvem. Faça isso uma vez
+      em cada aparelho (celular, computador, tablet) para todos ficarem iguais.
     </p>
-    <button class="btn primary" onclick="carregarDaNuvem()">🔄 Sincronizar Agora</button>
+    <div id="eloNuvemStatus" style="font-size:13px;font-weight:700;margin-bottom:12px">Verificando…</div>
+    <div id="eloNuvemLogin">
+      <div class="field"><label>E-mail da conta da nuvem</label><input type="email" id="eloNuvemEmail" autocomplete="username" placeholder="seu@email.com"></div>
+      <div class="field"><label>Senha da nuvem</label><input type="password" id="eloNuvemSenha" autocomplete="current-password" placeholder="••••••••"></div>
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button class="btn primary" onclick="eloNuvemConectar()">🔐 Conectar à nuvem</button>
+        <button class="btn" onclick="eloNuvemEsqueci()">Esqueci a senha da nuvem</button>
+      </div>
+    </div>
+    <div id="eloNuvemConectada" style="display:none">
+      <div class="row" style="gap:8px;flex-wrap:wrap">
+        <button class="btn primary" onclick="carregarDaNuvem()">🔄 Sincronizar agora</button>
+        <button class="btn" onclick="eloNuvemSair()">Desconectar este aparelho</button>
+      </div>
+    </div>
   </div>
 </section>
 </main>
@@ -2799,7 +2818,17 @@ const EQUIPE_ID_NUVEM = '3e9eb2b4-b2c1-4fa6-b2bb-83bdbba1f899';
 let supabaseClient = null;
 try {
   if (window.supabase && SUPABASE_URL && SUPABASE_KEY && EQUIPE_ID_NUVEM) {
-    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+    });
+    // Quando o usuário abre o link "redefinir senha" que chegou no e-mail,
+    // o Supabase dispara PASSWORD_RECOVERY -> abrimos a janela de nova senha.
+    supabaseClient.auth.onAuthStateChange((evento) => {
+      setTimeout(() => {
+        if (evento === 'PASSWORD_RECOVERY' && typeof eloAbrirRecuperacaoNuvem === 'function') eloAbrirRecuperacaoNuvem();
+        if (typeof eloAtualizarCardNuvem === 'function') eloAtualizarCardNuvem();
+      }, 0);
+    });
   }
 } catch (errSupabase) {
   console.warn('Supabase indisponível:', errSupabase);
@@ -2825,8 +2854,18 @@ function agendarSincronizacaoNuvem() {
   sincronizacaoNuvemPendente = setTimeout(enviarParaNuvem, 2000);
 }
 
+// A nuvem só é usada com login feito (Configurações > Nuvem segura).
+async function eloNuvemSessao() {
+  if (!supabaseClient) return null;
+  try {
+    const { data } = await supabaseClient.auth.getSession();
+    return (data && data.session) || null;
+  } catch (e) { return null; }
+}
+
 async function enviarParaNuvem() {
   if (!supabaseClient) return;
+  if (!(await eloNuvemSessao())) { atualizarBadgeNuvem('☁️ Nuvem desconectada (dados só neste aparelho)'); return; }
   try {
     const agora = marcarModificacaoLocal();
     const dados = { db, usersList, brand, notifications, infoPosts };
@@ -2845,6 +2884,7 @@ async function enviarParaNuvem() {
 
 async function carregarDaNuvem() {
   if (!supabaseClient) return;
+  if (!(await eloNuvemSessao())) { atualizarBadgeNuvem('☁️ Nuvem desconectada (dados só neste aparelho)'); return; }
   try {
     const { data, error } = await supabaseClient
       .from('crm_snapshot')
@@ -3219,91 +3259,304 @@ function canUserAccessFollow(follow){
 }
 
 // === FLUXO DE RECUPERAÇÃO DE SENHA VIA WHATSAPP ===
-function openForgotPasswordModal(){
+// ================== NUVEM SEGURA (Supabase Auth) ==================
+async function eloAtualizarCardNuvem(){
+  const st = document.getElementById('eloNuvemStatus');
+  if (!st) return;
+  const boxLogin = document.getElementById('eloNuvemLogin');
+  const boxOk = document.getElementById('eloNuvemConectada');
+  if (!supabaseClient) {
+    st.textContent = '⚪ Nuvem não configurada nesta cópia (funciona só neste aparelho).';
+    if (boxLogin) boxLogin.style.display = 'none';
+    if (boxOk) boxOk.style.display = 'none';
+    return;
+  }
+  const sessao = await eloNuvemSessao();
+  if (sessao) {
+    st.innerHTML = `✅ Conectado como <b>${esc(sessao.user.email || '')}</b>`;
+    if (boxLogin) boxLogin.style.display = 'none';
+    if (boxOk) boxOk.style.display = 'block';
+  } else {
+    st.textContent = '⚠️ Desconectado: os dados estão salvos só neste aparelho.';
+    if (boxLogin) boxLogin.style.display = 'block';
+    if (boxOk) boxOk.style.display = 'none';
+  }
+}
+
+window.eloNuvemConectar = async function(){
+  if (!supabaseClient) return alert('Nuvem não configurada nesta cópia.');
+  const email = (document.getElementById('eloNuvemEmail')?.value || '').trim();
+  const senha = document.getElementById('eloNuvemSenha')?.value || '';
+  if (!email || !senha) return alert('Informe e-mail e senha da nuvem.');
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password: senha });
+  if (error) return alert('Não foi possível conectar: ' + (error.message === 'Invalid login credentials' ? 'e-mail ou senha incorretos.' : error.message));
+  document.getElementById('eloNuvemSenha').value = '';
+  showToast('☁️ Nuvem conectada! Sincronizando…');
+  await eloAtualizarCardNuvem();
+  await carregarDaNuvem(); // traz a versão mais nova (ou envia a deste aparelho)
+};
+
+window.eloNuvemSair = async function(){
+  if (!supabaseClient) return;
+  if (!confirm('Desconectar este aparelho da nuvem? Os dados continuam salvos aqui, só param de sincronizar.')) return;
+  await supabaseClient.auth.signOut();
+  atualizarBadgeNuvem('☁️ Nuvem desconectada (dados só neste aparelho)');
+  eloAtualizarCardNuvem();
+};
+
+window.eloNuvemEsqueci = async function(){
+  if (!supabaseClient) return;
+  const email = (document.getElementById('eloNuvemEmail')?.value || '').trim() || prompt('E-mail da conta da nuvem:');
+  if (!email) return;
+  const voltarPara = location.origin + location.pathname;
+  const { error } = await supabaseClient.auth.resetPasswordForEmail(email.trim(), { redirectTo: voltarPara });
+  if (error) return alert('Não foi possível enviar: ' + error.message);
+  alert('Enviamos um link para ' + email + '. Abra o e-mail NESTE aparelho e toque no link para criar a senha nova.');
+};
+
+// Aberto automaticamente quando a pessoa chega pelo link do e-mail
+async function eloAbrirRecuperacaoNuvem(){
+  try { await carregarDaNuvem(); } catch (e) {}
+  const gestores = (usersList || []).filter(u => u.canManageMembers || (typeof isManagerRole === 'function' && isManagerRole(u.cargo)));
   openModal(`
-    <div class="between">
-      <h2>🔑 Recuperar Senha de Acesso</h2>
-      <button class="btn" onclick="closeModal()">✕</button>
+    <div class="between"><h2>🔑 Criar nova senha</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <p style="font-size:13px;color:#475569;margin:10px 0 14px">Seu e-mail foi confirmado. Crie a nova senha da <b>nuvem</b>. Se também esqueceu a senha de <b>entrada no CRM</b>, redefina ela aqui.</p>
+    <div class="field"><label>Nova senha da nuvem</label><input type="password" id="eloRecNuvem1" placeholder="mínimo 6 caracteres"></div>
+    <div class="field"><label>Confirmar nova senha da nuvem</label><input type="password" id="eloRecNuvem2"></div>
+    <div style="margin:14px 0;padding:12px;background:#FFF6F7;border-radius:10px;border:1px solid #F3D3D8">
+      <div class="field"><label>Também redefinir a senha do CRM de (opcional)</label>
+        <select id="eloRecUsuario"><option value="">Não, só a da nuvem</option>${gestores.map(u => `<option value="${u.id}">${esc(u.nome)} (${esc(u.email)})</option>`).join('')}</select>
+      </div>
+      <div class="field"><label>Nova senha do CRM</label><input type="password" id="eloRecCrm" placeholder="mínimo 4 caracteres"></div>
     </div>
-    <div style="margin:14px 0;padding:12px;background:#f8fafc;border-radius:10px;border:1px solid var(--line)">
-      <p style="margin:0;font-size:12.5px;color:#334155">
-        Informe seu nome de usuário ou e-mail cadastrado. Um PIN seguro de verificação de 6 dígitos será gerado e enviado para o seu WhatsApp oficial cadastrado na equipe.
-      </p>
-    </div>
-    <div id="forgotStep1">
-      <div class="field">
-        <label>Nome de Usuário ou E-mail</label>
-        <input type="text" id="forgotInputUser" placeholder="ex: seu usuário ou e-mail">
-      </div>
-      <button class="btn green" style="width:100%;justify-content:center;margin-top:6px" onclick="requestPasswordResetOtp()">
-        📲 Gerar Código & Abrir no WhatsApp
-      </button>
-    </div>
-    <div id="forgotStep2" style="display:none;margin-top:14px">
-      <div class="field">
-        <label>Código PIN de 6 Dígitos (Enviado no WhatsApp)</label>
-        <input type="number" id="forgotInputPin" placeholder="Ex: 849201">
-      </div>
-      <div class="field">
-        <label>Nova Senha</label>
-        <input type="password" id="forgotNewPass" placeholder="Nova senha">
-      </div>
-      <div class="field">
-        <label>Confirmar Nova Senha</label>
-        <input type="password" id="forgotConfirmPass" placeholder="Confirme a nova senha">
-      </div>
-      <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px" onclick="verifyResetOtpAndSave()">
-        🔒 Validar Código & Atualizar Senha
-      </button>
+    <div id="eloRecErro" style="display:none;color:#B91C1C;font-size:12.5px;font-weight:700;margin-bottom:8px"></div>
+    <button class="btn primary" style="width:100%;justify-content:center" onclick="eloSalvarRecuperacaoNuvem()">Salvar</button>
+  `);
+}
+
+window.eloSalvarRecuperacaoNuvem = async function(){
+  const erro = (m) => { const el = document.getElementById('eloRecErro'); el.textContent = m; el.style.display = 'block'; };
+  const n1 = document.getElementById('eloRecNuvem1')?.value || '';
+  const n2 = document.getElementById('eloRecNuvem2')?.value || '';
+  const uid = document.getElementById('eloRecUsuario')?.value || '';
+  const crm = (document.getElementById('eloRecCrm')?.value || '').trim();
+  if (n1.length < 6) return erro('A senha da nuvem precisa de pelo menos 6 caracteres.');
+  if (n1 !== n2) return erro('As senhas da nuvem não coincidem.');
+  if (uid && crm.length < 4) return erro('A nova senha do CRM precisa de pelo menos 4 caracteres.');
+  const { error } = await supabaseClient.auth.updateUser({ password: n1 });
+  if (error) return erro('Não foi possível salvar: ' + error.message);
+  if (uid) {
+    const u = usersList.find(x => x.id === uid);
+    if (u) { u.pass = crm; save(); }
+  }
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  closeModal();
+  showToast(uid ? 'Senhas redefinidas! Entre no CRM com a senha nova.' : 'Senha da nuvem redefinida!');
+  eloAtualizarCardNuvem();
+};
+
+// ================== RECUPERAÇÃO DE SENHA OFFLINE ==================
+// Funciona sem internet e sem banco na nuvem. Cada usuário gera um CÓDIGO DE
+// RECUPERAÇÃO em Configurações. O CRM guarda só o "hash" do código (uma impressão
+// digital irreversível), nunca o código em si. Quem esquecer a senha digita o
+// código e cadastra uma senha nova. Depois de usado, o código é trocado por outro.
+// Quem não tiver código pede ao gestor, que redefine a senha em Permissões.
+
+// SHA-256 em JavaScript puro (funciona até abrindo o arquivo direto no PC)
+function eloSha256(ascii){
+  function rr(v, n){ return (v >>> n) | (v << (32 - n)); }
+  const maxWord = Math.pow(2, 32); let result = ''; const words = []; const bitLen = ascii.length * 8;
+  let hash = [], k = []; let primeCounter = 0; const isComposite = {};
+  for (let c = 2; primeCounter < 64; c++) {
+    if (!isComposite[c]) {
+      for (let i = 0; i < 313; i += c) isComposite[i] = c;
+      hash[primeCounter] = (Math.pow(c, .5) * maxWord) | 0;
+      k[primeCounter++] = (Math.pow(c, 1 / 3) * maxWord) | 0;
+    }
+  }
+  hash = hash.slice(0, 8);
+  ascii += '\x80';
+  while (ascii.length % 64 - 56) ascii += '\x00';
+  for (let i = 0; i < ascii.length; i++) {
+    const j = ascii.charCodeAt(i);
+    if (j >> 8) return '';
+    words[i >> 2] |= j << ((3 - i) % 4) * 8;
+  }
+  words[words.length] = ((bitLen / maxWord) | 0);
+  words[words.length] = (bitLen);
+  for (let j = 0; j < words.length;) {
+    const w = words.slice(j, j += 16); const oldHash = hash; hash = hash.slice(0, 8);
+    for (let i = 0; i < 64; i++) {
+      const w15 = w[i - 15], w2 = w[i - 2]; const a = hash[0], e = hash[4];
+      const temp1 = hash[7] + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & hash[5]) ^ ((~e) & hash[6])) + k[i]
+        + (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rr(w15, 7) ^ rr(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rr(w2, 17) ^ rr(w2, 19) ^ (w2 >>> 10))) | 0);
+      const temp2 = (rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+      hash = [(temp1 + temp2) | 0].concat(hash); hash[4] = (hash[4] + temp1) | 0;
+    }
+    for (let i = 0; i < 8; i++) hash[i] = (hash[i] + oldHash[i]) | 0;
+  }
+  for (let i = 0; i < 8; i++) for (let j = 3; j + 1; j--) { const b = (hash[i] >> (j * 8)) & 255; result += ((b < 16) ? 0 : '') + b.toString(16); }
+  return result;
+}
+
+const ELO_CODIGO_ALFABETO = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // sem 0/O, 1/I/L pra não confundir
+function eloNormalizarCodigo(c){ return String(c || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
+function eloHashCodigo(userId, codigo){ return eloSha256('elo-rec|' + userId + '|' + eloNormalizarCodigo(codigo)); }
+function eloGerarCodigoTexto(){
+  const n = new Uint32Array(12);
+  (window.crypto && crypto.getRandomValues) ? crypto.getRandomValues(n) : n.forEach((_, i) => n[i] = Math.floor(Math.random() * 4294967296));
+  let c = ''; n.forEach(v => c += ELO_CODIGO_ALFABETO[v % ELO_CODIGO_ALFABETO.length]);
+  return c.slice(0, 4) + '-' + c.slice(4, 8) + '-' + c.slice(8, 12);
+}
+
+function eloLocalizarUsuario(raw){
+  let norm = String(raw || '').trim().toLowerCase();
+  if (!norm) return null;
+  if (norm === 'wc' || norm === 'elo' || norm === 'elo@crm' || norm === 'wellington' || norm === 'wellington@crm.com') norm = 'wc@crm';
+  return usersList.find(u => (u.email || '').toLowerCase() === norm || (u.nome || '').toLowerCase() === norm) || null;
+}
+
+// Gera (ou troca) o código do usuário, salva só o hash e mostra o código UMA vez
+function eloCriarCodigoPara(user){
+  const codigo = eloGerarCodigoTexto();
+  user.recoveryHash = eloHashCodigo(user.id, codigo);
+  user.recoveryCreatedAt = new Date().toISOString();
+  if (currentUser && currentUser.id === user.id) {
+    currentUser.recoveryHash = user.recoveryHash;
+    currentUser.recoveryCreatedAt = user.recoveryCreatedAt;
+    localStorage.setItem(`crm_active_user_${EQUIPE_ID}`, JSON.stringify(currentUser));
+  }
+  save();
+  return codigo;
+}
+
+function eloMostrarCodigo(codigo, nome, titulo){
+  openModal(`
+    <div class="between"><h2>🛟 ${titulo || 'Seu código de recuperação'}</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <p style="font-size:13px;color:#475569;margin:10px 0 14px">Guarde este código em lugar seguro (anote, tire print ou salve o arquivo). Ele é a única forma de recuperar a senha de <b>${esc(nome)}</b> sem ajuda do gestor. <b>Ele não aparece de novo.</b></p>
+    <div style="font-family:monospace;font-size:26px;font-weight:800;letter-spacing:3px;text-align:center;padding:18px;border:2px dashed #C8102E;border-radius:12px;background:#FFF6F7;color:#7A1124;user-select:all" id="eloCodigoExibido">${codigo}</div>
+    <div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="navigator.clipboard && navigator.clipboard.writeText('${codigo}').then(()=>showToast('Código copiado!'))">📋 Copiar</button>
+      <button class="btn" onclick="eloBaixarCodigo('${codigo}', '${esc(nome).replace(/'/g, '')}')">⬇️ Baixar .txt</button>
+      <button class="btn primary" style="margin-left:auto" onclick="closeModal()">Já guardei</button>
     </div>
   `);
 }
 
-function requestPasswordResetOtp(){
-  const rawInput = document.getElementById('forgotInputUser')?.value.trim();
-  if(!rawInput) return alert('Por favor, informe seu usuário ou e-mail.');
-
-  let norm = rawInput.toLowerCase();
-  if(norm === 'wc' || norm === 'elo' || norm === 'elo@crm' || norm === 'wellington' || norm === 'wellington@crm.com') norm = 'wc@crm';
-
-  const user = usersList.find(u => u.email.toLowerCase() === norm || u.nome.toLowerCase() === norm || u.email.toLowerCase() === rawInput.toLowerCase());
-  if(!user) return alert('Usuário não localizado no sistema.');
-
-  let cleanTel = (user.tel || '').replace(/\D/g, '');
-  if(!cleanTel || cleanTel.length < 10){
-    return alert(`O usuário ${user.nome} não possui WhatsApp cadastrado. Solicite ao Gestor a inclusão do número.`);
-  }
-
-  if(cleanTel.length <= 11 && !cleanTel.startsWith('55')) cleanTel = '55' + cleanTel;
-
-  activeResetPin = Math.floor(100000 + Math.random() * 900000).toString();
-  activeResetUserId = user.id;
-
-  const msg = `🔐 *Elo CRM - Recuperação de Senha*\n\nOlá, *${user.nome}*!\nSeu código de segurança para redefinir sua senha é: *${activeResetPin}*\n\nInsira esse código no painel para cadastrar sua nova senha.`;
-  window.open(`https://wa.me/${cleanTel}?text=${encodeURIComponent(msg)}`, '_blank');
-
-  document.getElementById('forgotStep1').style.display = 'none';
-  document.getElementById('forgotStep2').style.display = 'block';
+function eloBaixarCodigo(codigo, nome){
+  const txt = `Elo CRM — Código de recuperação de senha\nUsuário: ${nome}\nCódigo: ${codigo}\nGerado em: ${new Date().toLocaleString('pt-BR')}\n\nGuarde em local seguro. Use em "Esqueci a senha" na tela de login.`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain' }));
+  a.download = 'codigo-recuperacao-elo-crm.txt';
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
+
+// Botão em Configurações
+window.eloGerarMeuCodigo = function(){
+  if (!currentUser) return;
+  const u = usersList.find(x => x.id === currentUser.id);
+  if (!u) return;
+  if (u.recoveryHash && !confirm('Você já tem um código de recuperação. Gerar um novo vai INVALIDAR o antigo. Continuar?')) return;
+  eloMostrarCodigo(eloCriarCodigoPara(u), u.nome);
+  eloAtualizarStatusCodigo();
+};
+
+function eloAtualizarStatusCodigo(){
+  const el = document.getElementById('eloStatusCodigo');
+  if (!el || !currentUser) return;
+  const u = usersList.find(x => x.id === currentUser.id) || currentUser;
+  el.innerHTML = u.recoveryHash
+    ? `✅ Código ativo, gerado em ${new Date(u.recoveryCreatedAt).toLocaleDateString('pt-BR')}.`
+    : `⚠️ Você ainda não tem código. Se esquecer a senha, só o gestor poderá redefinir.`;
+}
+
+// Limite de tentativas: 5 erros bloqueiam por 5 minutos (por usuário)
+function eloBloqueio(userId){
+  try { return JSON.parse(localStorage.getItem(`crm_rec_tentativas_${EQUIPE_ID}_${userId}`)) || { erros: 0, ate: 0 }; }
+  catch (e) { return { erros: 0, ate: 0 }; }
+}
+function eloSalvarBloqueio(userId, b){
+  try { localStorage.setItem(`crm_rec_tentativas_${EQUIPE_ID}_${userId}`, JSON.stringify(b)); } catch (e) {}
+}
+
+function openForgotPasswordModal(){
+  openModal(`
+    <div class="between">
+      <h2>🔑 Recuperar senha</h2>
+      <button class="btn" onclick="closeModal()">✕</button>
+    </div>
+    <div style="margin:14px 0;padding:12px;background:#FFF6F7;border-radius:10px;border:1px solid #F3D3D8">
+      <p style="margin:0;font-size:12.5px;color:#4A1C24">
+        Digite seu usuário e o <b>código de recuperação</b> que você gerou em Configurações (formato ABCD-EFGH-JKLM).
+        Não tem o código? Peça ao seu gestor para redefinir sua senha.
+      </p>
+      ${supabaseClient ? `<p style="margin:8px 0 0;font-size:12.5px;color:#4A1C24">É o administrador e usa a nuvem? <a href="javascript:void(0)" onclick="eloNuvemEsqueci()" style="color:#C8102E;font-weight:700">Recuperar pelo e-mail da nuvem</a></p>` : ''}
+    </div>
+    <div class="field"><label>Usuário ou e-mail</label><input type="text" id="forgotInputUser" placeholder="seu usuário ou e-mail" value="${esc((document.getElementById('authEmail')||{}).value || '')}"></div>
+    <div class="field"><label>Código de recuperação</label><input type="text" id="forgotInputCodigo" placeholder="ABCD-EFGH-JKLM" autocomplete="off" style="text-transform:uppercase;letter-spacing:1px"></div>
+    <div class="field"><label>Nova senha</label><input type="password" id="forgotNewPass" placeholder="mínimo 4 caracteres"></div>
+    <div class="field"><label>Confirmar nova senha</label><input type="password" id="forgotConfirmPass" placeholder="repita a nova senha"></div>
+    <div id="forgotErro" style="display:none;color:#B91C1C;font-size:12.5px;font-weight:700;margin:4px 0 8px"></div>
+    <button class="btn primary" style="width:100%;justify-content:center;margin-top:6px" onclick="verifyResetOtpAndSave()">🔒 Redefinir senha</button>
+  `);
+}
+
+function eloErroForgot(msg){
+  const el = document.getElementById('forgotErro');
+  if (el) { el.textContent = msg; el.style.display = 'block'; } else alert(msg);
+}
+
+// Mantido o nome antigo, caso algum botão ainda chame
+function requestPasswordResetOtp(){ openForgotPasswordModal(); }
 
 function verifyResetOtpAndSave(){
-  const pinInput = document.getElementById('forgotInputPin')?.value.trim();
-  const newP = document.getElementById('forgotNewPass')?.value.trim();
-  const confP = document.getElementById('forgotConfirmPass')?.value.trim();
+  const user = eloLocalizarUsuario(document.getElementById('forgotInputUser')?.value);
+  const codigo = document.getElementById('forgotInputCodigo')?.value || '';
+  const newP = (document.getElementById('forgotNewPass')?.value || '').trim();
+  const confP = (document.getElementById('forgotConfirmPass')?.value || '').trim();
 
-  if(!pinInput || pinInput !== activeResetPin) return alert('Código PIN incorreto.');
-  if(!newP || newP !== confP) return alert('As senhas não coincidem ou estão em branco.');
+  if (!user) return eloErroForgot('Usuário não encontrado neste aparelho.');
+  if (!user.recoveryHash) return eloErroForgot('Este usuário ainda não gerou código de recuperação. Peça ao gestor para redefinir a senha.');
 
-  const u = usersList.find(x => x.id === activeResetUserId);
-  if(u){
-    u.pass = newP;
-    save();
-    closeModal();
-    activeResetPin = null;
-    activeResetUserId = null;
-    showToast('Senha redefinida com sucesso!');
+  const b = eloBloqueio(user.id);
+  if (b.ate && Date.now() < b.ate) {
+    const min = Math.ceil((b.ate - Date.now()) / 60000);
+    return eloErroForgot(`Muitas tentativas erradas. Tente de novo em ${min} minuto(s).`);
   }
+  if (eloNormalizarCodigo(codigo).length !== 12) return eloErroForgot('O código tem 12 letras/números (ex: ABCD-EFGH-JKLM).');
+
+  if (eloHashCodigo(user.id, codigo) !== user.recoveryHash) {
+    b.erros = (b.erros || 0) + 1;
+    if (b.erros >= 5) { b.ate = Date.now() + 5 * 60 * 1000; b.erros = 0; }
+    eloSalvarBloqueio(user.id, b);
+    return eloErroForgot('Código incorreto.');
+  }
+  if (!newP || newP.length < 4) return eloErroForgot('A nova senha deve ter pelo menos 4 caracteres.');
+  if (newP !== confP) return eloErroForgot('As senhas não coincidem.');
+
+  eloSalvarBloqueio(user.id, { erros: 0, ate: 0 });
+  user.pass = newP;
+  const novoCodigo = eloCriarCodigoPara(user); // o código usado deixa de valer
+  eloMostrarCodigo(novoCodigo, user.nome, 'Senha redefinida! Este é seu NOVO código');
+  showToast('Senha redefinida com sucesso! Entre com a nova senha.');
 }
+
+// Gestor redefine a senha de um membro (tela de Permissões)
+window.eloGestorRedefinirSenha = function(userId){
+  if (!canCurrentUserManageMembers()) return alert('Só gestores podem redefinir senhas.');
+  const u = usersList.find(x => x.id === userId);
+  if (!u) return;
+  const nova = (document.getElementById('permNovaSenha')?.value || '').trim();
+  if (nova.length < 4) return alert('A senha provisória deve ter pelo menos 4 caracteres.');
+  if (!confirm(`Redefinir a senha de ${u.nome}? Passe a senha provisória pessoalmente para ele(a).`)) return;
+  u.pass = nova;
+  if (currentUser.id === u.id) { currentUser.pass = nova; localStorage.setItem(`crm_active_user_${EQUIPE_ID}`, JSON.stringify(currentUser)); }
+  eloSalvarBloqueio(u.id, { erros: 0, ate: 0 });
+  save();
+  document.getElementById('permNovaSenha').value = '';
+  showToast(`Senha de ${u.nome} redefinida.`);
+};
 
 // === GOOGLE OAUTH & CALENDAR API ===
 function initGoogleAuthClient() {
@@ -3455,12 +3708,13 @@ function sendWhatsAppInvite(leadName, leadTel, meetingDateStr, pauta, meetUrl) {
 }
 
 function applyBrand(){
+  try { eloAtualizarStatusCodigo(); eloAtualizarCardNuvem(); } catch (e) {}
   // Migração para a identidade Elo CRM (troca só os nomes antigos/padrão)
   if (brand) {
-    if (!brand.title || brand.title === 'Meu CRM' || /^WC\b/i.test(brand.title)) brand.title = 'Elo CRM';
+    if (!brand.title || brand.title === 'Meu CRM' || /(^|[^a-z])WC([^a-z]|$)/i.test(brand.title)) brand.title = 'Elo CRM';
     if (!brand.logo1 || brand.logo1 === 'WC' || brand.logo1 === 'CRM') brand.logo1 = 'ELO';
     if (!brand.logo2 || brand.logo2 === 'LOCAL') brand.logo2 = 'CRM';
-    if (brand.sub && /WC Consultoria/i.test(brand.sub)) brand.sub = brand.sub.replace(/WC Consultoria/ig, 'Elo Consultoria');
+    if (brand.sub && /(^|[^a-z])WC([^a-z]|$)/i.test(brand.sub)) brand.sub = brand.sub.replace(/-?\bWC\b-?/ig, 'Elo');
   }
   const elAuthBrand = document.getElementById('authBrandName');
   if (elAuthBrand) elAuthBrand.textContent = (brand && brand.title) || 'Elo CRM';
@@ -3630,6 +3884,9 @@ function handleAuth(){
   const authScreen = document.getElementById('authScreen');
   if(authScreen) authScreen.style.display = 'none';
   initAuth();
+  if (!currentUser.recoveryHash) {
+    setTimeout(() => showToast('🛟 Gere seu código de recuperação de senha em Configurações.'), 1500);
+  }
 }
 
 function logout(){
@@ -6155,6 +6412,14 @@ function openPermissionsModal(userId){
       <div class="field"><label><input type="checkbox" id="permSemaforo" ${u.canViewGlobalSemaforo?'checked':''} style="width:auto"> Visualizar Semáforo Global</label></div>
       <div class="field"><label><input type="checkbox" id="permNiver" ${u.canViewAllBirthdays?'checked':''} style="width:auto"> Visualizar Todos Aniversariantes</label></div>
       <div class="field"><label><input type="checkbox" id="permManage" ${u.canManageMembers?'checked':''} style="width:auto"> Gestão de Membros</label></div>
+    </div>
+    <div style="margin:0 0 16px;padding:14px;background:#FFF6F7;border-radius:10px;border:1px solid #F3D3D8">
+      <label style="font-size:13px;color:#4A1C24"><b>🔑 Redefinir senha de ${esc(u.nome)}</b></label>
+      <div class="row" style="gap:8px;margin-top:8px">
+        <input type="text" id="permNovaSenha" placeholder="Senha provisória" style="flex:1">
+        <button class="btn" onclick="eloGestorRedefinirSenha('${u.id}')">Redefinir</button>
+      </div>
+      <small class="muted">${u.recoveryHash ? 'Este usuário já tem código de recuperação.' : 'Este usuário ainda não gerou código de recuperação.'}</small>
     </div>
     <div class="row" style="justify-content:flex-end">
       <button class="btn primary" onclick="savePermissions('${u.id}')">Salvar Permissões</button>
