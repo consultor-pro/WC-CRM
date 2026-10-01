@@ -5731,14 +5731,92 @@ function updateInstallmentValue(saleId, month, valStr){
   syncComissaoTabs();
 }
 
+// ---- Mês de recebimento das parcelas (com efeito cascata opcional) ----
+function ymSomarMeses(ym, delta){
+  const [y, m] = String(ym).split('-').map(Number);
+  const d = new Date(y, (m - 1) + delta, 15);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+function ymDiferencaMeses(a, b){
+  const [ya, ma] = String(a).split('-').map(Number), [yb, mb] = String(b).split('-').map(Number);
+  return (ya - yb) * 12 + (ma - mb);
+}
+function ymRotulo(ym){
+  const [y, m] = String(ym).split('-').map(Number);
+  return `${(monthNames[m - 1] || '').slice(0, 3)}/${y}`;
+}
+function definirMesParcela(sale, parcela, ym){
+  if(!sale.customInstallments) sale.customInstallments = {};
+  if(!sale.customInstallments[parcela]) sale.customInstallments[parcela] = {};
+  sale.customInstallments[parcela].date = ym;
+}
+
 function updateInstallmentDate(saleId, month, ymStr){
   const s = db.sales.find(x => x.id === saleId);
   if(!s) return;
-  if(!s.customInstallments) s.customInstallments = {};
-  if(!s.customInstallments[month]) s.customInstallments[month] = {};
-  s.customInstallments[month].date = ymStr;
+  month = Number(month);
+  const sched = generateCommissionSchedule(s);
+  const atual = sched[month - 1];
+  // Campo apagado ou mês igual ao que já estava: não muda nada (só redesenha)
+  if(!ymStr || !atual || ymStr === atual.ymKey){ syncComissaoTabs(); return; }
+
+  const delta = ymDiferencaMeses(ymStr, atual.ymKey);
+  // Parcelas seguintes que podem andar junto: depois desta, ainda não pagas
+  const seguintes = sched.filter(p => p.month > month && !p.paid);
+  const seguintesComValor = seguintes.filter(p => p.value > 0);
+
+  if(!seguintesComValor.length){
+    definirMesParcela(s, month, ymStr);
+    save(); syncComissaoTabs();
+    return;
+  }
+
+  window.__mudancaParcela = { saleId, month, ymStr, delta };
+  const sentido = delta > 0 ? `adiar ${delta} ${delta === 1 ? 'mês' : 'meses'}` : `adiantar ${Math.abs(delta)} ${Math.abs(delta) === 1 ? 'mês' : 'meses'}`;
+  const pagasDepois = sched.filter(p => p.month > month && p.paid && p.value > 0).length;
+  const previa = seguintesComValor.slice(0, 6).map(p => `<tr><td style="padding:3px 8px">Parcela ${p.month}</td><td style="padding:3px 8px;color:#64748b">${ymRotulo(p.ymKey)}</td><td style="padding:3px 4px">→</td><td style="padding:3px 8px;font-weight:700">${ymRotulo(ymSomarMeses(p.ymKey, delta))}</td></tr>`).join('');
+  openModal(`
+    <div class="between"><h2>📅 Alterar mês de recebimento</h2><button class="btn" onclick="cancelarMudancaParcela()">✕</button></div>
+    <p style="font-size:14px;margin:12px 0 6px"><b>${esc(s.lead || 'Cliente')}</b> — Parcela ${month}: <b>${ymRotulo(atual.ymKey)}</b> → <b>${ymRotulo(ymStr)}</b> <small class="muted">(${sentido})</small></p>
+    <p style="font-size:13.5px;color:#334155;margin:0 0 10px">Quer alterar <b>só esta parcela</b> ou também <b>todas as seguintes</b>?</p>
+    <div style="background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:14px">
+      <small class="muted" style="display:block;margin-bottom:4px">Se escolher "Esta e as seguintes", ${seguintesComValor.length} parcela(s) também mudam:</small>
+      <table style="font-size:12.5px;border-collapse:collapse">${previa}</table>
+      ${seguintesComValor.length > 6 ? `<small class="muted">… e mais ${seguintesComValor.length - 6}.</small>` : ''}
+      ${pagasDepois ? `<small class="muted" style="display:block;margin-top:6px">As ${pagasDepois} parcela(s) seguintes já marcadas como pagas não são alteradas.</small>` : ''}
+    </div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;justify-content:flex-end">
+      <button class="btn" onclick="cancelarMudancaParcela()">Cancelar</button>
+      <button class="btn blue" onclick="confirmarMudancaParcela('uma')">Só esta parcela</button>
+      <button class="btn primary" onclick="confirmarMudancaParcela('todas')">Esta e as seguintes</button>
+    </div>`);
+}
+
+function confirmarMudancaParcela(modo){
+  const c = window.__mudancaParcela; window.__mudancaParcela = null;
+  if(!c) return closeModal();
+  const s = db.sales.find(x => x.id === c.saleId);
+  if(!s) return closeModal();
+  // Lê as datas atuais ANTES de alterar qualquer coisa
+  const sched = generateCommissionSchedule(s);
+  definirMesParcela(s, c.month, c.ymStr);
+  let alteradas = 0;
+  if(modo === 'todas'){
+    sched.filter(p => p.month > c.month && !p.paid).forEach(p => {
+      definirMesParcela(s, p.month, ymSomarMeses(p.ymKey, c.delta));
+      if(p.value > 0) alteradas++;
+    });
+  }
+  closeModal();
   save();
   syncComissaoTabs();
+  showToast(modo === 'todas' ? `Mês alterado nesta parcela e em mais ${alteradas} seguinte(s).` : 'Mês alterado só nesta parcela.');
+}
+
+function cancelarMudancaParcela(){
+  window.__mudancaParcela = null;
+  closeModal();
+  syncComissaoTabs(); // volta o campo para o mês que estava
 }
 
 function updateSaleCredit(saleId, newCredit){
