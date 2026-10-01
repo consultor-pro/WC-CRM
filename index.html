@@ -884,7 +884,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
   </div>
   <div class="row">
     <div class="global-search" id="globalSearchBox">
-      <input type="text" id="globalSearchInput" placeholder="Buscar lead, venda, grupo/cota..." autocomplete="off"
+      <input type="text" id="globalSearchInput" placeholder="Buscar lead, telefone, venda, grupo/cota..." autocomplete="off"
         oninput="onGlobalSearchInput()" onfocus="onGlobalSearchInput()">
       <div class="global-search-results" id="globalSearchResults"></div>
     </div>
@@ -4311,9 +4311,20 @@ function renderGlobalSearchResults(){
   if(!box) return;
   if(termo.length < 2){ box.classList.remove('show'); box.innerHTML = ''; return; }
 
+  // Busca por telefone: aceita com ou sem +55, com ou sem o 9, com ou sem pontuação
+  let digitosBusca = termo.replace(/\D/g,'');
+  if (digitosBusca.length >= 12 && digitosBusca.startsWith('55')) digitosBusca = digitosBusca.slice(2);
+  const chaveBusca = digitosBusca.length >= 8 ? chaveTelefone(digitosBusca) : '';
+  const bateTelefone = (tel) => {
+    if (!digitosBusca) return false;
+    if (chaveBusca && chaveTelefone(tel) === chaveBusca) return true;
+    return digitosBusca.length >= 4 && (tel||'').replace(/\D/g,'').includes(digitosBusca);
+  };
   const leadsMatch = (db.leads || []).filter(l => canUserAccessLead(l) && (
-    (l.nome||'').toLowerCase().includes(termo) || (l.tel||'').replace(/\D/g,'').includes(termo.replace(/\D/g,'')||'\0')
+    (l.nome||'').toLowerCase().includes(termo) || bateTelefone(l.tel)
   )).slice(0, 6);
+  // Número completo que existe em lead de outro consultor (que você não vê): só avisa
+  const leadOculto = chaveBusca && !leadsMatch.length ? (db.leads || []).find(l => !canUserAccessLead(l) && chaveTelefone(l.tel) === chaveBusca) : null;
 
   const vendasMatch = (db.sales || []).filter(s => (
     (s.lead||'').toLowerCase().includes(termo) || String(s.grupo||'').toLowerCase().includes(termo) || String(s.cota||'').toLowerCase().includes(termo)
@@ -4336,7 +4347,11 @@ function renderGlobalSearchResults(){
     html += '<div class="gs-group-label">📅 Agenda</div>';
     html += agendaMatch.map(m => `<div class="gs-item" onclick="globalSearchGoTo('agenda','${m.id}')"><b>${esc(m.lead)}</b><span>${esc(m.obj||'-')} · ${m.date ? new Date(m.date).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}) : '-'}</span></div>`).join('');
   }
-  if(!html) html = '<div class="gs-empty">Nenhum resultado para "' + esc(termo) + '".</div>';
+  if(leadOculto){
+    html += '<div class="gs-group-label">🔒 Número já cadastrado</div>' +
+      `<div class="gs-empty" style="text-align:left">Este número pertence a um lead de <b>${esc(leadOculto.responsavel || 'outro consultor')}</b>. Você não tem acesso a ele.</div>`;
+  }
+  if(!html) html = '<div class="gs-empty">Nenhum resultado para "' + esc(termo) + '".' + (chaveBusca ? ' Este número não está cadastrado.' : '') + '</div>';
 
   box.innerHTML = html;
   box.classList.add('show');
@@ -6728,7 +6743,7 @@ function openLead(id=null){
     <div class="grid2">
       <div>
         <div class="field"><label>Nome do Lead</label><input id="fNome" value="${esc(l.nome||'')}"></div>
-        <div class="field"><label>Telefone / WhatsApp ${id?linkWhatsAppTel(l.tel):''}</label><input id="fTel" value="${esc(l.tel||'')}"></div>
+        <div class="field"><label>Telefone / WhatsApp ${id?linkWhatsAppTel(l.tel):''}</label><input id="fTel" value="${esc(l.tel||'')}" oninput="avisoTelefoneDuplicado(${id?`'${id}'`:'null'})"><div id="fTelDuplicado" style="display:none;margin-top:6px;padding:8px 10px;border-radius:8px;background:#fef2f2;border:1px solid #fecaca;color:#991b1b;font-size:12.5px"></div></div>
         <div class="field"><label>Data de Nascimento</label><input type="date" id="fNasc" value="${l.nasc||''}"></div>
         <div class="field"><label>Cidade</label><input id="fCidade" value="${esc(l.cidade||'')}"></div>
         <div class="field"><label>Segmento / Profissão</label><input id="fProf" value="${esc(l.prof||'')}"></div>
@@ -6777,6 +6792,35 @@ function openLead(id=null){
   `);
 }
 
+// ---- Telefone duplicado: "chave" do número para comparar contatos ----
+// Remove tudo que não é número, tira o +55 e zeros na frente, e usa DDD + últimos 8
+// dígitos (assim o celular com ou sem o 9 na frente conta como o mesmo número).
+function chaveTelefone(t){
+  let d = String(t || '').replace(/\D/g, '');
+  if (d.length >= 12 && d.startsWith('55')) d = d.slice(2);
+  d = d.replace(/^0+/, '');
+  if (d.length < 8) return '';
+  if (d.length >= 10) return d.slice(0, 2) + d.slice(-8);
+  return d.slice(-8);
+}
+function leadComMesmoTelefone(tel, ignorarId){
+  const k = chaveTelefone(tel);
+  if (!k) return null;
+  return (db.leads || []).find(l => l.id !== ignorarId && chaveTelefone(l.tel) === k) || null;
+}
+function avisoTelefoneDuplicado(ignorarId){
+  const input = document.getElementById('fTel');
+  const box = document.getElementById('fTelDuplicado');
+  if (!input || !box) return;
+  const outro = leadComMesmoTelefone(input.value, ignorarId);
+  if (!outro) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'block';
+  box.innerHTML = `⚠️ Este número já está cadastrado no lead <b>${esc(outro.nome)}</b>` +
+    (outro.responsavel ? ` (responsável: ${esc(outro.responsavel)})` : '') +
+    (outro.stage ? ` — etapa: ${esc(outro.stage)}` : '') +
+    ` <a href="javascript:void(0)" onclick="closeModal();openLead('${outro.id}')" style="font-weight:800">Abrir lead existente</a>`;
+}
+
 function saveLead(id){
   limparValidacaoForm();
   const nomeVal = document.getElementById('fNome')?.value.trim();
@@ -6785,7 +6829,11 @@ function saveLead(id){
   if(!nomeVal){ marcarCampoInvalido('fNome', 'Informe o nome do lead.'); valido = false; }
   if(!telVal){ marcarCampoInvalido('fTel', 'Informe um telefone/WhatsApp de contato.'); valido = false; }
   else if(telVal.replace(/\D/g,'').length < 10){ marcarCampoInvalido('fTel', 'Telefone incompleto — inclua o DDD.'); valido = false; }
-  if(!valido){ focarPrimeiroCampoInvalido(); return; }
+  else {
+    const outro = leadComMesmoTelefone(telVal, id || null);
+    if (outro) { marcarCampoInvalido('fTel', `Este número já pertence ao lead "${outro.nome}"${outro.responsavel ? ' (' + outro.responsavel + ')' : ''}. Não é permitido cadastrar o mesmo número duas vezes.`); valido = false; }
+  }
+  if(!valido){ focarPrimeiroCampoInvalido(); avisoTelefoneDuplicado(id || null); return; }
   registrarHistoricoPrincipal();
 
   const base = id ? db.leads.find(x=>x.id===id) : {
@@ -7449,7 +7497,7 @@ function renderPreviewImportacao(){
     { key: 'observacao', label: 'Observação (opcional)' }
   ];
 
-  const telefonesExistentes = new Set(db.leads.map(l => (l.tel||'').replace(/\D/g,'')).filter(Boolean));
+  const telefonesExistentes = new Set(db.leads.map(l => chaveTelefone(l.tel)).filter(Boolean));
   const telDigitosVistos = new Set(); // compartilhado entre TODAS as abas, pra pegar duplicado entre abas também
 
   let countVenda = 0, countDuplicado = 0, countValidos = 0;
@@ -7481,8 +7529,9 @@ function renderPreviewImportacao(){
         const nome = mapa.nome !== -1 ? String(linha[mapa.nome]||'').trim() : '';
         const tel = mapa.tel !== -1 ? String(linha[mapa.tel]||'').trim() : '';
         const telDigitos = tel.replace(/\D/g,'');
-        const duplicado = telDigitos.length >= 8 && (telefonesExistentes.has(telDigitos) || telDigitosVistos.has(telDigitos));
-        if (telDigitos.length >= 8) telDigitosVistos.add(telDigitos);
+        const telChave = chaveTelefone(tel);
+        const duplicado = !!telChave && (telefonesExistentes.has(telChave) || telDigitosVistos.has(telChave));
+        if (telChave) telDigitosVistos.add(telChave);
         const ehVenda = linhaImportEhVenda(linha, mapa);
         const valido = !!nome && telDigitos.length >= 8;
         if (valido && !duplicado) { countValidos++; if (ehVenda) countVenda++; }
