@@ -1084,7 +1084,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         <option value="last">Últimos Cadastrados</option>
         <option value="az">Ordem Alfabética (A-Z)</option>
       </select>
-      <input style="max-width:180px" id="leadSearch" placeholder="Buscar lead, tag..." oninput="renderLeads()">
+      <input style="max-width:180px" id="leadSearch" placeholder="Buscar nome, telefone, tag..." oninput="renderLeads()">
     </div>
   </div>
   <div style="overflow-x:auto"><table><thead><tr><th>Lead</th><th>Contato</th><th>Nascimento</th><th>Origem</th><th>Responsável / Criador</th><th>Lead Score</th><th>Visibilidade</th><th>Etapa</th><th>Comentários</th><th>Ações</th></tr></thead><tbody id="leadTable"></tbody></table></div>
@@ -4315,29 +4315,27 @@ function renderGlobalSearchResults(){
   let digitosBusca = termo.replace(/\D/g,'');
   if (digitosBusca.length >= 12 && digitosBusca.startsWith('55')) digitosBusca = digitosBusca.slice(2);
   const chaveBusca = digitosBusca.length >= 8 ? chaveTelefone(digitosBusca) : '';
-  const bateTelefone = (tel) => {
-    if (!digitosBusca) return false;
-    if (chaveBusca && chaveTelefone(tel) === chaveBusca) return true;
-    return digitosBusca.length >= 4 && (tel||'').replace(/\D/g,'').includes(digitosBusca);
-  };
-  const leadsMatch = (db.leads || []).filter(l => canUserAccessLead(l) && (
-    (l.nome||'').toLowerCase().includes(termo) || bateTelefone(l.tel)
-  )).slice(0, 6);
+  const LIMITE_GS = 20;
+  const leadsTodos = (db.leads || []).filter(l => canUserAccessLead(l) && (
+    (l.nome||'').toLowerCase().includes(termo) || bateTelefoneBusca(l.tel, termo)
+  ));
+  const leadsMatch = leadsTodos.slice(0, LIMITE_GS);
   // Número completo que existe em lead de outro consultor (que você não vê): só avisa
   const leadOculto = chaveBusca && !leadsMatch.length ? (db.leads || []).find(l => !canUserAccessLead(l) && chaveTelefone(l.tel) === chaveBusca) : null;
 
   const vendasMatch = (db.sales || []).filter(s => (
     (s.lead||'').toLowerCase().includes(termo) || String(s.grupo||'').toLowerCase().includes(termo) || String(s.cota||'').toLowerCase().includes(termo)
-  )).slice(0, 6);
+  )).slice(0, 20);
 
   const agendaMatch = (db.meetings || []).filter(m => canUserAccessMeeting(m) && (
     (m.lead||'').toLowerCase().includes(termo) || (m.obj||'').toLowerCase().includes(termo)
-  )).slice(0, 6);
+  )).slice(0, 20);
 
   let html = '';
   if(leadsMatch.length){
     html += '<div class="gs-group-label">👤 Leads & Carteira</div>';
-    html += leadsMatch.map(l => `<div class="gs-item" onclick="globalSearchGoTo('lead','${l.id}')"><b>${esc(l.nome)}</b><span>${esc(l.tel||'sem telefone')} · ${esc(l.stage||'-')}</span></div>`).join('');
+    html += leadsMatch.map(l => `<div class="gs-item" onclick="globalSearchGoTo('lead','${l.id}')"><b>${esc(l.nome)}</b><span>${esc(l.tel||'sem telefone')} · ${esc(l.stage||'-')}${l.responsavel?' · '+esc(l.responsavel):''}</span></div>`).join('');
+    if (leadsTodos.length > leadsMatch.length) html += `<div class="gs-item" style="text-align:center;font-weight:800;color:var(--red)" onclick="verTodosLeadsBusca()">Ver todos os ${leadsTodos.length} leads encontrados →</div>`;
   }
   if(vendasMatch.length){
     html += '<div class="gs-group-label">💰 Vendas / Cotas</div>';
@@ -4355,6 +4353,15 @@ function renderGlobalSearchResults(){
 
   box.innerHTML = html;
   box.classList.add('show');
+}
+
+function verTodosLeadsBusca(){
+  const termo = document.getElementById('globalSearchInput')?.value || '';
+  const box = document.getElementById('globalSearchResults'); if (box) box.classList.remove('show');
+  const btn = document.querySelector(".sidebar .nav button[onclick*=\"show('leads'\"]");
+  show('leads', btn);
+  const campo = document.getElementById('leadSearch');
+  if (campo) { campo.value = termo; renderLeads(); }
 }
 
 function globalSearchGoTo(tipo, id){
@@ -6925,6 +6932,16 @@ function sugerirProximaAcaoLead(l){
   return null;
 }
 
+// Compara o que foi digitado na busca com um telefone, aceitando qualquer formato
+// (com/sem +55, com/sem o 9, com/sem traço e parênteses, ou só o final do número).
+function bateTelefoneBusca(tel, termo){
+  let d = String(termo || '').replace(/\D/g, '');
+  if (d.length < 4) return false;
+  if (d.length >= 12 && d.startsWith('55')) d = d.slice(2);
+  if (d.length >= 8 && chaveTelefone(tel) && chaveTelefone(tel) === chaveTelefone(d)) return true;
+  return String(tel || '').replace(/\D/g, '').includes(d);
+}
+
 function renderLeads(){
   const q = (document.getElementById('leadSearch')?.value||'').toLowerCase();
   const filterU = document.getElementById('leadFilterUser')?.value || 'all';
@@ -6939,7 +6956,7 @@ function renderLeads(){
   const accessible = db.leads.filter(canUserAccessLead);
 
   let rows = accessible.filter(l=>{
-    const matchText = [l.nome,l.tel,l.cidade,l.prof,l.origem,l.indicador,...(l.tags||[])].join(' ').toLowerCase().includes(q);
+    const matchText = !q || [l.nome,l.tel,l.cidade,l.prof,l.origem,l.indicador,...(l.tags||[])].join(' ').toLowerCase().includes(q) || bateTelefoneBusca(l.tel, q);
     const matchUser = filterU === 'all' || l.responsavel === filterU;
     const matchScore = filterScore === 'all' || (l.scoreCategory || 'Morno') === filterScore;
     const matchStage = filterStage === 'all' || (l.stage || 'Prospecção') === filterStage;
