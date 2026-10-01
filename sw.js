@@ -4,7 +4,7 @@
 // IMPORTANTE: toda vez que você atualizar o index.html e subir uma nova
 // versão, mude o número abaixo (ex: 'elo-crm-v4'). Isso força o navegador
 // a baixar a versão nova em vez de continuar usando a cópia antiga salva.
-const CACHE_NAME = 'elo-crm-v4';
+const CACHE_NAME = 'elo-crm-v5';
 
 const ARQUIVOS_ESSENCIAIS = [
   './',

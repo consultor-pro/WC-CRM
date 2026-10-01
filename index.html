@@ -1976,6 +1976,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <div class="row" style="margin-top:8px">
         <button class="btn blue" onclick="saveGoogleClientId()">Salvar Client ID</button>
         <button class="btn green" onclick="handleGoogleAuth()">🔗 Conectar Minha Conta Google</button>
+        <button class="btn" onclick="desconectarGoogle()">Desconectar</button>
       </div>
 
       <hr style="border:0;border-top:1px solid var(--line);margin:20px 0">
@@ -2800,7 +2801,15 @@ const KEY_GOOGLE_CONFIG = `crm_google_cfg_${EQUIPE_ID}`;
 
 let googleConfig = JSON.parse(localStorage.getItem(KEY_GOOGLE_CONFIG)) || { clientId: '' };
 let googleTokenClient = null;
-let googleAccessToken = sessionStorage.getItem('google_access_token') || null;
+// Acesso ao Google: guardado no aparelho com a validade (≈1h). Quando vence, o CRM
+// pede um novo sozinho (sem perguntar de novo) na próxima ação de agenda.
+const KEY_GOOGLE_TOKEN = `crm_google_token_${EQUIPE_ID}`;
+const KEY_GOOGLE_LINKED = `crm_google_linked_${EQUIPE_ID}`;
+let googleAccessToken = null;
+try {
+  const t = JSON.parse(localStorage.getItem(KEY_GOOGLE_TOKEN) || 'null');
+  if (t && t.token && t.exp > Date.now() + 60000) googleAccessToken = t.token;
+} catch (e) {}
 
 let isSaving = false;
 let lastLocalSaveTime = 0;
@@ -3559,6 +3568,16 @@ window.eloGestorRedefinirSenha = function(userId){
 };
 
 // === GOOGLE OAUTH & CALENDAR API ===
+let __googleTokenResolver = null;
+function googleLigado(){ return localStorage.getItem(KEY_GOOGLE_LINKED) === '1'; }
+function googleTokenValido(){
+  try {
+    const t = JSON.parse(localStorage.getItem(KEY_GOOGLE_TOKEN) || 'null');
+    if (t && t.token && t.exp > Date.now() + 60000) { googleAccessToken = t.token; return true; }
+  } catch (e) {}
+  googleAccessToken = null;
+  return false;
+}
 function initGoogleAuthClient() {
   if (typeof google === 'undefined' || !google.accounts || !googleConfig || !googleConfig.clientId) return;
   try {
@@ -3566,34 +3585,102 @@ function initGoogleAuthClient() {
       client_id: googleConfig.clientId,
       scope: 'https://www.googleapis.com/auth/calendar.events',
       callback: (tokenResponse) => {
+        const r = __googleTokenResolver; __googleTokenResolver = null;
         if (tokenResponse && tokenResponse.access_token) {
           googleAccessToken = tokenResponse.access_token;
-          sessionStorage.setItem('google_access_token', googleAccessToken);
+          const exp = Date.now() + (Number(tokenResponse.expires_in || 3600) * 1000);
+          localStorage.setItem(KEY_GOOGLE_TOKEN, JSON.stringify({ token: googleAccessToken, exp }));
+          localStorage.setItem(KEY_GOOGLE_LINKED, '1');
           updateGoogleAuthStatus();
-          alert('Conta Google conectada com sucesso ao CRM!');
-        }
-      }
+          if (r) r(googleAccessToken);
+          setTimeout(processarFilaGoogle, 300);
+        } else if (r) r(null);
+      },
+      error_callback: () => { const r = __googleTokenResolver; __googleTokenResolver = null; if (r) r(null); }
     });
   } catch(e) {
     console.warn('Erro Google Client:', e);
   }
 }
 
-function handleGoogleAuth() {
-  if (!googleConfig.clientId) return alert('Informe seu Google Client ID nas Configurações.');
+// Garante um acesso válido ao Google. Se já conectou antes, reconecta sem perguntar
+// (o Google abre e fecha uma janelinha rapidinho). Devolve o token ou null.
+function ensureGoogleToken(perguntarSeNunca){
+  if (googleTokenValido()) return Promise.resolve(googleAccessToken);
+  if (!googleConfig || !googleConfig.clientId) return Promise.resolve(null);
+  if (!googleLigado() && !perguntarSeNunca) return Promise.resolve(null);
   if (!googleTokenClient) initGoogleAuthClient();
-  if (googleTokenClient) googleTokenClient.requestAccessToken();
+  if (!googleTokenClient) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    __googleTokenResolver = resolve;
+    try { googleTokenClient.requestAccessToken({ prompt: googleLigado() ? '' : 'consent' }); }
+    catch (e) { __googleTokenResolver = null; resolve(null); }
+    setTimeout(() => { if (__googleTokenResolver === resolve) { __googleTokenResolver = null; resolve(null); } }, 60000);
+  });
+}
+
+async function handleGoogleAuth() {
+  if (!googleConfig.clientId) return alert('Informe seu Google Client ID nas Configurações.');
+  const tok = await ensureGoogleToken(true);
+  if (tok) showToast('🟢 Google Agenda conectado! As reuniões vão sincronizar sozinhas.');
+}
+
+function desconectarGoogle(){
+  if (!confirm('Desconectar o Google Agenda deste aparelho? As reuniões continuam no CRM, só param de ir para o Google.')) return;
+  try { if (googleAccessToken && window.google && google.accounts) google.accounts.oauth2.revoke(googleAccessToken, () => {}); } catch (e) {}
+  localStorage.removeItem(KEY_GOOGLE_TOKEN); localStorage.removeItem(KEY_GOOGLE_LINKED);
+  googleAccessToken = null; updateGoogleAuthStatus();
 }
 
 function updateGoogleAuthStatus() {
   const container = document.getElementById('googleAuthButtonContainer');
   if (!container) return;
-  if (googleAccessToken) {
-    container.innerHTML = `<span class="badge b-green" style="font-size:11px">🟢 Google Conectado</span>`;
+  const pend = contarPendenciasGoogle();
+  if (googleLigado()) {
+    container.innerHTML = `<span class="badge b-green" style="font-size:11px">🟢 Google Agenda sincronizado</span>` +
+      (pend ? ` <button class="btn" style="font-size:11px" onclick="sincronizarGoogleAgora()">🔄 Enviar ${pend} pendente(s)</button>` : '');
   } else {
-    container.innerHTML = `<button class="btn blue" style="font-size:11px" onclick="handleGoogleAuth()">🔗 Conectar Google</button>`;
+    container.innerHTML = `<button class="btn blue" style="font-size:11px" onclick="handleGoogleAuth()">🔗 Conectar Google Agenda</button>`;
   }
 }
+
+// ---------- Fila: o que não deu para enviar na hora vai depois ----------
+function contarPendenciasGoogle(){
+  if (!db || !Array.isArray(db.meetings)) return 0;
+  return db.meetings.filter(m => m.googlePendente).length + ((db.googleExclusoesPendentes || []).length);
+}
+let __filaGoogleRodando = false;
+async function processarFilaGoogle(){
+  if (__filaGoogleRodando || typeof currentUser === 'undefined' || !currentUser || !googleTokenValido() || !db || !Array.isArray(db.meetings)) return;
+  __filaGoogleRodando = true;
+  let mudou = false;
+  try {
+    for (const m of db.meetings.filter(x => x.googlePendente)) {
+      if (m.googleEventId) {
+        if (await updateGoogleCalendarEventTime(m.googleEventId, m.date)) { delete m.googlePendente; mudou = true; }
+      } else if (m.status !== 'Encerrado') {
+        const res = await createOfficialGoogleMeetEvent({ lead: m.lead, responsavel: m.responsavel, date: m.date, obj: m.obj });
+        if (res && res.eventId) { m.googleEventId = res.eventId; if (res.meetUrl && !m.meetUrl) m.meetUrl = res.meetUrl; delete m.googlePendente; mudou = true; }
+      } else { delete m.googlePendente; mudou = true; }
+    }
+    const restantes = [];
+    for (const id of (db.googleExclusoesPendentes || [])) {
+      if (!(await deleteGoogleCalendarEvent(id))) restantes.push(id); else mudou = true;
+    }
+    db.googleExclusoesPendentes = restantes;
+  } finally { __filaGoogleRodando = false; }
+  if (mudou) { save(); if (typeof renderAgenda === 'function') renderAgenda(); }
+  updateGoogleAuthStatus();
+}
+async function sincronizarGoogleAgora(){
+  const tok = await ensureGoogleToken(false);
+  if (!tok) return alert('Não foi possível falar com o Google agora. Verifique a internet e tente de novo.');
+  await processarFilaGoogle();
+  showToast('🔄 Google Agenda sincronizado.');
+}
+// Ao abrir o app e quando a internet volta, tenta esvaziar a fila (sem abrir janelas)
+window.addEventListener('online', () => setTimeout(processarFilaGoogle, 1500));
+setTimeout(processarFilaGoogle, 4000);
 
 function saveGoogleClientId() {
   const inputEl = document.getElementById('cfgGoogleClientId');
@@ -9033,7 +9120,7 @@ function openMeeting(leadNomePreSelecionado){
         <small class="muted">Escolha a cor que esse compromisso vai aparecer na sua agenda.</small>
       </div>
     </div>
-    <div class="field"><label><input type="checkbox" id="mCreateGoogleEvent" checked style="width:auto"> Gerar Sala Google Meet</label></div>
+    <div class="field"><label><input type="checkbox" id="mCreateGoogleEvent" ${googleLigado()?'checked':''} style="width:auto"> Enviar ao Google Agenda (com sala do Meet)</label>${googleLigado()?'':' <small class="muted">— conecte o Google na Agenda para ativar</small>'}</div>
     <button class="btn primary" id="btnSaveMeetingModal" onclick="saveMeeting()">Confirmar Reunião</button>
   `);
 }
@@ -9060,21 +9147,30 @@ async function saveMeeting(){
     if(!dateVal) return alert('Selecione data e horário.');
     if(btn) btn.disabled = true;
 
-    let meetUrl = '', googleEventId = null;
-    if (shouldCreateGoogle && googleAccessToken) {
-      const res = await createOfficialGoogleMeetEvent({ lead: leadNome, responsavel: cleanResp, date: dateVal, obj: objVal });
-      if (res && res.meetUrl) { meetUrl = res.meetUrl; googleEventId = res.eventId; }
+    let meetUrl = '', googleEventId = null, googlePendente = false;
+    if (shouldCreateGoogle) {
+      const tok = await ensureGoogleToken(false);
+      if (tok) {
+        const res = await createOfficialGoogleMeetEvent({ lead: leadNome, responsavel: cleanResp, date: dateVal, obj: objVal });
+        if (res && res.eventId) { meetUrl = res.meetUrl || ''; googleEventId = res.eventId; }
+        else googlePendente = true;
+      } else if (googleLigado()) googlePendente = true;
     }
 
-    db.meetings.push({
+    const novaReuniao = {
       id: crypto.randomUUID(), lead: leadNome, responsavel: cleanResp,
       date: dateVal, obj: objVal, color: colorVal, meetUrl, googleEventId, status: 'Ativo', comments: []
-    });
+    };
+    if (googlePendente) novaReuniao.googlePendente = true;
+    db.meetings.push(novaReuniao);
 
     registrarAcaoAutomaticaLead(leadNome, `📅 Reunião agendada para ${new Date(dateVal).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} — Pauta: ${objVal}`);
 
     save(); closeModal();
-    alert(meetUrl ? `Reunião agendada com Google Meet!\nLink: ${meetUrl}` : 'Reunião agendada com sucesso!');
+    alert(meetUrl ? `Reunião agendada e enviada ao Google Agenda com Meet!\nLink: ${meetUrl}`
+      : googleEventId ? 'Reunião agendada e enviada ao Google Agenda!'
+      : googlePendente ? 'Reunião agendada! Ela vai para o Google Agenda assim que a conexão voltar.'
+      : 'Reunião agendada com sucesso!');
   } catch (err) {
     console.error('Erro ao salvar reunião:', err);
     alert('Não foi possível agendar a reunião: ' + (err?.message || 'erro desconhecido') + '\n\nTente novamente — se persistir, avise o suporte com essa mensagem.');
@@ -9290,7 +9386,8 @@ function addMeetingComment(meetingId){
 async function generateGoogleMeetForExistingMeeting(meetingId) {
   const m = db.meetings.find(x => x.id === meetingId);
   if (!m) return;
-  if (!googleAccessToken) return handleGoogleAuth();
+  const tok = await ensureGoogleToken(true);
+  if (!tok) return;
   const res = await createOfficialGoogleMeetEvent({ lead: m.lead, responsavel: m.responsavel, date: m.date, obj: m.obj });
   if (res && res.meetUrl) {
     m.meetUrl = res.meetUrl; m.googleEventId = res.eventId;
@@ -9310,7 +9407,11 @@ function reopenMeetingAction(id){
 async function deleteEventAction(id){
   if(confirm('Excluir?')){
     const item = db.meetings.find(x=>x.id===id);
-    if(item && item.googleEventId) await deleteGoogleCalendarEvent(item.googleEventId);
+    if(item && item.googleEventId){
+      const tok = await ensureGoogleToken(false);
+      const ok = tok ? await deleteGoogleCalendarEvent(item.googleEventId) : false;
+      if(!ok && googleLigado()){ db.googleExclusoesPendentes = db.googleExclusoesPendentes || []; db.googleExclusoesPendentes.push(item.googleEventId); }
+    }
     db.meetings = db.meetings.filter(x=>x.id!==id);
     save(); closeModal(); renderAgenda();
   }
@@ -9338,8 +9439,13 @@ async function saveReschedule(id){
     item.date = newDate; item.status = 'Ativo';
     if(newColor) item.color = newColor;
     registrarAcaoAutomaticaLead(item.lead, `🔄 Reagendado para ${new Date(newDate).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})}`);
+    if(item.googleEventId || item.googlePendente){
+      const tok = await ensureGoogleToken(false);
+      const ok = tok && item.googleEventId ? await updateGoogleCalendarEventTime(item.googleEventId, newDate) : false;
+      if(ok) delete item.googlePendente; else if(googleLigado()) item.googlePendente = true;
+    }
     save(); closeModal(); renderAgenda();
-    if(item.googleEventId) await updateGoogleCalendarEventTime(item.googleEventId, newDate);
+    if(item.googlePendente) processarFilaGoogle();
   }
 }
 
