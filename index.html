@@ -6,13 +6,13 @@
 <meta name="theme-color" content="#0d1117">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title id="htmlTitle">Meu CRM | Gestão & Vendas</title>
+<title id="htmlTitle">Elo CRM | Gestão & Vendas</title>
 
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='115' fill='%230d1117' stroke='%23d71920' stroke-width='28'/><text x='50%' y='53%' font-size='150' font-weight='900' fill='%23ffffff' text-anchor='middle' dominant-baseline='central' font-family='sans-serif' letter-spacing='6'>CRM</text></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='115' fill='%233A0A12'/><circle cx='200' cy='256' r='118' fill='none' stroke='%23C8102E' stroke-width='42'/><circle cx='312' cy='256' r='118' fill='none' stroke='%23E8505B' stroke-width='42'/></svg>">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
-<meta name="apple-mobile-web-app-title" content="WC CRM">
-<meta name="application-name" content="Meu CRM">
+<meta name="apple-mobile-web-app-title" content="Elo CRM">
+<meta name="application-name" content="Elo CRM">
 <meta name="msapplication-TileColor" content="#0d1117">
 <link rel="manifest" href="manifest.json">
 
@@ -25,7 +25,7 @@
 
 <style>
 :root {
-  --red: #d71920;
+  --red: #C8102E;
   --dark: #0d1117;
   --sidebar: #161b22;
   --muted: #64748b;
@@ -97,8 +97,10 @@ button { cursor: pointer; border: 0; }
   overflow: hidden;
   flex-shrink: 0;
 }
-.brand-badge .t1 { color: #fff; font-size: 16px; }
-.brand-badge .t2 { color: var(--red); font-size: 9px; }
+.brand-badge .t1 { display: none; }
+.brand-badge .t2 { color: #fff; font-size: 8px; letter-spacing: .5px; margin-top: 1px; max-width: 42px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brand-badge .elo-rings { width: 32px; height: 21px; display: block; }
+.brand-badge { background: #3A0A12 !important; border-color: #C8102E !important; }
 .brand-info h2 { font-size: 15px; margin: 0; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 0 rgba(0,0,0,0.4); }
 .brand-info span { font-size: 11px; color: var(--muted); }
 
@@ -572,8 +574,30 @@ body.tour-active { overflow: hidden; }
 
 .cloud-status { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: #dcfce7; color: #166534; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
 
-.auth-screen { position: fixed; inset: 0; background: #0d1117; z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.auth-box { background: #161b22; border: 1px solid #30363d; border-radius: 16px; max-width: 400px; width: 100%; padding: 28px; color: #fff; }
+/* ===== ELO CRM — tela de login (tema Anéis vermelho) ===== */
+.auth-screen { position: fixed; inset: 0; background: radial-gradient(circle at 30% 20%, #3A0A12 0%, #24060B 75%); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px 16px; overflow: hidden; }
+.elo-aneis { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
+.elo-anel { position: absolute; border-radius: 50%; border-style: solid; animation: eloGirar 60s linear infinite; }
+.elo-anel.a1 { width: 520px; height: 520px; border-width: 46px; border-color: #C8102E; opacity: .35; top: -180px; left: -200px; }
+.elo-anel.a2 { width: 600px; height: 600px; border-width: 52px; border-color: #E8505B; opacity: .18; bottom: -260px; right: -220px; animation-direction: reverse; animation-duration: 80s; }
+.elo-anel.a3 { width: 220px; height: 220px; border-width: 18px; border-color: #7A1124; opacity: .5; bottom: 12%; left: 8%; animation-duration: 40s; }
+@keyframes eloGirar { from { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.04); } to { transform: rotate(360deg) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .elo-anel { animation: none; } }
+.auth-box { position: relative; z-index: 1; background: #fff; border-radius: 20px; max-width: 380px; width: 100%; padding: 34px 26px 24px; color: #2B1A1D; box-shadow: 0 24px 60px rgba(0,0,0,.35); animation: eloSubir .6s ease-out both; }
+@keyframes eloSubir { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+.elo-marca { display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; text-align: center; }
+.elo-marca .elo-rings { width: 72px; height: 48px; margin-bottom: 8px; }
+.elo-marca h1 { font-size: 25px; font-weight: 800; color: #7A1124; margin: 0; letter-spacing: -.5px; }
+.elo-marca p { font-size: 13.5px; color: #8A7A7D; margin: 4px 0 0; }
+.auth-box .field label { color: #2B1A1D !important; font-weight: 700; }
+.auth-box .field input { background: #FCFAFA; border: 1.5px solid #EADFE1; border-radius: 12px; height: 48px; font-size: 16px; color: #2B1A1D; }
+.auth-box .field input:focus { outline: none; border-color: #C8102E; box-shadow: 0 0 0 4px rgba(200,16,46,.12); background: #fff; }
+.elo-input-wrap { position: relative; }
+.elo-ver-senha { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 13px; font-weight: 700; color: #C8102E; cursor: pointer; padding: 8px; }
+.auth-box .elo-btn-entrar { width: 100%; height: 50px; justify-content: center; margin-top: 16px; border-radius: 12px; background: #C8102E; color: #fff; font-size: 16px; font-weight: 800; border: none; }
+.auth-box .elo-btn-entrar:hover { background: #A80D26; }
+.elo-rodape { text-align: center; font-size: 12px; color: #8A7A7D; margin-top: 18px; }
+.elo-rodape .ponto { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #2EAD5B; margin-right: 6px; vertical-align: middle; }
 .mobile-nav { display: none; position: fixed; bottom: 0; inset-inline: 0; background: #0d1117; padding: 8px 4px; z-index: 40; border-top: 1px solid #30363d; justify-content: space-around; overflow-x: auto; gap: 2px; }
 .mobile-nav button { background: transparent; color: #8b949e; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px; flex-shrink: 0; min-width: 46px; }
 .mobile-nav button.active { color: var(--red); }
@@ -770,26 +794,29 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
 </script>
 
 <div class="auth-screen" id="authScreen">
+  <div class="elo-aneis" aria-hidden="true"><div class="elo-anel a1"></div><div class="elo-anel a2"></div><div class="elo-anel a3"></div></div>
   <div class="auth-box">
-    <div style="text-align:center;margin-bottom:24px">
-      <div class="brand-badge" id="authLogo" style="margin:0 auto 12px"><span class="t1" id="authLogoText1">CRM</span><span class="t2" id="authLogoText2">LOCAL</span></div>
-      <h2 style="margin:0" id="authTitle">Acesso Restrito</h2>
-      <span style="font-size:12px;color:#8b949e">Modo Local & Proteção de Dados</span>
+    <div class="elo-marca">
+      <svg class="elo-rings" viewBox="0 0 72 48" aria-hidden="true"><circle cx="26" cy="24" r="17" fill="none" stroke="#C8102E" stroke-width="6"/><circle cx="46" cy="24" r="17" fill="none" stroke="#E8505B" stroke-width="6"/></svg>
+      <h1 id="authBrandName">Elo CRM</h1>
+      <p>Seus clientes, seus resultados</p>
+      <span id="authLogo" style="display:none"><span id="authLogoText1"></span><span id="authLogoText2"></span></span>
+      <span id="authTitle" style="display:none">Acesso Restrito</span>
     </div>
-    <div class="field"><label style="color:#c9d1d9">Nome de Usuário ou E-mail</label><input type="text" id="authEmail" placeholder="wc@crm"></div>
-    <div class="field"><label style="color:#c9d1d9">Senha</label><input type="password" id="authPass" placeholder="••••••••" onkeydown="if(event.key==='Enter') handleAuth()"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-      <span style="font-size:11px;color:#8b949e">Acesso com token seguro</span>
-      <a href="javascript:void(0)" onclick="openForgotPasswordModal()" style="color:#58a6ff;font-size:11.5px;text-decoration:none;font-weight:700">Esqueci a senha?</a>
+    <div class="field"><label>Usuário ou e-mail</label><input type="text" id="authEmail" placeholder="wc@crm" autocomplete="username"></div>
+    <div class="field"><label>Senha</label><div class="elo-input-wrap"><input type="password" id="authPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleAuth()"><button type="button" class="elo-ver-senha" onclick="const p=document.getElementById('authPass');const o=p.type==='password';p.type=o?'text':'password';this.textContent=o?'Ocultar':'Mostrar';">Mostrar</button></div></div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:4px">
+      <a href="javascript:void(0)" onclick="openForgotPasswordModal()" style="color:#C8102E;font-size:12.5px;text-decoration:none;font-weight:700">Esqueci a senha</a>
     </div>
-    <button class="btn primary" id="authBtn" style="width:100%;justify-content:center;margin-top:14px" onclick="handleAuth()">🔒 Entrar no CRM Local</button>
+    <button class="btn primary elo-btn-entrar" id="authBtn" onclick="handleAuth()">Entrar</button>
+    <div class="elo-rodape"><span class="ponto"></span>Funciona mesmo sem internet</div>
   </div>
 </div>
 
 <div class="app">
 <aside class="sidebar">
   <div class="brand">
-    <div class="brand-badge" id="appLogoBadge"><span class="t1" id="logoText1">CRM</span><span class="t2" id="logoText2">LOCAL</span></div>
+    <div class="brand-badge" id="appLogoBadge"><svg class="elo-rings" viewBox="0 0 72 48" aria-hidden="true"><circle cx="26" cy="24" r="17" fill="none" stroke="#C8102E" stroke-width="6"/><circle cx="46" cy="24" r="17" fill="none" stroke="#E8505B" stroke-width="6"/></svg><span class="t1" id="logoText1">CRM</span><span class="t2" id="logoText2">LOCAL</span></div>
     <div class="brand-info"><h2 id="appBrandTitle">Meu CRM</h2><span id="appBrandSub">Crédito & Investimento</span></div>
   </div>
 
@@ -2057,7 +2084,7 @@ function triggerPwaInstall() {
       if (sideBtn) sideBtn.style.display = 'none';
     });
   } else {
-    alert('Para instalar no Windows via Chrome:\n1. Clique nos 3 pontinhos do Chrome (canto superior direito)\n2. Escolha "Transmitir, salvar e compartilhar" > "Instalar WC CRM..." ou "Criar Atalho" marcando "Abrir como janela".');
+    alert('Para instalar no Windows via Chrome:\n1. Clique nos 3 pontinhos do Chrome (canto superior direito)\n2. Escolha "Transmitir, salvar e compartilhar" > "Instalar Elo CRM..." ou "Criar Atalho" marcando "Abrir como janela".');
   }
 }
 
@@ -2466,7 +2493,7 @@ document.querySelectorAll('#appVersionTag, .app-version-tag').forEach(el => el.t
 // Prefixo do nome do arquivo de backup baixado (Configurações -> Backup).
 // Em cada cópia personalizada de cliente, troque este valor (ex: 'eude-crm')
 // para que o arquivo baixado já saia identificado, sem confundir com o de outro CRM.
-const BACKUP_FILE_PREFIX = 'wc-crm';
+const BACKUP_FILE_PREFIX = 'elo-crm';
 
 const KEY_DB = `crm_db_${EQUIPE_ID}`;
 const KEY_USERS = `crm_users_${EQUIPE_ID}`;
@@ -2928,10 +2955,10 @@ const ORIGENS_LEAD = [
 ];
 
 const defaultBrand = {
-  title: 'Meu CRM',
+  title: 'Elo CRM',
   sub: 'Crédito & Investimento',
-  logo1: 'CRM',
-  logo2: 'LOCAL'
+  logo1: 'ELO',
+  logo2: 'CRM'
 };
 
 const defaultScripts = [
@@ -3206,7 +3233,7 @@ function openForgotPasswordModal(){
     <div id="forgotStep1">
       <div class="field">
         <label>Nome de Usuário ou E-mail</label>
-        <input type="text" id="forgotInputUser" placeholder="ex: wc@crm ou seu usuário">
+        <input type="text" id="forgotInputUser" placeholder="ex: seu usuário ou e-mail">
       </div>
       <button class="btn green" style="width:100%;justify-content:center;margin-top:6px" onclick="requestPasswordResetOtp()">
         📲 Gerar Código & Abrir no WhatsApp
@@ -3237,7 +3264,7 @@ function requestPasswordResetOtp(){
   if(!rawInput) return alert('Por favor, informe seu usuário ou e-mail.');
 
   let norm = rawInput.toLowerCase();
-  if(norm === 'wc' || norm === 'wellington' || norm === 'wellington@crm.com') norm = 'wc@crm';
+  if(norm === 'wc' || norm === 'elo' || norm === 'elo@crm' || norm === 'wellington' || norm === 'wellington@crm.com') norm = 'wc@crm';
 
   const user = usersList.find(u => u.email.toLowerCase() === norm || u.nome.toLowerCase() === norm || u.email.toLowerCase() === rawInput.toLowerCase());
   if(!user) return alert('Usuário não localizado no sistema.');
@@ -3252,7 +3279,7 @@ function requestPasswordResetOtp(){
   activeResetPin = Math.floor(100000 + Math.random() * 900000).toString();
   activeResetUserId = user.id;
 
-  const msg = `🔐 *WC CRM - Recuperação de Senha*\n\nOlá, *${user.nome}*!\nSeu código de segurança para redefinir sua senha é: *${activeResetPin}*\n\nInsira esse código no painel para cadastrar sua nova senha.`;
+  const msg = `🔐 *Elo CRM - Recuperação de Senha*\n\nOlá, *${user.nome}*!\nSeu código de segurança para redefinir sua senha é: *${activeResetPin}*\n\nInsira esse código no painel para cadastrar sua nova senha.`;
   window.open(`https://wa.me/${cleanTel}?text=${encodeURIComponent(msg)}`, '_blank');
 
   document.getElementById('forgotStep1').style.display = 'none';
@@ -3428,6 +3455,15 @@ function sendWhatsAppInvite(leadName, leadTel, meetingDateStr, pauta, meetUrl) {
 }
 
 function applyBrand(){
+  // Migração para a identidade Elo CRM (troca só os nomes antigos/padrão)
+  if (brand) {
+    if (!brand.title || brand.title === 'Meu CRM' || /^WC\b/i.test(brand.title)) brand.title = 'Elo CRM';
+    if (!brand.logo1 || brand.logo1 === 'WC' || brand.logo1 === 'CRM') brand.logo1 = 'ELO';
+    if (!brand.logo2 || brand.logo2 === 'LOCAL') brand.logo2 = 'CRM';
+    if (brand.sub && /WC Consultoria/i.test(brand.sub)) brand.sub = brand.sub.replace(/WC Consultoria/ig, 'Elo Consultoria');
+  }
+  const elAuthBrand = document.getElementById('authBrandName');
+  if (elAuthBrand) elAuthBrand.textContent = (brand && brand.title) || 'Elo CRM';
   const elTitle = document.getElementById('appBrandTitle');
   const elSub = document.getElementById('appBrandSub');
   const elLogo1 = document.getElementById('logoText1');
@@ -3454,7 +3490,7 @@ function applyBrand(){
 function saveCrmBranding(){
   brand.title = document.getElementById('cfgCrmTitle').value.trim() || 'Meu CRM';
   brand.sub = document.getElementById('cfgCrmSub').value.trim() || 'Consultoria & Vendas';
-  brand.logo1 = document.getElementById('cfgLogo1').value.trim() || 'WC';
+  brand.logo1 = document.getElementById('cfgLogo1').value.trim() || 'ELO';
   brand.logo2 = document.getElementById('cfgLogo2').value.trim() || 'CRM';
   persistirChave(KEY_BRAND, JSON.stringify(brand), brand);
   applyBrand();
@@ -3561,7 +3597,7 @@ function handleAuth(){
   if(!emailRaw || !pass) return alert('Informe seu usuário/e-mail e senha.');
 
   let norm = emailRaw.toLowerCase();
-  if(norm === 'wc' || norm === 'wellington' || norm === 'wellington@crm.com') norm = 'wc@crm';
+  if(norm === 'wc' || norm === 'elo' || norm === 'elo@crm' || norm === 'wellington' || norm === 'wellington@crm.com') norm = 'wc@crm';
 
   let found = usersList.find(u => 
     u.email.toLowerCase() === norm ||
