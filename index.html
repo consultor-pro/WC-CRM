@@ -497,6 +497,22 @@ body.tour-active { overflow: hidden; }
   box-shadow: 0 1px 3px rgba(0,0,0,0.03);
 }
 .info-card-preview { width: 100%; border-radius: 8px; margin-top: 10px; background: #f8fafc; border: 1px solid var(--line); overflow: hidden; }
+/* --- Mural: cartões de tamanho padrão (clique abre a publicação completa) --- */
+.info-card.info-card-compacto { height: 300px; overflow: hidden; cursor: pointer; justify-content: flex-start; gap: 6px; transition: box-shadow .15s, transform .15s; }
+.info-card.info-card-compacto:hover { box-shadow: 0 6px 18px rgba(15,23,42,.10); transform: translateY(-1px); }
+.info-card-compacto .info-titulo { margin: 0; font-size: 15px; color: #1e293b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding-right: 30px; }
+.info-card-compacto .info-resumo { margin: 4px 0 0; font-size: 13px; color: #475569; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.info-card-compacto .info-thumb { margin-top: 8px; height: 120px; border-radius: 8px; overflow: hidden; background: #f1f5f9; border: 1px solid var(--line); position: relative; flex-shrink: 0; }
+.info-card-compacto .info-thumb img, .info-card-compacto .info-thumb video { width: 100%; height: 100%; max-height: none; object-fit: cover; display: block; pointer-events: none; }
+.info-card-compacto .info-thumb .info-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 34px; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
+.info-card-compacto .info-thumb.doc { display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 64px; }
+.info-card-compacto .info-rodape { display: flex; justify-content: space-between; align-items: center; font-size: 11.5px; color: var(--muted); margin-top: auto; padding-top: 8px; flex-shrink: 0; }
+.info-card-compacto .info-vermais { color: var(--red); font-weight: 800; }
+.info-alca { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #94a3b8; background: #f8fafc; border: 1px solid var(--line); cursor: grab; touch-action: none; user-select: none; z-index: 2; }
+.info-alca:hover { color: #475569; background: #eef2f7; }
+.info-card-placeholder { opacity: .35; outline: 2px dashed var(--red); outline-offset: -2px; }
+.info-card-fantasma { position: fixed; z-index: 9999; pointer-events: none; box-shadow: 0 18px 40px rgba(15,23,42,.30); transform: rotate(1.5deg); opacity: .95; cursor: grabbing; }
+body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user-select: none !important; }
 .info-card img { width: 100%; max-height: 220px; object-fit: cover; display: block; cursor: pointer; }
 .info-card video { width: 100%; max-height: 240px; background: #000; display: block; }
 .doc-box-preview { padding: 14px; display: flex; align-items: center; gap: 12px; background: #f1f5f9; border-radius: 8px; margin-top: 10px; }
@@ -6071,55 +6087,136 @@ function getFileTypeMeta(fileName, fileType) {
   return { category: 'other', icon: '📎', label: 'Arquivo' };
 }
 
+function infoMidiaHtml(post, compacto){
+  const meta = getFileTypeMeta(post.fileName, post.fileType || '');
+  const urlArquivo = fileSrc(post);
+  const aindaCarregando = !!post.fileUrl && !urlArquivo;
+  if (aindaCarregando) {
+    return compacto ? `<div class="info-thumb doc"><span style="font-size:22px">⏳</span><b style="font-size:12px">Carregando arquivo...</b></div>`
+      : `<div class="doc-box-preview"><div style="font-size:26px">⏳</div><div style="flex:1;overflow:hidden"><b style="font-size:12.5px">Carregando arquivo...</b></div></div>`;
+  }
+  if (!urlArquivo) return '';
+  if (compacto) {
+    if (meta.category === 'image') return `<div class="info-thumb"><img src="${urlArquivo}" alt="" loading="lazy"></div>`;
+    if (meta.category === 'video') return `<div class="info-thumb"><video src="${urlArquivo}#t=0.5" muted preload="metadata"></video><div class="info-play">▶</div></div>`;
+    return `<div class="info-thumb doc"><span style="font-size:24px">${meta.icon}</span><b style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(post.fileName || 'Arquivo')}</b></div>`;
+  }
+  if (meta.category === 'image') return `<div class="info-card-preview"><img src="${urlArquivo}" style="max-height:60vh;object-fit:contain;background:#f8fafc;cursor:zoom-in" onclick="openFsPreviewModal('${esc(post.title)}', '${urlArquivo}', 'image', '${esc(post.fileName)}')"></div>`;
+  if (meta.category === 'video') return `<div class="info-card-preview"><video controls src="${urlArquivo}" style="width:100%;max-height:60vh;background:#000"></video></div>`;
+  return `<div class="doc-box-preview"><div style="font-size:26px">${meta.icon}</div><div style="flex:1;overflow:hidden"><b style="font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(post.fileName || 'Arquivo')}</b></div></div>`;
+}
+
 function renderInformacoes(){
   const container = document.getElementById('infoPostsContainer');
   if(!container) return;
   const isGestor = currentUser && isManagerRole(currentUser.cargo);
 
   container.innerHTML = (infoPosts || []).map(post => {
-    const meta = getFileTypeMeta(post.fileName, post.fileType || '');
-    const urlArquivo = fileSrc(post);
-    // Enquanto o arquivo ainda não chegou do IndexedDB (post.fileUrl existe
-    // mas urlArquivo ainda está vazio), mostra "carregando" em vez de quebrar
-    // a imagem — sincronizarArquivosPesados() re-renderiza assim que carregar.
-    const aindaCarregando = !!post.fileUrl && !urlArquivo;
-    let mediaHtml = '';
-    if (aindaCarregando) {
-      mediaHtml = `<div class="doc-box-preview"><div style="font-size:26px">⏳</div><div style="flex:1;overflow:hidden"><b style="font-size:12.5px">Carregando arquivo...</b></div></div>`;
-    } else if (urlArquivo) {
-      if (meta.category === 'image') {
-        mediaHtml = `<div class="info-card-preview"><img src="${urlArquivo}" onclick="openFsPreviewModal('${esc(post.title)}', '${urlArquivo}', 'image', '${esc(post.fileName)}')"></div>`;
-      } else if (meta.category === 'video') {
-        mediaHtml = `<div class="info-card-preview"><video controls src="${urlArquivo}"></video></div>`;
-      } else {
-        mediaHtml = `<div class="doc-box-preview"><div style="font-size:26px">${meta.icon}</div><div style="flex:1;overflow:hidden"><b style="font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(post.fileName || 'Arquivo Anexo')}</b><small class="badge b-purple" style="margin-top:2px">${meta.label}</small></div></div>`;
-      }
-    }
-
+    const temArquivo = !!(post.fileUrl || fileSrc(post));
+    const temMais = (post.desc || '').length > 160 || temArquivo || post.linkUrl;
     return `
-      <div class="info-card">
-        <div>
-          <div class="between">
-            <h3 style="margin:0;font-size:15px;color:#1e293b">${esc(post.title)}</h3>
-            <small class="muted">${esc(post.date)}</small>
-          </div>
-          <p style="margin:8px 0;font-size:13px;color:#334155;white-space:pre-wrap">${esc(post.desc)}</p>
-          ${post.linkUrl ? `<div style="margin:8px 0"><a href="${post.linkUrl}" target="_blank" class="btn blue" style="font-size:11.5px;text-decoration:none">🔗 Acessar Link Oficial</a></div>` : ''}
-          ${mediaHtml}
-        </div>
-        <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div class="row">
-            ${urlArquivo ? `
-              <button class="btn blue" style="font-size:11px" onclick="openFsPreviewModal('${esc(post.title)}', '${urlArquivo}', '${meta.category}', '${esc(post.fileName)}')">👁️ Tela Cheia</button>
-              <a href="${urlArquivo}" download="${esc(post.fileName || 'download')}" class="btn green" style="font-size:11px;text-decoration:none">⬇️ Baixar</a>` : ''}
-          </div>
-          ${isGestor ? `<div class="row" style="gap:8px">
-            <button class="btn" style="font-size:11px" onclick="openEditInfoModal('${post.id}')">✏️ Editar</button>
-            <button class="btn danger" style="font-size:11px" onclick="deleteInfoPost('${post.id}')">Excluir</button>
-          </div>` : ''}
+      <div class="info-card info-card-compacto" data-id="${post.id}" onclick="abrirPublicacaoInfo('${post.id}')" title="Clique para ver a publicação completa">
+        ${isGestor ? `<div class="info-alca" title="Arraste para mudar a ordem" onpointerdown="iniciarArrasteInfo(event)" onclick="event.stopPropagation()">⠿</div>` : ''}
+        <h3 class="info-titulo">${esc(post.title)}</h3>
+        <small class="muted">${esc(post.date || '')}</small>
+        ${post.desc ? `<p class="info-resumo">${esc(post.desc)}</p>` : ''}
+        ${infoMidiaHtml(post, true)}
+        <div class="info-rodape">
+          <span>${post.linkUrl ? '🔗 Link' : ''}${post.linkUrl && temArquivo ? ' · ' : ''}${temArquivo ? '📎 Anexo' : ''}</span>
+          <span class="info-vermais">${temMais ? 'Ver completo →' : 'Abrir →'}</span>
         </div>
       </div>`;
   }).join('') || '<p class="muted" style="grid-column:1/-1;text-align:center;padding:30px">Nenhum aviso ou arquivo no mural.</p>';
+}
+
+// Abre a publicação inteira (texto completo, mídia, link e ações)
+function abrirPublicacaoInfo(id){
+  if (window.__infoArrastou) { window.__infoArrastou = false; return; }
+  const post = (infoPosts || []).find(p => p.id === id);
+  if (!post) return;
+  const isGestor = currentUser && isManagerRole(currentUser.cargo);
+  const meta = getFileTypeMeta(post.fileName, post.fileType || '');
+  const urlArquivo = fileSrc(post);
+  openModal(`
+    <div class="between" style="gap:12px;align-items:flex-start">
+      <div><h2 style="margin:0">${esc(post.title)}</h2><small class="muted">${esc(post.date || '')}</small></div>
+      <button class="btn" onclick="closeModal()">✕</button>
+    </div>
+    ${post.desc ? `<p style="margin:14px 0;font-size:14px;color:#334155;white-space:pre-wrap;line-height:1.55">${esc(post.desc)}</p>` : ''}
+    ${post.linkUrl ? `<div style="margin:10px 0"><a href="${post.linkUrl}" target="_blank" class="btn blue" style="font-size:12px;text-decoration:none">🔗 Acessar Link Oficial</a></div>` : ''}
+    ${infoMidiaHtml(post, false)}
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div class="row" style="gap:8px">
+        ${urlArquivo ? `
+          <button class="btn blue" style="font-size:12px" onclick="openFsPreviewModal('${esc(post.title)}', '${urlArquivo}', '${meta.category}', '${esc(post.fileName)}')">👁️ Tela Cheia</button>
+          <a href="${urlArquivo}" download="${esc(post.fileName || 'download')}" class="btn green" style="font-size:12px;text-decoration:none">⬇️ Baixar</a>` : ''}
+      </div>
+      ${isGestor ? `<div class="row" style="gap:8px">
+        <button class="btn" style="font-size:12px" onclick="openEditInfoModal('${post.id}')">✏️ Editar</button>
+        <button class="btn danger" style="font-size:12px" onclick="closeModal();deleteInfoPost('${post.id}')">Excluir</button>
+      </div>` : ''}
+    </div>`);
+}
+
+// Arrastar para reordenar (mouse e toque). Só gestores veem a alça ⠿.
+function iniciarArrasteInfo(ev){
+  if (ev.button !== undefined && ev.button !== 0) return;
+  ev.preventDefault(); ev.stopPropagation();
+  const container = document.getElementById('infoPostsContainer');
+  const card = ev.target.closest('.info-card');
+  if (!container || !card) return;
+  const r = card.getBoundingClientRect();
+  const offX = ev.clientX - r.left, offY = ev.clientY - r.top;
+  const fantasma = card.cloneNode(true);
+  fantasma.classList.add('info-card-fantasma');
+  fantasma.style.width = r.width + 'px'; fantasma.style.height = r.height + 'px';
+  fantasma.style.left = r.left + 'px'; fantasma.style.top = r.top + 'px';
+  document.body.appendChild(fantasma);
+  card.classList.add('info-card-placeholder');
+  document.body.classList.add('arrastando-info');
+  const ordemInicial = [...container.querySelectorAll('.info-card')].map(c => c.dataset.id).join(',');
+  let ultimoY = ev.clientY, rolagem = null;
+
+  function mover(e){
+    ultimoY = e.clientY;
+    fantasma.style.left = (e.clientX - offX) + 'px';
+    fantasma.style.top = (e.clientY - offY) + 'px';
+    const alvo = document.elementFromPoint(e.clientX, e.clientY);
+    const sobre = alvo && alvo.closest ? alvo.closest('#infoPostsContainer .info-card') : null;
+    if (!sobre || sobre === card) return;
+    const cards = [...container.querySelectorAll('.info-card')];
+    if (cards.indexOf(sobre) > cards.indexOf(card)) sobre.after(card); else sobre.before(card);
+  }
+  function rolar(){
+    const margem = 70, h = window.innerHeight;
+    if (ultimoY < margem) window.scrollBy(0, -14);
+    else if (ultimoY > h - margem) window.scrollBy(0, 14);
+    const main = document.querySelector('.main');
+    if (main && main.scrollHeight > main.clientHeight) {
+      if (ultimoY < margem) main.scrollTop -= 14; else if (ultimoY > h - margem) main.scrollTop += 14;
+    }
+    rolagem = requestAnimationFrame(rolar);
+  }
+  rolagem = requestAnimationFrame(rolar);
+  function soltar(){
+    document.removeEventListener('pointermove', mover);
+    document.removeEventListener('pointerup', soltar);
+    document.removeEventListener('pointercancel', soltar);
+    cancelAnimationFrame(rolagem);
+    fantasma.remove();
+    card.classList.remove('info-card-placeholder');
+    document.body.classList.remove('arrastando-info');
+    const novaOrdem = [...container.querySelectorAll('.info-card')].map(c => c.dataset.id);
+    if (novaOrdem.join(',') === ordemInicial) return;
+    window.__infoArrastou = true; setTimeout(() => { window.__infoArrastou = false; }, 300);
+    const porId = {}; infoPosts.forEach(p => { porId[p.id] = p; });
+    infoPosts = novaOrdem.map(id => porId[id]).filter(Boolean).concat(infoPosts.filter(p => !novaOrdem.includes(p.id)));
+    save();
+    showToast('Ordem do mural atualizada.');
+  }
+  document.addEventListener('pointermove', mover);
+  document.addEventListener('pointerup', soltar);
+  document.addEventListener('pointercancel', soltar);
 }
 
 function openFsPreviewModal(title, fileUrl, category, fileName='arquivo'){
