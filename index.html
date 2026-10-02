@@ -14326,6 +14326,16 @@ window.removerAvatar = function() {
    📤 EXPORTAÇÃO EXCLUSIVA DE CARTEIRA DE CLIENTES E VENDAS PARA EXCEL
    ========================================================================== */
 
+// Data de nascimento do lead em dd/mm/aaaa (o CRM guarda em "nasc"; cópias antigas usavam "nascimento")
+function nascimentoParaExcel(lead){
+  var v = (lead && (lead.nasc || lead.nascimento)) || '';
+  if (!v) return '';
+  var m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return m[3] + '/' + m[2] + '/' + m[1];
+  var d = new Date(v);
+  return isNaN(d.getTime()) ? String(v) : d.toLocaleDateString('pt-BR');
+}
+
 window.exportarClientesParaExcel = function() {
   if (typeof XLSX === 'undefined') {
     alert("⚠️ A biblioteca de exportação (Excel) não pôde ser carregada.\n\nEssa função precisa de internet na primeira vez que é usada (para baixar a biblioteca). Depois disso, o navegador guarda em cache e ela passa a funcionar offline também.");
@@ -14367,7 +14377,7 @@ window.exportarClientesParaExcel = function() {
         "Valor do Crédito": parseFloat(s.valor || 0),
         "Status da Cota": s.cancelada ? "Cancelada ❌" : "Ativa 🟢",
         "Data da Venda": s.date ? new Date(s.date).toLocaleDateString('pt-BR') : "",
-        "Data de Nascimento": lead.nascimento ? new Date(lead.nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : "",
+        "Data de Nascimento": nascimentoParaExcel(lead),
         "Modalidade da Parcela": modalidadeFormatada
       };
     });
@@ -14382,7 +14392,7 @@ window.exportarClientesParaExcel = function() {
         "Valor do Crédito": 0,
         "Status da Cota": "Ativa 🟢",
         "Data da Venda": l.created ? new Date(l.created).toLocaleDateString('pt-BR') : "",
-        "Data de Nascimento": l.nascimento ? new Date(l.nascimento + 'T00:00:00').toLocaleDateString('pt-BR') : "",
+        "Data de Nascimento": nascimentoParaExcel(l),
         "Modalidade da Parcela": "-"
       };
     });
