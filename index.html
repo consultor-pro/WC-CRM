@@ -3676,7 +3676,7 @@ async function processarFilaGoogle(){
       if (m.googleEventId) {
         if (await updateGoogleCalendarEventTime(m.googleEventId, m.date)) { delete m.googlePendente; mudou = true; }
       } else if (m.status !== 'Encerrado') {
-        const res = await createOfficialGoogleMeetEvent({ lead: m.lead, responsavel: m.responsavel, date: m.date, obj: m.obj });
+        const res = await createOfficialGoogleMeetEvent({ lead: m.lead, responsavel: m.responsavel, date: m.date, obj: m.obj, semMeet: m.tipo === 'followup' });
         if (res && res.eventId) { m.googleEventId = res.eventId; if (res.meetUrl && !m.meetUrl) m.meetUrl = res.meetUrl; delete m.googlePendente; mudou = true; }
       } else { delete m.googlePendente; mudou = true; }
     }
@@ -3727,6 +3727,12 @@ async function createOfficialGoogleMeetEvent(meetingData) {
       }
     }
   };
+
+  if (meetingData.semMeet) {
+    delete eventPayload.conferenceData;
+    eventPayload.summary = '📞 Retorno: ' + meetingData.lead;
+    eventPayload.description = (meetingData.obj || '') + '\n\n' + eventPayload.description;
+  }
 
   try {
     const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
@@ -8555,10 +8561,45 @@ function confirmarImportacaoVendas(){
 }
 
 
-function openLeadCommentsModal(leadId){
+// ---------- Follow-ups: cada comentário é uma atividade na Agenda ----------
+function agoraLocalParaInput(somarDias){
+  const d = new Date(); if (somarDias) d.setDate(d.getDate() + somarDias);
+  d.setSeconds(0, 0); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}
+function fmtDataHoraCurta(d){ const x = new Date(d); return isNaN(x.getTime()) ? '-' : x.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); }
+function resumoTexto(t, n){ t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
+function followDoComentario(c){ return c && c.followId ? (db.meetings || []).find(m => m.id === c.followId) || null : null; }
+
+// Mantém o Google Agenda igual ao CRM: follow em aberto vai pra lá; encerrado sai de lá.
+function marcarFollowParaGoogle(m){
+  if (typeof googleLigado !== 'function' || !googleLigado() || !m) return;
+  if (m.status === 'Encerrado') {
+    if (m.googleEventId) { db.googleExclusoesPendentes = db.googleExclusoesPendentes || []; db.googleExclusoesPendentes.push(m.googleEventId); m.googleEventId = null; }
+    delete m.googlePendente;
+  } else if (!m.googleEventId) {
+    m.googlePendente = true;
+  }
+}
+function enviarFollowsAoGoogle(){
+  if (typeof googleLigado !== 'function' || !googleLigado() || !contarPendenciasGoogle()) return;
+  ensureGoogleToken(false).then(tok => { if (tok) processarFilaGoogle(); else updateGoogleAuthStatus(); });
+}
+function definirStatusFollow(meetingId, status){
+  const m = (db.meetings || []).find(x => x.id === meetingId);
+  if (!m) return null;
+  m.status = status;
+  if (m.tipo === 'followup') marcarFollowParaGoogle(m);
+  return m;
+}
+
+function openLeadCommentsModal(leadId, opts){
   const l = db.leads.find(x=>x.id===leadId);
   if(!l || !canUserAccessLead(l)) return;
   if(!l.comments) l.comments = [];
+  opts = opts || {};
+  const respondendo = opts.replyTo ? l.comments.find(c => c.id === opts.replyTo) : null;
+  window.__respondendoComentario = respondendo ? respondendo.id : null;
 
   const waLink = buildWhatsAppLink(l.tel, `Olá ${(l.nome||'').split(' ')[0]}, tudo bem?`);
   const telLink = buildTelLink(l.tel);
@@ -8566,34 +8607,134 @@ function openLeadCommentsModal(leadId){
     <div class="row" style="margin:10px 0 4px;gap:8px;flex-wrap:wrap">
       ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none">📲 WhatsApp</a>` : ''}
       ${telLink ? `<a class="btn blue" href="${telLink}" style="text-decoration:none">📞 Ligar</a>` : ''}
-      <button class="btn purple" onclick="openMeeting('${esc(l.nome)}')">📅 Lembrete na Agenda</button>
+      <button class="btn purple" onclick="openMeeting('${esc(l.nome)}')">📅 Agendar Reunião</button>
       <button class="btn gray" onclick="exportarMuralPDF('${l.id}')">📄 Exportar PDF</button>
       ${!waLink && !telLink ? '<small class="muted">Cadastre um telefone válido pra habilitar WhatsApp e ligação.</small>' : ''}
     </div>
   `;
 
-  const commentsList = l.comments.map(c=>`
-    <div class="comment-box">
+  const commentsList = l.comments.map(c=>{
+    const f = followDoComentario(c);
+    const aberto = f && f.status !== 'Encerrado';
+    const pai = c.parentId ? l.comments.find(x => x.id === c.parentId) : null;
+    const ehAuto = c.origem === 'auto';
+    const cor = f ? (f.color || DEFAULT_EVENT_COLOR) : '';
+    return `
+    <div class="comment-box" style="${aberto ? `border-left:5px solid ${cor};background:#faf5ff` : (f ? 'opacity:.78' : '')}${respondendo && respondendo.id === c.id ? ';outline:2px solid var(--red)' : ''}">
       <div class="comment-header"><b>👤 ${esc(c.author)}</b><span>${origemLabelComentario(c.origem)} · 🕒 ${esc(c.date)}${c.editedAt ? ' <i>(editado)</i>' : ''}</span></div>
+      ${pai ? `<div style="font-size:11.5px;color:#64748b;margin-bottom:4px">↪ Resposta a: “${esc(resumoTexto(pai.text, 70))}”</div>` : ''}
       <div style="white-space:pre-wrap;color:#1e293b">${esc(c.text)}</div>
-      <div class="row" style="margin-top:6px;gap:6px">
+      ${f ? `<div style="margin-top:6px">${aberto
+          ? `<span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:11px">🟣 Em aberto na agenda · ${fmtDataHoraCurta(f.date)}</span>`
+          : `<span class="badge b-gray" style="font-size:11px">✔ Encerrado · ${fmtDataHoraCurta(f.date)}</span>`}</div>` : ''}
+      <div class="row" style="margin-top:6px;gap:6px;flex-wrap:wrap">
+        ${!ehAuto ? `<button class="btn blue" style="padding:2px 8px;font-size:11px" onclick="openLeadCommentsModal('${l.id}', {replyTo:'${c.id}'})">↩️ Responder</button>` : ''}
+        ${f ? (aberto
+          ? `<button class="btn green" style="padding:2px 8px;font-size:11px" onclick="alternarFollowDoComentario('${l.id}','${c.id}','Encerrado')">✅ Encerrar</button>`
+          : `<button class="btn" style="padding:2px 8px;font-size:11px" onclick="alternarFollowDoComentario('${l.id}','${c.id}','Ativo')">↩️ Reabrir</button>`) : ''}
+        ${f ? `<button class="btn" style="padding:2px 8px;font-size:11px" title="Mantém o comentário aqui, mas tira da agenda" onclick="inativarFollowDoComentario('${l.id}','${c.id}')">🚫 Tirar da agenda</button>`
+            : (!ehAuto ? `<button class="btn" style="padding:2px 8px;font-size:11px" title="Cria um follow-up em aberto na agenda para este comentário" onclick="ativarFollowDoComentario('${l.id}','${c.id}')">📅 Pôr na agenda</button>` : '')}
         <button class="btn" style="padding:2px 8px;font-size:11px" onclick="editarLeadComment('${l.id}','${c.id}')">✏️ Editar</button>
         <button class="btn danger" style="padding:2px 8px;font-size:11px" onclick="excluirLeadComment('${l.id}','${c.id}')">🗑️ Excluir</button>
       </div>
-    </div>`).join('') || '<p style="color:var(--muted);font-size:13px;text-align:center">Sem notas adicionadas.</p>';
+    </div>`;
+  }).join('') || '<p style="color:var(--muted);font-size:13px;text-align:center">Sem notas adicionadas.</p>';
 
+  const followPai = respondendo ? followDoComentario(respondendo) : null;
   openModal(`
     <div class="between">
       <div><h2 style="margin:0">Mural de Negociação</h2><small class="muted">Lead: <b>${esc(l.nome)}</b></small></div>
       <button class="btn" onclick="closeModal()">✕</button>
     </div>
     ${acoesRapidas}
-    <div style="margin:10px 0;max-height:280px;overflow-y:auto">${commentsList}</div>
-    <div style="border-top:1px solid var(--line);padding-top:12px">
-      <div class="field"><label>Nova Anotação</label><textarea id="newCommentText" placeholder="Escreva aqui..." style="min-height:75px"></textarea></div>
-      <button class="btn primary" onclick="addLeadComment('${l.id}')">➕ Adicionar Comentário</button>
+    <div style="margin:10px 0;max-height:260px;overflow-y:auto">${commentsList}</div>
+    <div style="border-top:1px solid var(--line);padding-top:12px" id="formFollowUp">
+      ${respondendo ? `<div style="margin-bottom:10px;padding:10px;border-radius:8px;background:#eff6ff;border:1px solid #bfdbfe;font-size:12.5px">
+          <div class="between" style="gap:8px"><b>↩️ Respondendo a:</b><a href="javascript:void(0)" onclick="openLeadCommentsModal('${l.id}')" style="font-weight:700;color:var(--red)">cancelar resposta</a></div>
+          <div style="color:#334155;margin-top:2px">“${esc(resumoTexto(respondendo.text, 140))}”</div>
+          ${followPai && followPai.status !== 'Encerrado' ? '<small class="muted">Ao publicar, este follow-up será <b>encerrado automaticamente</b>.</small>' : ''}
+        </div>` : ''}
+      <div class="field"><label>${respondendo ? 'Sua resposta' : 'Novo follow-up / anotação'}</label><textarea id="newCommentText" placeholder="${respondendo ? 'O que foi combinado? Ex: quer simulação de 200 mil...' : 'Ex: cliente pediu para retornar na quinta...'}" style="min-height:70px"></textarea></div>
+      <div class="grid2" style="gap:10px">
+        <div class="field"><label>${respondendo ? '📅 Próximo retorno (data e hora)' : '📅 Data e hora na agenda'}</label><input type="datetime-local" id="newCommentDate" value="${agoraLocalParaInput(respondendo ? 1 : 0)}"></div>
+        <div class="field"><label>Situação na agenda</label>
+          <select id="newCommentStatus">
+            <option value="Ativo">🟣 Deixar em aberto (precisa de atenção)</option>
+            <option value="Encerrado">✔ Encerrar (já resolvido)</option>
+            <option value="Nenhum">📝 Só anotação (não aparece na agenda)</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn primary" onclick="addLeadComment('${l.id}')">${respondendo ? '↩️ Publicar resposta' : '➕ Publicar'}</button>
     </div>
   `);
+  if (respondendo) setTimeout(() => { const f = document.getElementById('formFollowUp'); if (f) f.scrollIntoView({ block: 'nearest' }); const t = document.getElementById('newCommentText'); if (t) t.focus(); }, 50);
+}
+
+// Inativar: o comentário continua no mural, mas a atividade sai da agenda (e do Google)
+function removerFollowDaAgenda(f){
+  if (!f) return;
+  if (f.googleEventId && typeof googleLigado === 'function' && googleLigado()) { db.googleExclusoesPendentes = db.googleExclusoesPendentes || []; db.googleExclusoesPendentes.push(f.googleEventId); }
+  db.meetings = (db.meetings || []).filter(m => m.id !== f.id);
+}
+function inativarFollowDoComentario(leadId, commentId){
+  const l = db.leads.find(x => x.id === leadId);
+  const c = l && (l.comments || []).find(x => x.id === commentId);
+  if (!c || !c.followId) return;
+  removerFollowDaAgenda(followDoComentario(c));
+  delete c.followId;
+  save();
+  enviarFollowsAoGoogle();
+  openLeadCommentsModal(leadId);
+  showToast('🚫 Tirado da agenda. O comentário continua salvo aqui no mural.');
+}
+function criarFollowParaComentario(l, c, dataAgenda, status){
+  if(!db.meetings) db.meetings = [];
+  const follow = {
+    id: crypto.randomUUID(), tipo: 'followup', lead: l.nome, leadId: l.id, commentId: c.id,
+    responsavel: currentUser.nome || currentUser.email,
+    date: dataAgenda, obj: resumoTexto(c.text, 160), color: DEFAULT_EVENT_COLOR,
+    meetUrl: '', googleEventId: null, status, comments: []
+  };
+  db.meetings.push(follow);
+  c.followId = follow.id;
+  marcarFollowParaGoogle(follow);
+  return follow;
+}
+function ativarFollowDoComentario(leadId, commentId){
+  const l = db.leads.find(x => x.id === leadId);
+  const c = l && (l.comments || []).find(x => x.id === commentId);
+  if (!c || c.followId) return;
+  openModal(`
+    <div class="between"><h2>📅 Pôr na agenda</h2><button class="btn" onclick="openLeadCommentsModal('${l.id}')">✕</button></div>
+    <p style="font-size:13px;color:#334155;margin:10px 0">“${esc(resumoTexto(c.text, 140))}”</p>
+    <div class="field"><label>Data e hora do follow-up</label><input type="datetime-local" id="ativarFollowData" value="${agoraLocalParaInput(0)}"></div>
+    <div class="row" style="justify-content:flex-end;gap:8px">
+      <button class="btn" onclick="openLeadCommentsModal('${l.id}')">Cancelar</button>
+      <button class="btn primary" onclick="confirmarAtivarFollow('${l.id}','${c.id}')">Pôr na agenda (em aberto)</button>
+    </div>`);
+}
+function confirmarAtivarFollow(leadId, commentId){
+  const l = db.leads.find(x => x.id === leadId);
+  const c = l && (l.comments || []).find(x => x.id === commentId);
+  if (!c) return;
+  const data = document.getElementById('ativarFollowData')?.value || agoraLocalParaInput(0);
+  criarFollowParaComentario(l, c, data, 'Ativo');
+  save();
+  enviarFollowsAoGoogle();
+  openLeadCommentsModal(leadId);
+  showToast(`📅 Follow-up em aberto na agenda: ${fmtDataHoraCurta(data)}.`);
+}
+
+function alternarFollowDoComentario(leadId, commentId, status){
+  const l = db.leads.find(x => x.id === leadId);
+  const c = l && (l.comments || []).find(x => x.id === commentId);
+  if (!c || !c.followId) return;
+  definirStatusFollow(c.followId, status);
+  save();
+  enviarFollowsAoGoogle();
+  openLeadCommentsModal(leadId);
+  showToast(status === 'Encerrado' ? '✅ Follow-up encerrado.' : '↩️ Follow-up reaberto.');
 }
 
 // Pequena etiqueta mostrando de onde veio cada comentário do Mural de Negociação:
@@ -8683,17 +8824,44 @@ function registrarAcaoAutomaticaLead(leadIdOuNome, texto){
 function addLeadComment(leadId){
   const text = document.getElementById('newCommentText')?.value.trim();
   if(!text) return alert('Digite um comentário.');
+  const dataAgenda = document.getElementById('newCommentDate')?.value || agoraLocalParaInput(0);
+  const escolha = document.getElementById('newCommentStatus')?.value || 'Ativo';
+  const semAgenda = escolha === 'Nenhum';
+  const status = escolha === 'Encerrado' ? 'Encerrado' : 'Ativo';
   const l = db.leads.find(x=>x.id===leadId);
   if(l && canUserAccessLead(l)){
     if(!l.comments) l.comments = [];
-    l.comments.unshift({
-      id: 'c_'+Date.now(),
+    if(!db.meetings) db.meetings = [];
+    const paiId = window.__respondendoComentario || null;
+    const pai = paiId ? l.comments.find(c => c.id === paiId) : null;
+    const commentId = 'c_' + Date.now();
+
+    // 1) o comentário no Mural
+    const novo = {
+      id: commentId,
       author: currentUser.nome || currentUser.email,
       date: new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'}),
       text: text,
-      origem: 'manual'
-    });
-    save(); openLeadCommentsModal(leadId);
+      origem: 'manual',
+      parentId: pai ? pai.id : undefined
+    };
+    l.comments.unshift(novo);
+
+    // 2) a atividade na Agenda (em aberto fica colorida; encerrada fica apagada).
+    //    "Só anotação" não cria nada na agenda.
+    if (!semAgenda) criarFollowParaComentario(l, novo, dataAgenda, status);
+
+    // 3) se é resposta, o follow-up respondido é encerrado automaticamente
+    let encerrouAnterior = false;
+    if (pai && pai.followId) {
+      const ant = (db.meetings || []).find(m => m.id === pai.followId);
+      if (ant && ant.status !== 'Encerrado') { definirStatusFollow(ant.id, 'Encerrado'); encerrouAnterior = true; }
+    }
+    window.__respondendoComentario = null;
+    save();
+    enviarFollowsAoGoogle();
+    openLeadCommentsModal(leadId);
+    showToast((encerrouAnterior ? 'Follow-up anterior encerrado. ' : '') + (semAgenda ? 'Anotação salva (sem agenda).' : status === 'Ativo' ? `Follow-up em aberto na agenda: ${fmtDataHoraCurta(dataAgenda)}.` : 'Registrado na agenda como encerrado.'));
   }
 }
 
@@ -8708,6 +8876,7 @@ function editarLeadComment(leadId, commentId){
   if(!textoLimpo) return alert('O comentário não pode ficar vazio.');
   c.text = textoLimpo;
   c.editedAt = new Date().toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+  const fEd = followDoComentario(c); if (fEd) fEd.obj = resumoTexto(textoLimpo, 160);
   save();
   openLeadCommentsModal(leadId);
 }
@@ -8716,8 +8885,12 @@ function excluirLeadComment(leadId, commentId){
   const l = db.leads.find(x=>x.id===leadId);
   if(!l || !canUserAccessLead(l)) return;
   if(!confirm('Excluir este comentário?')) return;
+  const cDel = (l.comments||[]).find(x=>x.id===commentId);
+  const fDel = followDoComentario(cDel);
+  if (fDel) removerFollowDaAgenda(fDel);
   l.comments = (l.comments||[]).filter(x=>x.id!==commentId);
   save();
+  enviarFollowsAoGoogle();
   openLeadCommentsModal(leadId);
 }
 
@@ -9474,7 +9647,7 @@ function buildEventItemHtml(m, opts){
   const commentBadge = (m.comments && m.comments.length > 0) ? ` 💬${m.comments.length}` : '';
   const color = m.color || DEFAULT_EVENT_COLOR;
   return `<div class="event-item ${isDone?'done':'active'}" style="--evt-color:${color}" onclick="openEventActionModal('${m.id}','meeting')" title="${esc(m.lead)}${opts.showDate?(' — '+new Date(m.date).toLocaleDateString('pt-BR')):''}">
-    <span class="evt-time">📹 ${time}</span><span class="evt-name">${esc(m.lead)}${commentBadge}</span>
+    <span class="evt-time">${m.tipo === 'followup' ? '📞' : '📹'} ${time}</span><span class="evt-name">${esc(m.lead)}${commentBadge}</span>
   </div>`;
 }
 
@@ -9579,9 +9752,38 @@ function renderAgendaDay(calEl){
   calEl.innerHTML = rows;
 }
 
+function openFollowActionModal(item){
+  const isDone = item.status === 'Encerrado';
+  const leadObj = db.leads.find(l => l.id === item.leadId) || db.leads.find(l => (l.nome||'').toLowerCase() === (item.lead||'').toLowerCase());
+  const comentario = leadObj ? (leadObj.comments || []).find(c => c.id === item.commentId) : null;
+  const waLink = leadObj ? buildWhatsAppLink(leadObj.tel, `Olá ${(leadObj.nome||'').split(' ')[0]}, tudo bem?`) : '';
+  openModal(`
+    <div class="between"><h2>📞 Follow-up</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <div style="margin:12px 0;padding:12px;background:${isDone ? '#f8fafc' : '#faf5ff'};border-radius:10px;border:1px solid var(--line);border-left:5px solid ${isDone ? '#cbd5e1' : (item.color || DEFAULT_EVENT_COLOR)}">
+      <h3 style="margin:0 0 6px">👤 ${esc(item.lead)}</h3>
+      <p style="margin:2px 0"><b>Data:</b> ${fmtDataHoraCurta(item.date)} · <b>Responsável:</b> ${esc(item.responsavel||'-')}</p>
+      <p style="margin:2px 0"><b>Situação:</b> ${isDone ? '✔ Encerrado' : '🟣 Em aberto — precisa de atenção'}</p>
+      <div style="margin-top:8px;white-space:pre-wrap;color:#1e293b;font-size:13.5px">${esc(comentario ? comentario.text : (item.obj || ''))}</div>
+    </div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      ${leadObj && comentario ? `<button class="btn blue" onclick="openLeadCommentsModal('${leadObj.id}', {replyTo:'${comentario.id}'})">↩️ Responder e marcar retorno</button>` : ''}
+      ${leadObj ? `<button class="btn" onclick="openLeadCommentsModal('${leadObj.id}')">💬 Ver mural do lead</button>` : ''}
+      ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none">📲 WhatsApp</a>` : ''}
+    </div>
+    <div class="row" style="justify-content:space-between;border-top:1px solid var(--line);padding-top:12px">
+      <button class="btn" onclick="openRescheduleModal('${item.id}')">🔄 Mudar data</button>
+      <div class="row">
+        ${!isDone ? `<button class="btn green" onclick="closeMeetingAction('${item.id}')">✅ Encerrar</button>` : `<button class="btn" onclick="reopenMeetingAction('${item.id}')">↩️ Reabrir</button>`}
+        <button class="btn danger" onclick="deleteEventAction('${item.id}')">🗑️ Excluir</button>
+      </div>
+    </div>
+  `);
+}
+
 function openEventActionModal(id, type){
   const item = db.meetings.find(x=>x.id===id);
   if(!item) return;
+  if(item.tipo === 'followup') return openFollowActionModal(item);
   if(!item.comments) item.comments = [];
 
   const isDone = item.status === 'Encerrado';
@@ -9685,11 +9887,11 @@ async function generateGoogleMeetForExistingMeeting(meetingId) {
 
 function closeMeetingAction(id){
   const item = db.meetings.find(x=>x.id===id);
-  if(item){ item.status = 'Encerrado'; save(); closeModal(); renderAgenda(); }
+  if(item){ item.status = 'Encerrado'; if(item.tipo === 'followup') marcarFollowParaGoogle(item); save(); closeModal(); renderAgenda(); if(item.tipo === 'followup') enviarFollowsAoGoogle(); }
 }
 function reopenMeetingAction(id){
   const item = db.meetings.find(x=>x.id===id);
-  if(item){ item.status = 'Ativo'; save(); closeModal(); renderAgenda(); }
+  if(item){ item.status = 'Ativo'; if(item.tipo === 'followup') marcarFollowParaGoogle(item); save(); closeModal(); renderAgenda(); if(item.tipo === 'followup') enviarFollowsAoGoogle(); }
 }
 async function deleteEventAction(id){
   if(confirm('Excluir?')){
