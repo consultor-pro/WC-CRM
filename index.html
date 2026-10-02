@@ -584,6 +584,29 @@ body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user
 
 .comment-box { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 12.5px; }
 .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; color: var(--muted); font-size: 11px; }
+/* --- Mural de follow-ups: o comentário é o protagonista; o resto fica discreto --- */
+.fu-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px 10px; margin-bottom: 10px; }
+.fu-card.aberto { border-left: 4px solid var(--fu-cor, #7c3aed); }
+.fu-card.encerrado .fu-texto { color: #475569; }
+.fu-card.destaque { box-shadow: 0 0 0 2px var(--red); }
+.fu-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 11.5px; color: #94a3b8; margin-bottom: 6px; }
+.fu-status { font-weight: 700; color: #94a3b8; white-space: nowrap; }
+.fu-status.aberto { color: #6d28d9; }
+.fu-resp { font-size: 12px; color: #64748b; margin-bottom: 4px; }
+.fu-texto { font-size: 15px; line-height: 1.5; color: #0f172a; white-space: pre-wrap; word-break: break-word; }
+.fu-acoes { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 10px; padding-top: 8px; border-top: 1px solid #f1f5f9; }
+.fu-acao { font-size: 12px; font-weight: 600; color: #64748b; cursor: pointer; text-decoration: none; padding: 2px 0; }
+.fu-acao:hover { color: #0f172a; text-decoration: underline; }
+.fu-acao.principal { color: var(--red); }
+.fu-acao.perigo:hover { color: #dc2626; }
+.fu-respondendo { margin-bottom: 10px; padding: 10px 12px; border-radius: 8px; background: #f8fafc; border: 1px solid var(--line); border-left: 3px solid #94a3b8; font-size: 12.5px; color: #475569; }
+[data-theme="dark"] .fu-card { background: #0d1117; border-color: #30363d; }
+[data-theme="dark"] .fu-texto { color: #e6edf3; }
+[data-theme="dark"] .fu-card.encerrado .fu-texto { color: #9aa4b2; }
+[data-theme="dark"] .fu-acoes { border-top-color: #21262d; }
+[data-theme="dark"] .fu-acao:hover { color: #e6edf3; }
+[data-theme="dark"] .fu-status.aberto { color: #b794f6; }
+[data-theme="dark"] .fu-respondendo { background: #0d1117; border-color: #30363d; color: #9aa4b2; }
 
 .notif-btn { position: relative; background: #f1f5f9; border-radius: 10px; padding: 8px 12px; font-size: 16px; display: flex; align-items: center; cursor: pointer; }
 .notif-badge { position: absolute; top: -4px; right: -4px; background: var(--red); color: #fff; border-radius: 99px; font-size: 10px; font-weight: 800; padding: 2px 6px; }
@@ -8607,7 +8630,7 @@ function muralFollowHtml(l, opts){
   if(!l.comments) l.comments = [];
   const respondendo = opts.replyTo ? l.comments.find(c => c.id === opts.replyTo) : null;
   window.__respondendoComentario = respondendo ? respondendo.id : null;
-  const altura = opts.alturaLista || 260;
+  const altura = opts.alturaLista || 320;
 
   const commentsList = l.comments.map(c=>{
     const f = followDoComentario(c);
@@ -8616,23 +8639,26 @@ function muralFollowHtml(l, opts){
     const ehAuto = c.origem === 'auto';
     const cor = f ? (f.color || DEFAULT_EVENT_COLOR) : '';
     const destaque = (respondendo && respondendo.id === c.id) || (opts.destacar && opts.destacar === c.id);
+    const origem = origemLabelComentario(c.origem).replace(/^\S+\s/, ''); // só o nome, sem o ícone
     return `
-    <div class="comment-box" style="${aberto ? `border-left:5px solid ${cor};background:#faf5ff` : (f ? 'opacity:.78' : '')}${destaque ? ';outline:2px solid var(--red);opacity:1' : ''}">
-      <div class="comment-header"><b>👤 ${esc(c.author)}</b><span>${origemLabelComentario(c.origem)} · 🕒 ${esc(c.date)}${c.editedAt ? ' <i>(editado)</i>' : ''}</span></div>
-      ${pai ? `<div style="font-size:11.5px;color:#64748b;margin-bottom:4px">↪ Resposta a: “${esc(resumoTexto(pai.text, 70))}”</div>` : ''}
-      <div style="white-space:pre-wrap;color:#1e293b">${esc(c.text)}</div>
-      ${f ? `<div style="margin-top:6px">${aberto
-          ? `<span class="badge" style="background:#ede9fe;color:#5b21b6;font-size:11px">🟣 Em aberto na agenda · ${fmtDataHoraCurta(f.date)}</span>`
-          : `<span class="badge b-gray" style="font-size:11px">✔ Encerrado · ${fmtDataHoraCurta(f.date)}</span>`}</div>` : ''}
-      <div class="row" style="margin-top:6px;gap:6px;flex-wrap:wrap">
-        ${!ehAuto ? `<button class="btn blue" style="padding:2px 8px;font-size:11px" onclick="reabrirMural('${l.id}', {replyTo:'${c.id}'})">↩️ Responder</button>` : ''}
+    <div class="fu-card${aberto ? ' aberto' : ''}${f && !aberto ? ' encerrado' : ''}${destaque ? ' destaque' : ''}" ${aberto ? `style="--fu-cor:${cor}"` : ''}>
+      <div class="fu-meta">
+        <span>${esc(c.author)} · ${esc(c.date)}${c.editedAt ? ' · editado' : ''} · ${esc(origem)}</span>
         ${f ? (aberto
-          ? `<button class="btn green" style="padding:2px 8px;font-size:11px" onclick="alternarFollowDoComentario('${l.id}','${c.id}','Encerrado')">✅ Encerrar</button>`
-          : `<button class="btn" style="padding:2px 8px;font-size:11px" onclick="alternarFollowDoComentario('${l.id}','${c.id}','Ativo')">↩️ Reabrir</button>`) : ''}
-        ${f ? `<button class="btn" style="padding:2px 8px;font-size:11px" title="Mantém o comentário aqui, mas tira da agenda" onclick="inativarFollowDoComentario('${l.id}','${c.id}')">🚫 Tirar da agenda</button>`
-            : (!ehAuto ? `<button class="btn" style="padding:2px 8px;font-size:11px" title="Cria um follow-up em aberto na agenda para este comentário" onclick="ativarFollowDoComentario('${l.id}','${c.id}')">📅 Pôr na agenda</button>` : '')}
-        <button class="btn" style="padding:2px 8px;font-size:11px" onclick="editarLeadComment('${l.id}','${c.id}')">✏️ Editar</button>
-        <button class="btn danger" style="padding:2px 8px;font-size:11px" onclick="excluirLeadComment('${l.id}','${c.id}')">🗑️ Excluir</button>
+          ? `<span class="fu-status aberto">● Em aberto · ${fmtDataHoraCurta(f.date)}</span>`
+          : `<span class="fu-status">✓ Encerrado · ${fmtDataHoraCurta(f.date)}</span>`) : ''}
+      </div>
+      ${pai ? `<div class="fu-resp">↪ Resposta a: “${esc(resumoTexto(pai.text, 70))}”</div>` : ''}
+      <div class="fu-texto">${esc(c.text)}</div>
+      <div class="fu-acoes">
+        ${!ehAuto ? `<a class="fu-acao principal" onclick="reabrirMural('${l.id}', {replyTo:'${c.id}'})">Responder</a>` : ''}
+        ${f ? (aberto
+          ? `<a class="fu-acao" onclick="alternarFollowDoComentario('${l.id}','${c.id}','Encerrado')">Encerrar</a>`
+          : `<a class="fu-acao" onclick="alternarFollowDoComentario('${l.id}','${c.id}','Ativo')">Reabrir</a>`) : ''}
+        ${f ? `<a class="fu-acao" title="Mantém o comentário aqui, mas tira da agenda" onclick="inativarFollowDoComentario('${l.id}','${c.id}')">Tirar da agenda</a>`
+            : (!ehAuto ? `<a class="fu-acao" title="Cria um follow-up em aberto na agenda para este comentário" onclick="ativarFollowDoComentario('${l.id}','${c.id}')">Pôr na agenda</a>` : '')}
+        <a class="fu-acao" onclick="editarLeadComment('${l.id}','${c.id}')">Editar</a>
+        <a class="fu-acao perigo" onclick="excluirLeadComment('${l.id}','${c.id}')">Excluir</a>
       </div>
     </div>`;
   }).join('') || '<p style="color:var(--muted);font-size:13px;text-align:center">Sem notas adicionadas.</p>';
@@ -8642,23 +8668,23 @@ function muralFollowHtml(l, opts){
   return `
     <div style="margin:10px 0;max-height:${altura}px;overflow-y:auto">${commentsList}</div>
     <div style="border-top:1px solid var(--line);padding-top:12px" id="formFollowUp">
-      ${respondendo ? `<div style="margin-bottom:10px;padding:10px;border-radius:8px;background:#eff6ff;border:1px solid #bfdbfe;font-size:12.5px">
-          <div class="between" style="gap:8px"><b>↩️ Respondendo a:</b><a href="javascript:void(0)" onclick="reabrirMural('${l.id}')" style="font-weight:700;color:var(--red)">cancelar resposta</a></div>
-          <div style="color:#334155;margin-top:2px">“${esc(resumoTexto(respondendo.text, 140))}”</div>
+      ${respondendo ? `<div class="fu-respondendo">
+          <div class="between" style="gap:8px"><b>Respondendo a:</b><a href="javascript:void(0)" onclick="reabrirMural('${l.id}')" style="font-weight:600;color:#64748b">cancelar</a></div>
+          <div style="margin-top:2px">“${esc(resumoTexto(respondendo.text, 140))}”</div>
           ${followPai && followPai.status !== 'Encerrado' ? '<small class="muted">Ao publicar, este follow-up será <b>encerrado automaticamente</b>.</small>' : ''}
         </div>` : ''}
-      <div class="field"><label>${respondendo ? 'Sua resposta' : 'Novo follow-up / anotação'}</label><textarea id="newCommentText" placeholder="${respondendo ? 'O que foi combinado? Ex: quer simulação de 200 mil...' : 'Ex: cliente pediu para retornar na quinta...'}" style="min-height:70px"></textarea></div>
+      <div class="field"><label>${respondendo ? 'Sua resposta' : 'Novo follow-up / anotação'}</label><textarea id="newCommentText" placeholder="${respondendo ? 'O que foi combinado? Ex: quer simulação de 200 mil...' : 'Ex: cliente pediu para retornar na quinta...'}" style="min-height:70px;font-size:15px;line-height:1.5"></textarea></div>
       <div class="grid2" style="gap:10px">
-        <div class="field"><label>${respondendo ? '📅 Próximo retorno (data e hora)' : '📅 Data e hora na agenda'}</label><input type="datetime-local" id="newCommentDate" value="${agoraLocalParaInput(respondendo ? 1 : 0)}"></div>
+        <div class="field"><label>${respondendo ? 'Próximo retorno (data e hora)' : 'Data e hora na agenda'}</label><input type="datetime-local" id="newCommentDate" value="${agoraLocalParaInput(respondendo ? 1 : 0)}"></div>
         <div class="field"><label>Situação na agenda</label>
           <select id="newCommentStatus">
-            <option value="Ativo">🟣 Deixar em aberto (precisa de atenção)</option>
-            <option value="Encerrado">✔ Encerrar (já resolvido)</option>
-            <option value="Nenhum">📝 Só anotação (não aparece na agenda)</option>
+            <option value="Ativo">Deixar em aberto (precisa de atenção)</option>
+            <option value="Encerrado">Encerrar (já resolvido)</option>
+            <option value="Nenhum">Só anotação (não aparece na agenda)</option>
           </select>
         </div>
       </div>
-      <button class="btn primary" onclick="addLeadComment('${l.id}')">${respondendo ? '↩️ Publicar resposta' : '➕ Publicar'}</button>
+      <button class="btn primary" onclick="addLeadComment('${l.id}')">${respondendo ? 'Publicar resposta' : 'Publicar'}</button>
     </div>`;
 }
 
@@ -8671,10 +8697,10 @@ function openLeadCommentsModal(leadId, opts){
   const telLink = buildTelLink(l.tel);
   const acoesRapidas = `
     <div class="row" style="margin:10px 0 4px;gap:8px;flex-wrap:wrap">
-      ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none">📲 WhatsApp</a>` : ''}
-      ${telLink ? `<a class="btn blue" href="${telLink}" style="text-decoration:none">📞 Ligar</a>` : ''}
-      <button class="btn purple" onclick="openMeeting('${esc(l.nome)}')">📅 Agendar Reunião</button>
-      <button class="btn gray" onclick="exportarMuralPDF('${l.id}')">📄 Exportar PDF</button>
+      ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none;font-size:12px;padding:6px 12px">WhatsApp</a>` : ''}
+      ${telLink ? `<a class="btn" href="${telLink}" style="text-decoration:none;font-size:12px;padding:6px 12px;color:inherit">Ligar</a>` : ''}
+      <button class="btn" style="font-size:12px;padding:6px 12px" onclick="openMeeting('${esc(l.nome)}')">Agendar reunião</button>
+      <button class="btn" style="font-size:12px;padding:6px 12px" onclick="exportarMuralPDF('${l.id}')">Exportar PDF</button>
       ${!waLink && !telLink ? '<small class="muted">Cadastre um telefone válido pra habilitar WhatsApp e ligação.</small>' : ''}
     </div>
   `;
@@ -9792,9 +9818,8 @@ function openFollowActionModal(item, opts){
       </div>
     </div>
     ${leadObj ? `<div style="border-top:1px solid var(--line);padding-top:10px">
-      <h3 style="margin:0 0 2px">💬 Mural de Negociação</h3>
-      <small class="muted">Histórico completo do cliente. Responda, encerre ou tire da agenda por aqui mesmo.</small>
-      ${muralFollowHtml(leadObj, Object.assign({ destacar: item.commentId, alturaLista: 200 }, opts))}
+      <h3 style="margin:0 0 2px">Mural de Negociação</h3>
+      ${muralFollowHtml(leadObj, Object.assign({ destacar: item.commentId, alturaLista: 240 }, opts))}
     </div>` : ''}
   `);
 }
@@ -9852,10 +9877,9 @@ function openEventActionModal(id, type, opts){
       </div>
     </div>
     ${leadObj ? `<div style="border-top:1px solid var(--line);padding-top:12px;margin-top:6px">
-      <h3 style="margin:0 0 2px">💬 Mural de Negociação</h3>
-      <small class="muted">Histórico completo do cliente. Publique, responda, encerre ou tire da agenda por aqui mesmo.</small>
+      <h3 style="margin:0 0 2px">Mural de Negociação</h3>
       ${legadoHtml}
-      ${muralFollowHtml(leadObj, Object.assign({ alturaLista: 220 }, opts || {}))}
+      ${muralFollowHtml(leadObj, Object.assign({ alturaLista: 260 }, opts || {}))}
     </div>` : `<div style="border-top:1px solid var(--line);padding-top:12px;margin-top:6px">
       <h3 style="margin:0 0 6px">💬 Mural de Negociação</h3>
       <small class="muted">Histórico completo do cliente — junta os comentários lançados aqui na Agenda com os do cadastro do Lead, pra ficar fácil lembrar em que pé está.</small>
