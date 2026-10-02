@@ -585,6 +585,24 @@ body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user
 .comment-box { background: #f8fafc; border: 1px solid var(--line); border-radius: 8px; padding: 10px; margin-bottom: 8px; font-size: 12.5px; }
 .comment-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; color: var(--muted); font-size: 11px; }
 /* --- Mural de follow-ups: o comentário é o protagonista; o resto fica discreto --- */
+.exp-grupo { margin-bottom: 10px; }
+.exp-grupo > b { display: block; font-size: 11.5px; color: #64748b; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 5px; }
+.exp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.exp-chip { font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 99px; border: 1px solid var(--line); background: #fff; color: #334155; cursor: pointer; user-select: none; }
+.exp-chip:hover { border-color: #94a3b8; }
+.exp-chip.on { background: var(--red); border-color: var(--red); color: #fff; }
+.exp-chip small { opacity: .7; font-weight: 500; }
+.exp-lista { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
+.exp-linha { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; cursor: pointer; font-size: 13.5px; }
+.exp-linha:last-child { border-bottom: 0; }
+.exp-linha:hover { background: #f8fafc; }
+.exp-linha input { width: 17px; height: 17px; flex-shrink: 0; accent-color: var(--red); }
+.exp-linha .nome { font-weight: 700; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.exp-linha .det { font-size: 12px; color: #64748b; white-space: nowrap; }
+[data-theme="dark"] .exp-chip { background: #0d1117; color: #c9d1d9; border-color: #30363d; }
+[data-theme="dark"] .exp-chip.on { background: var(--red); color: #fff; }
+[data-theme="dark"] .exp-linha:hover { background: #161b22; }
+[data-theme="dark"] .exp-linha { border-bottom-color: #21262d; }
 .fu-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px 10px; margin-bottom: 10px; }
 .fu-card.aberto { border-left: 4px solid var(--fu-cor, #7c3aed); }
 .fu-card.encerrado .fu-texto { color: #475569; }
@@ -1085,6 +1103,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     </div>
     <div class="row">
       <button class="btn" onclick="abrirImportarPlanilha()">📥 Importar Planilha</button>
+      <button class="btn green" onclick="abrirExportarLeads()">📤 Exportar seleção</button>
       <select id="leadFilterScore" onchange="renderLeads()" style="max-width:190px">
         <option value="all">Todos os Scores</option>
         <option value="Quente">🔥 Quente</option>
@@ -7190,6 +7209,135 @@ function bateTelefoneBusca(tel, termo){
   if (d.length >= 12 && d.startsWith('55')) d = d.slice(2);
   if (d.length >= 8 && chaveTelefone(tel) && chaveTelefone(tel) === chaveTelefone(d)) return true;
   return String(tel || '').replace(/\D/g, '').includes(d);
+}
+
+// ================== EXPORTAR LEADS POR SELEÇÃO ==================
+// Filtros combináveis (dentro do mesmo grupo = "ou"; entre grupos = "e") + marcação manual.
+const EXP_GRUPOS = [
+  { chave: 'indicador', titulo: 'Indicador',     valor: l => (l.indicador || '').trim() || 'Sem indicador' },
+  { chave: 'score',     titulo: 'Lead Score',    valor: l => l.scoreCategory || 'Morno' },
+  { chave: 'etapa',     titulo: 'Etapa',         valor: l => l.stage || 'Prospecção' },
+  { chave: 'origem',    titulo: 'Origem',        valor: l => l.origem || 'Indicação' },
+  { chave: 'resp',      titulo: 'Responsável',   valor: l => l.responsavel || 'Sem responsável' }
+];
+let expLeads = null;
+
+function abrirExportarLeads(){
+  expLeads = { filtros: {}, sel: new Set(), busca: '' };
+  EXP_GRUPOS.forEach(g => expLeads.filtros[g.chave] = new Set());
+  openModal(`
+    <div class="between"><h2 style="margin:0">Exportar leads para Excel</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <p class="muted" style="font-size:13px;margin:6px 0 12px">Escolha os filtros (pode combinar vários) e/ou marque os contatos um a um. Só os marcados vão para a planilha.</p>
+    <div id="expFiltros"></div>
+    <div class="between" style="gap:10px;flex-wrap:wrap;margin:12px 0 8px">
+      <input id="expBusca" placeholder="Buscar por nome ou telefone..." style="max-width:260px" oninput="expLeads.busca=this.value; expRenderLista()">
+      <div class="row" style="gap:8px">
+        <button class="btn" style="font-size:12px" onclick="expMarcarVisiveis(true)">Marcar todos</button>
+        <button class="btn" style="font-size:12px" onclick="expMarcarVisiveis(false)">Desmarcar todos</button>
+        <button class="btn" style="font-size:12px" onclick="expLimparFiltros()">Limpar filtros</button>
+      </div>
+    </div>
+    <div class="exp-lista" id="expLista"></div>
+    <div class="between" style="margin-top:14px;gap:10px;flex-wrap:wrap">
+      <b id="expContador" style="font-size:13.5px"></b>
+      <button class="btn green" id="expBotao" onclick="expExportar()">Exportar para Excel</button>
+    </div>`);
+  expRenderFiltros(); expRenderLista();
+}
+
+function expBase(){ return (db.leads || []).filter(canUserAccessLead); }
+function expTemFiltro(){ return EXP_GRUPOS.some(g => expLeads.filtros[g.chave].size > 0); }
+function expPassaFiltros(l){
+  return EXP_GRUPOS.every(g => { const f = expLeads.filtros[g.chave]; return !f.size || f.has(g.valor(l)); });
+}
+function expVisiveis(){
+  const q = (expLeads.busca || '').trim().toLowerCase();
+  return expBase().filter(expPassaFiltros).filter(l => !q || (l.nome || '').toLowerCase().includes(q) || bateTelefoneBusca(l.tel, q))
+    .sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+}
+
+function expRenderFiltros(){
+  const el = document.getElementById('expFiltros'); if (!el) return;
+  const base = expBase();
+  el.innerHTML = EXP_GRUPOS.map(g => {
+    const cont = {};
+    base.forEach(l => { const v = g.valor(l); cont[v] = (cont[v] || 0) + 1; });
+    const valores = Object.keys(cont).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+    if (valores.length < 2 && !expLeads.filtros[g.chave].size) return ''; // grupo com 1 valor só não ajuda a filtrar
+    return `<div class="exp-grupo"><b>${g.titulo}</b><div class="exp-chips">` +
+      valores.map(v => `<span class="exp-chip${expLeads.filtros[g.chave].has(v) ? ' on' : ''}" data-g="${g.chave}" data-v="${esc(v)}" onclick="expAlternarFiltro(this.dataset.g, this.dataset.v)">${esc(v)} <small>${cont[v]}</small></span>`).join('') +
+      `</div></div>`;
+  }).join('');
+}
+
+function expAlternarFiltro(grupo, valor){
+  const f = expLeads.filtros[grupo];
+  if (f.has(valor)) f.delete(valor); else f.add(valor);
+  // Com filtro ligado, já marca todos os que batem; sem filtro nenhum, começa tudo desmarcado.
+  expLeads.sel = new Set(expTemFiltro() ? expBase().filter(expPassaFiltros).map(l => l.id) : []);
+  expRenderFiltros(); expRenderLista();
+}
+function expLimparFiltros(){
+  EXP_GRUPOS.forEach(g => expLeads.filtros[g.chave].clear());
+  expLeads.sel = new Set(); expLeads.busca = '';
+  const b = document.getElementById('expBusca'); if (b) b.value = '';
+  expRenderFiltros(); expRenderLista();
+}
+function expMarcarVisiveis(marcar){
+  expVisiveis().forEach(l => { if (marcar) expLeads.sel.add(l.id); else expLeads.sel.delete(l.id); });
+  expRenderLista();
+}
+function expAlternarLead(id, marcado){
+  if (marcado) expLeads.sel.add(id); else expLeads.sel.delete(id);
+  expAtualizarContador();
+}
+function expAtualizarContador(){
+  const n = expLeads.sel.size;
+  const c = document.getElementById('expContador'); if (c) c.textContent = `${n} contato(s) selecionado(s) de ${expBase().length}`;
+  const b = document.getElementById('expBotao'); if (b) { b.textContent = n ? `Exportar ${n} para Excel` : 'Exportar para Excel'; b.style.opacity = n ? '1' : '.5'; }
+}
+function expRenderLista(){
+  const el = document.getElementById('expLista'); if (!el) return;
+  const lista = expVisiveis();
+  el.innerHTML = lista.length ? lista.map(l => `
+    <label class="exp-linha">
+      <input type="checkbox" ${expLeads.sel.has(l.id) ? 'checked' : ''} onchange="expAlternarLead('${l.id}', this.checked)">
+      <span class="nome">${esc(l.nome || '(sem nome)')}</span>
+      <span class="det">${esc(l.tel || '')}</span>
+      <span class="det">${esc(l.scoreCategory || 'Morno')} · ${esc(l.stage || 'Prospecção')}${l.indicador ? ' · ' + esc(l.indicador) : ''}</span>
+    </label>`).join('') : '<p class="muted" style="text-align:center;padding:18px;font-size:13px">Nenhum lead com esses filtros.</p>';
+  expAtualizarContador();
+}
+
+function expExportar(){
+  const escolhidos = expBase().filter(l => expLeads.sel.has(l.id)).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+  if (!escolhidos.length) return alert('Marque pelo menos um contato para exportar.');
+  if (typeof XLSX === 'undefined') return alert('A biblioteca de Excel ainda não carregou. Conecte à internet uma vez e tente de novo.');
+  const dataBR = d => { if (!d) return ''; const x = new Date(String(d).length <= 10 ? d + 'T12:00:00' : d); return isNaN(x.getTime()) ? '' : x.toLocaleDateString('pt-BR'); };
+  const linhas = escolhidos.map(l => {
+    const ult = (l.comments || []).find(c => c.origem !== 'auto');
+    return {
+      'Nome': l.nome || '',
+      'Telefone / WhatsApp': l.tel || '',
+      'Cidade': l.cidade || '',
+      'Profissão / Segmento': l.prof || '',
+      'Nascimento': dataBR(l.nasc),
+      'Origem': l.origem || '',
+      'Indicador': l.indicador || '',
+      'Responsável': l.responsavel || '',
+      'Lead Score': l.scoreCategory || 'Morno',
+      'Etapa': l.stage || 'Prospecção',
+      'Tags': (l.tags || []).join(', '),
+      'Cadastrado em': dataBR(l.created),
+      'Último comentário': ult ? `${ult.date} — ${ult.text}` : ''
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(linhas);
+  ws['!cols'] = [28, 18, 18, 22, 12, 16, 20, 22, 11, 18, 22, 13, 50].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Leads');
+  XLSX.writeFile(wb, `leads_selecionados_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  showToast(`📤 ${escolhidos.length} contato(s) exportado(s) para Excel.`);
 }
 
 function renderLeads(){
