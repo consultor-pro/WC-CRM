@@ -547,6 +547,13 @@ body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user
   overflow: hidden;
 }
 .event-item:hover { filter: brightness(0.97); }
+/* --- Visão do mês: todos os dias do mesmo tamanho, itens compactos, "ver mais" --- */
+.calendar.mes .day:not(.dow) { height: var(--dia-altura, 120px); min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.calendar.mes .day:not(.dow) > b { flex: none; align-self: flex-start; }
+.calendar.mes .event-item { flex: none; min-height: 0; height: 21px; padding: 0 6px; margin-top: 3px; font-size: 10.5px; gap: 4px; border-radius: 5px; }
+.dia-mais { flex: none; margin-top: 3px; height: 19px; line-height: 19px; font-size: 11px; font-weight: 800; color: var(--red); text-align: center; cursor: pointer; border-radius: 5px; }
+.dia-mais:hover { background: #fee2e2; }
+[data-theme="dark"] .dia-mais:hover { background: rgba(200,16,46,.2); }
 .event-item .evt-time { flex: none; font-weight: 800; color: var(--evt-color, #7c3aed); white-space: nowrap; }
 .event-item .evt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-item.done { background: #f1f5f9; color: #64748b; border-left-color: #94a3b8; text-decoration: line-through; }
@@ -9871,8 +9878,17 @@ function renderAgenda(){
   return renderAgendaMonth(calEl);
 }
 
+const AGENDA_MES_LIMITE = 8; // máximo de agendamentos mostrados em cada dia na visão do mês
+
+function agendamentosDoDia(ano, mes, dia){
+  return getVisibleAgendaMeetings().filter(m => {
+    const md = new Date(m.date);
+    return md.getFullYear() === ano && md.getMonth() === mes && md.getDate() === dia;
+  }).sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
 function renderAgendaMonth(calEl){
-  calEl.className = 'calendar';
+  calEl.className = 'calendar mes';
   const year = calendarCurrentDate.getFullYear();
   const month = calendarCurrentDate.getMonth();
   const titleEl = document.getElementById('currentMonthYear');
@@ -9881,22 +9897,56 @@ function renderAgendaMonth(calEl){
   const totalDays = new Date(year, month + 1, 0).getDate();
   const now = new Date();
   const isCurMonth = (now.getFullYear() === year && now.getMonth() === month);
-  const meetings = getVisibleAgendaMeetings();
+
+  // Monta a lista de cada dia primeiro, pra saber o tamanho padrão dos quadrados:
+  // todos ficam iguais, com altura para o dia mais cheio (no máximo 8 itens + "ver mais").
+  const porDia = [];
+  let maiorDia = 0, algumPassou = false;
+  for(let day=1; day<=totalDays; day++){
+    const lista = agendamentosDoDia(year, month, day);
+    porDia[day] = lista;
+    maiorDia = Math.max(maiorDia, Math.min(lista.length, AGENDA_MES_LIMITE));
+    if(lista.length > AGENDA_MES_LIMITE) algumPassou = true;
+  }
+  const linhas = Math.max(3, maiorDia);
+  calEl.style.setProperty('--dia-altura', (34 + linhas * 24 + (algumPassou ? 22 : 0)) + 'px');
 
   let cells = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(x=>`<div class="day dow">${x}</div>`).join('');
   for(let i=0; i<firstDay; i++) cells += '<div class="day" style="background:#f8fafc"></div>';
 
   for(let day=1; day<=totalDays; day++){
     const isToday = isCurMonth && (now.getDate() === day);
-
-    const meetEvents = meetings.filter(m=>{
-      const md = new Date(m.date);
-      return md.getFullYear()===year && md.getMonth()===month && md.getDate()===day;
-    }).sort((a,b)=> new Date(a.date)-new Date(b.date)).map(m=> buildEventItemHtml(m));
-
-    cells += `<div class="day ${isToday?'current-today':''}"><b>${day}</b>${meetEvents.join('')}</div>`;
+    const lista = porDia[day];
+    const visiveis = lista.slice(0, AGENDA_MES_LIMITE).map(m => buildEventItemHtml(m)).join('');
+    const resto = lista.length - AGENDA_MES_LIMITE;
+    const mais = resto > 0 ? `<div class="dia-mais" onclick="abrirAgendaDoDia(${year}, ${month}, ${day})" title="Ver todos os ${lista.length} agendamentos do dia">ver mais (+${resto})</div>` : '';
+    cells += `<div class="day ${isToday?'current-today':''}"><b>${day}</b>${visiveis}${mais}</div>`;
   }
   calEl.innerHTML = cells;
+}
+
+// "ver mais": lista completa dos agendamentos de um dia
+function abrirAgendaDoDia(ano, mes, dia){
+  const lista = agendamentosDoDia(ano, mes, dia);
+  const data = new Date(ano, mes, dia);
+  const abertos = lista.filter(m => m.status !== 'Encerrado').length;
+  openModal(`
+    <div class="between">
+      <div><h2 style="margin:0">${data.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' })}</h2>
+      <small class="muted">${lista.length} agendamento(s) · ${abertos} em aberto</small></div>
+      <button class="btn" onclick="closeModal()">✕</button>
+    </div>
+    <div style="margin:12px 0;max-height:60vh;overflow-y:auto">
+      ${lista.map(m => buildEventItemHtml(m)).join('') || '<p class="muted" style="text-align:center">Nenhum agendamento neste dia.</p>'}
+    </div>
+    <div class="row" style="justify-content:flex-end">
+      <button class="btn" onclick="verDiaNaAgenda(${ano}, ${mes}, ${dia})">Abrir na visão do dia</button>
+    </div>`);
+}
+function verDiaNaAgenda(ano, mes, dia){
+  calendarCurrentDate = new Date(ano, mes, dia);
+  closeModal();
+  setAgendaView('day');
 }
 
 function renderAgendaWeek(calEl){
