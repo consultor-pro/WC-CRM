@@ -5608,14 +5608,15 @@ function renderComissoes(){
             <div style="min-width:240px;background:#f5f3ff;border:2px solid var(--purple);border-radius:10px;padding:12px;text-align:center;box-shadow:0 2px 6px rgba(124,58,237,0.15)">
               <div style="font-size:11px;font-weight:800;color:var(--purple);text-transform:uppercase">🎯 Mês Filtrado</div>
               <b style="color:#1e293b;font-size:14px">${m.label}</b>
-              <div style="font-size:18px;font-weight:900;color:var(--purple);margin:6px 0">${m.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
+              <div style="font-size:20px;font-weight:900;color:var(--green);margin:6px 0 0" title="Valor líquido já recebido, após imposto">${mLiquido.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
+              <div style="font-size:10px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:6px">Líquido recebido</div>
               <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;border-top:1px solid #ddd6fe;padding-top:6px">
                 <span style="color:var(--green)">Recebido: ${m.received.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span>
                 <span style="color:var(--blue)">Pendente: ${mPendente.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span>
               </div>
               <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:700;border-top:1px solid #ddd6fe;padding-top:6px;margin-top:4px">
                 <span style="color:#b91c1c" title="Imposto sobre o valor já recebido (parcelas marcadas como pagas)">Imposto: ${mImposto.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span>
-                <span style="color:var(--green)" title="Valor líquido já recebido, após imposto">Líquido Recebido: ${mLiquido.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span>
+                <span style="color:var(--purple)" title="Comissão prevista para o mês (bruta)">Previsto: ${m.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span>
               </div>
             </div>`;
         }).join('');
@@ -5640,11 +5641,12 @@ function renderComissoes(){
           <div id="monthCard-${k}" style="min-width:170px;${estiloCard};border-radius:10px;padding:10px;text-align:center;flex-shrink:0">
             ${ehMesAtual ? '<div style="font-size:9.5px;font-weight:800;color:var(--blue);text-transform:uppercase;margin-bottom:2px">📍 Mês Atual</div>' : ''}
             <small style="color:var(--muted);font-weight:700">${m.label}</small>
-            <div style="font-size:15px;font-weight:800;color:var(--purple);margin:4px 0">${m.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
+            <div style="font-size:16px;font-weight:900;color:var(--green);margin:4px 0 0" title="Valor líquido já recebido, após imposto">${mLiquido.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
+            <div style="font-size:9px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-bottom:4px">Líquido recebido</div>
             <div style="font-size:10.5px;color:var(--green);font-weight:700">Rec: ${m.received.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
             <div style="font-size:10px;color:var(--blue);font-weight:600">A rec: ${mPendente.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
             <div style="font-size:10px;color:#b91c1c;font-weight:600;border-top:1px dashed #e2e8f0;margin-top:4px;padding-top:3px" title="Imposto sobre o valor já recebido">Imposto: ${mImposto.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
-            <div style="font-size:10px;color:var(--green);font-weight:700" title="Valor líquido já recebido, após imposto">Líq. Recebido: ${mLiquido.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
+            <div style="font-size:10px;color:var(--purple);font-weight:700" title="Comissão prevista para o mês (bruta)">Previsto: ${m.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
           </div>`;
       }).join('') || '<p class="muted">Nenhuma projeção futura para o período.</p>';
 
@@ -13706,9 +13708,10 @@ function renderVendasConsultores() {
       return `
         <div style="min-width:170px;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px;text-align:center;flex-shrink:0">
           <small style="color:var(--muted);font-weight:700">${m.label}</small>
-          <div style="font-size:15px;font-weight:800;color:var(--purple);margin:4px 0">${m.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
+          <div style="font-size:16px;font-weight:900;color:var(--green);margin:4px 0 0" title="Comissão líquida do mês, após imposto">${mLiquido.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
+          <div style="font-size:9px;color:var(--green);font-weight:700;text-transform:uppercase;letter-spacing:.03em">Líquido</div>
           <div style="font-size:10px;color:#b91c1c;font-weight:600;border-top:1px dashed #e2e8f0;margin-top:4px;padding-top:3px">Imposto: ${mImposto.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
-          <div style="font-size:10px;color:var(--green);font-weight:700">Líquido: ${mLiquido.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
+          <div style="font-size:10px;color:var(--purple);font-weight:700" title="Comissão prevista para o mês (bruta)">Previsto: ${m.total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</div>
         </div>`;
     }).join('') || '<p class="muted">Nenhuma projeção mensal para este consultor/segmento.</p>';
   }
