@@ -689,6 +689,63 @@ body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user
 .excel-table tbody tr:first-child th { position: sticky; top: 0; z-index: 7; }
 table:not(.excel-table) tbody tr:nth-child(even) td { background: #f9fafb; }
 table:not(.excel-table) thead th { position: sticky; top: 0; z-index: 3; background: var(--card); }
+/* --- Tabelas compactas: linhas estreitas e cores suaves (as planilhas .excel-table não entram) --- */
+table:not(.excel-table) th, table:not(.excel-table) td { padding: 5px 10px; font-size: 12.5px; line-height: 1.35; vertical-align: middle; }
+table:not(.excel-table) thead th { padding: 7px 10px; font-size: 10.5px; line-height: 1.25; text-transform: uppercase; letter-spacing: .04em; vertical-align: bottom; }
+.page table:not(.excel-table) td { white-space: nowrap; }
+.page table:not(.excel-table) td .empty-state { white-space: normal; }
+table:not(.excel-table) td .badge { padding: 1px 8px; font-size: 11px; font-weight: 650; border-radius: 5px; }
+table:not(.excel-table) td .b-red { background: #f8e9e9; color: #963a3a; }
+table:not(.excel-table) td .b-green { background: #e6f1ea; color: #2d6646; }
+table:not(.excel-table) td .b-orange { background: #f7ebdf; color: #8a5529; }
+table:not(.excel-table) td .b-yellow { background: #f5efd8; color: #75601f; }
+table:not(.excel-table) td .b-blue { background: #e5ecf6; color: #36588a; }
+table:not(.excel-table) td .b-purple { background: #edeaf5; color: #594a86; }
+table:not(.excel-table) td .b-cyan { background: #e1eff1; color: #2e6870; }
+table:not(.excel-table) td .b-gray { background: #eef1f4; color: #4b5563; }
+table:not(.excel-table) td .b-gold { background: #f6eedb; color: #80601f; }
+table:not(.excel-table) td > .btn, table:not(.excel-table) td > .row > .btn { padding: 1px 9px; line-height: 1.5; font-size: 11.5px; font-weight: 600; border-radius: 5px; border: 1px solid #d5dbe3; background: #fff; color: #334155; }
+table:not(.excel-table) td > .btn.gold, table:not(.excel-table) td > .row > .btn.gold { background: #f6eedb; border-color: #e5d8b2; color: #80601f; }
+table:not(.excel-table) td > .btn.danger, table:not(.excel-table) td > .row > .btn.danger { background: #f8e9e9; border-color: #ebc9c9; color: #963a3a; }
+table:not(.excel-table) td > .btn.green, table:not(.excel-table) td > .row > .btn.green { background: #e6f1ea; border-color: #c4dccd; color: #2d6646; }
+table:not(.excel-table) td > .btn.blue, table:not(.excel-table) td > .row > .btn.blue { background: #e5ecf6; border-color: #c5d3e8; color: #36588a; }
+table:not(.excel-table) td > .btn.purple, table:not(.excel-table) td > .row > .btn.purple { background: #edeaf5; border-color: #d4cde8; color: #594a86; }
+table:not(.excel-table) td > .btn.gray, table:not(.excel-table) td > .row > .btn.gray { background: #f1f3f6; border-color: #d5dbe3; color: #556070; }
+table:not(.excel-table) td > .row { gap: 5px; flex-wrap: nowrap; }
+table:not(.excel-table) td .semaforo-dot { width: 10px; height: 10px; border-width: 0; box-shadow: none; }
+table:not(.excel-table) td .user-avatar { width: 22px !important; height: 22px !important; font-size: 10px !important; }
+.tl-sub { color: var(--muted); font-size: 11.5px; font-weight: 400; }
+/* Leads: o que é longo é cortado com "..." (o texto inteiro aparece ao parar o mouse em cima) */
+#leadTable td:first-child { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
+.tl-corta { display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
+/* Leads no computador: a coluna de ações fica sempre à vista, mesmo quando a tabela é mais larga que a tela */
+@media (min-width: 900px) {
+  .tb-acoes-fim tbody td:last-child { position: sticky; right: 0; background: var(--card); box-shadow: -8px 0 8px -8px rgba(15,23,42,.18); }
+  .tb-acoes-fim tbody tr:nth-child(even) td:last-child { background: #f9fafb; }
+  .tb-acoes-fim thead th:last-child { right: 0; z-index: 4; box-shadow: -8px 0 8px -8px rgba(15,23,42,.18); }
+  [data-theme="dark"] .tb-acoes-fim tbody tr:nth-child(even) td:last-child { background: #1a2029; }
+}
+[data-theme="dark"] table:not(.excel-table) td > .btn, [data-theme="dark"] table:not(.excel-table) td > .row > .btn { border-color: #30363d; }
+/* No celular, Leads e Equipe viram cartões: nome, dados e botões um embaixo do outro, sem arrastar para o lado */
+@media (max-width: 720px) {
+  table.tb-cartoes, table.tb-cartoes tbody { display: block; width: 100%; }
+  table.tb-cartoes thead { display: none; }
+  table.tb-cartoes tbody tr { display: block; padding: 8px 2px; border-bottom: 1px solid var(--line); }
+  table.tb-cartoes tbody tr:nth-child(even) { background: #f9fafb; }
+  table.tb-cartoes tbody td { display: inline-block; white-space: normal !important; padding: 2px 5px !important; border: 0; background: transparent !important; max-width: 100% !important; }
+  table.tb-cartoes tbody td:first-child, table.tb-cartoes tbody td.tc-acoes { display: block; }
+  table.tb-cartoes tbody td:first-child { font-size: 13.5px; }
+  table.tb-cartoes tbody td.tc-acoes > .row { flex-wrap: wrap; margin-top: 3px; }
+  table.tb-cartoes tbody td.tc-acoes .btn { padding: 5px 11px; }
+  table.tb-cartoes tbody td[data-rot]::before { content: attr(data-rot); color: var(--muted); font-size: 11px; margin-right: 4px; }
+  [data-theme="dark"] table.tb-cartoes tbody tr:nth-child(even) { background: #1a2029; }
+}
+/* --- Agenda: cliente clicável e telefone no painel do agendamento --- */
+.ag-cliente { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.ag-cliente:hover { color: var(--blue); }
+.ag-tel { font-size: 13.5px; font-weight: 600; margin-left: 10px; white-space: nowrap; }
+.ag-tel a { color: inherit; text-decoration: none; }
+.ag-tel.sem { color: var(--muted); font-weight: 400; font-size: 12px; }
 
 /* --- Estados vazios --- */
 .empty-state { text-align: center; padding: 34px 16px; color: var(--muted); }
@@ -1152,7 +1209,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <input style="max-width:180px" id="leadSearch" placeholder="Buscar nome, telefone, tag..." oninput="renderLeads()">
     </div>
   </div>
-  <div style="overflow-x:auto"><table><thead><tr><th>Lead</th><th>Contato</th><th>Nascimento</th><th>Origem</th><th>Responsável / Criador</th><th>Lead Score</th><th>Visibilidade</th><th>Etapa</th><th>Comentários</th><th>Ações</th></tr></thead><tbody id="leadTable"></tbody></table></div>
+  <div style="overflow-x:auto"><table class="tb-cartoes tb-acoes-fim"><thead><tr><th>Lead</th><th>Contato</th><th>Etapa</th><th>Score</th><th>Origem</th><th>Nascimento</th><th>Responsável</th><th>Visível</th><th>Ações</th></tr></thead><tbody id="leadTable"></tbody></table></div>
  </div>
  </div>
  <div id="leadsIndicadoresSubaba" class="card" style="display:none">
@@ -1989,19 +2046,19 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     <div id="addUserBtnContainer"></div>
   </div>
   <div style="overflow-x:auto">
-    <table>
+    <table class="tb-cartoes">
       <thead>
         <tr>
           <th>Membro</th>
-          <th>Usuário / E-mail</th>
-          <th>WhatsApp Cadastrado</th>
-          <th>Cargo / Classe</th>
-          <th>Líder / Superior</th>
+          <th>Ações</th>
+          <th>Cargo</th>
+          <th>Líder</th>
           <th>Subordinados</th>
+          <th>Usuário / E-mail</th>
+          <th>WhatsApp</th>
           <th>Dashboard</th>
           <th>Mapa Cotas</th>
           <th>Comissões</th>
-          <th>Ações</th>
         </tr>
       </thead>
       <tbody id="userTable"></tbody>
@@ -5109,7 +5166,7 @@ function renderBirthdays(){
       ? `<b style="cursor:pointer;text-decoration:underline dotted" title="Abrir cadastro do cliente" onclick="openLead('${item.leadId}')">${esc(item.nome)}</b>`
       : `<b>${esc(item.nome)}</b>`;
     return `<tr>
-      <td>${nomeClicavel}<br><small class="muted">${esc(item.tel||'-')}${item.tipo==='Cliente'?linkWhatsAppTel(item.tel):''}</small></td>
+      <td>${nomeClicavel}<span class="tl-sub"> · ${esc(item.tel||'-')}${item.tipo==='Cliente'?linkWhatsAppTel(item.tel):''}</span></td>
       <td><span class="badge ${item.tipo==='Equipe'?'b-purple':'b-blue'}">${item.tipo} (${esc(item.cargo)})</span></td>
       <td><b>${String(dia).padStart(2,'0')}/${String(mes).padStart(2,'0')}</b> (${ano})</td>
       <td>${idade} anos</td>
@@ -6665,24 +6722,24 @@ function renderUsers(){
             <b>${esc(u.nome)}</b>
           </div>
         </td>
-        <td><b>${esc(u.email)}</b></td>
-        <td><b>${esc(u.tel||'Não cadastrado')}</b></td>
-        <td><span class="badge b-purple">${esc(u.cargo||'Consultor')}</span></td>
-        <td>${superior ? `<span class="badge b-blue">👑 Líder: ${esc(superior.nome)}</span>` : '<span class="badge b-gray">Topo</span>'}</td>
-        <td>${subordinates.length > 0 ? `<span class="badge b-green">👥 ${subordinates.length}</span>` : '<span class="muted">-</span>'}</td>
-        <td>${u.canViewGeneralDashboard ? '<span class="badge b-green">Geral</span>' : '<span class="badge b-gray">Próprio</span>'}</td>
-        <td>${u.canViewMapaCotas ? '<span class="badge b-green">Geral</span>' : '<span class="badge b-gray">Próprio</span>'}</td>
-        <td>${u.canViewTeamComissoes ? '<span class="badge b-green">Geral</span>' : '<span class="badge b-gray">Próprio</span>'}</td>
-        <td>
+        <td class="tc-acoes">
           ${podeGerenciar ? `
             <div class="row">
               <button class="btn blue" onclick="openPermissionsModal('${u.id}')">🛡️ Permissões</button>
               <button class="btn purple" onclick="openPromoteModal('${u.id}')">Cargo</button>
               <button class="btn" onclick="abrirExportarDados('${u.id}','individual')" title="Gera um .json só com os leads/vendas dele(a)">📤 Vendedor</button>
               ${subordinates.length > 0 ? `<button class="btn" onclick="abrirExportarDados('${u.id}','equipe')" title="Gera um .json com ele(a) e toda a equipe abaixo na hierarquia">📤 Equipe</button>` : ''}
-              ${u.id !== currentUser.id ? `<button class="btn danger" onclick="deleteUser('${u.id}')">✕</button>` : ''}
+              ${u.id !== currentUser.id ? `<button class="btn danger" title="Excluir membro" onclick="deleteUser('${u.id}')">✕</button>` : ''}
             </div>` : '<small class="muted">Acesso restrito</small>'}
         </td>
+        <td><span class="badge b-purple">${esc(u.cargo||'Consultor')}</span></td>
+        <td>${superior ? `<span class="badge b-blue">👑 ${esc(superior.nome)}</span>` : '<span class="badge b-gray">Topo</span>'}</td>
+        <td>${subordinates.length > 0 ? `<span class="badge b-green">👥 ${subordinates.length}</span>` : '<span class="muted">-</span>'}</td>
+        <td data-rot="Usuário:">${esc(u.email)}</td>
+        <td data-rot="WhatsApp:">${esc(u.tel||'Não cadastrado')}</td>
+        <td data-rot="Dashboard:">${u.canViewGeneralDashboard ? '<span class="badge b-green">Geral</span>' : '<span class="badge b-gray">Próprio</span>'}</td>
+        <td data-rot="Mapa de Cotas:">${u.canViewMapaCotas ? '<span class="badge b-green">Geral</span>' : '<span class="badge b-gray">Próprio</span>'}</td>
+        <td data-rot="Comissões:">${u.canViewTeamComissoes ? '<span class="badge b-green">Geral</span>' : '<span class="badge b-gray">Próprio</span>'}</td>
       </tr>`;
   }).join('');
 }
@@ -7022,9 +7079,10 @@ function openLead(id=null){
   const l = id ? db.leads.find(x=>x.id===id) : {};
   const isOwner = !id || l.createdBy === currentUser.id || canCurrentUserViewAllLeads();
   const mySubordinateNames = getSubordinateUserNames(currentUser?.id);
+  const vendasDoLead = id ? (db.sales || []).filter(v => v.leadId === id).length : 0;
 
   openModal(`
-    <div class="between"><h2>${id?'Editar Cadastro':'Novo Lead'}</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <div class="between"><h2>${id?'Editar Cadastro':'Novo Lead'}</h2><div class="row">${id && canUserAccessLead(l) ? `<button class="btn gold" onclick="abrirVendaDoCadastro('${id}')" title="Lançar uma venda para este cliente sem sair daqui">💰 Adicionar venda${vendasDoLead ? ` (${vendasDoLead} já lançada${vendasDoLead > 1 ? 's' : ''})` : ''}</button>` : ''}<button class="btn" onclick="closeModal()">✕</button></div></div>
     <div class="grid2">
       <div>
         <div class="field"><label>Nome do Lead</label><input id="fNome" value="${esc(l.nome||'')}"></div>
@@ -7075,6 +7133,20 @@ function openLead(id=null){
       <button class="btn" onclick="closeModal()">Cancelar</button>
     </div>
   `);
+  window.__leadFormSnap = leadFormSnapshot();
+}
+// Retrato dos campos do cadastro, para saber se algo foi alterado e ainda não foi salvo
+function leadFormSnapshot(){
+  return [...document.querySelectorAll('#modalContent input[id^="f"], #modalContent select[id^="f"], #modalContent textarea[id^="f"]')].map(e => e.id + '=' + e.value).join('|');
+}
+// "Adicionar venda" dentro do cadastro: se houver alteração não salva, salva antes de ir para a venda
+function abrirVendaDoCadastro(leadId){
+  if (document.getElementById('fNome') && leadFormSnapshot() !== window.__leadFormSnap) {
+    if (!confirm('Você alterou dados deste cadastro e ainda não salvou.\n\nOK = salvar o cadastro e seguir para a venda\nCancelar = voltar para o cadastro')) return;
+    saveLead(leadId);
+    if (document.getElementById('modal')?.classList.contains('show')) return;   // faltou algum dado: continua no cadastro
+  }
+  openSaleModal(leadId);
 }
 
 // ---- Telefone duplicado: "chave" do número para comparar contatos ----
@@ -7382,26 +7454,27 @@ function renderLeads(){
     const comCount = l.comments ? l.comments.length : 0;
     const scoreBadge = l.scoreCategory === 'Quente' ? '<span class="badge b-red">🔥 Quente</span>' : (l.scoreCategory === 'Frio' ? '<span class="badge b-blue">❄️ Frio</span>' : '<span class="badge b-gold">⚡ Morno</span>');
     const isOwner = l.createdBy === currentUser.id || canCurrentUserViewAllLeads() || getSubordinateUserIds(currentUser.id).includes(l.createdBy);
-    const visibilityBtn = isOwner ? `<button class="btn ${l.isPublic!==false?'green':'gray'}" style="font-size:11px" onclick="toggleLeadVisibility('${l.id}')">${l.isPublic!==false ? '👥 Público' : '🔒 Privado'}</button>` : (l.isPublic!==false ? '<span class="badge b-green">👥</span>' : '<span class="badge b-gray">🔒</span>');
+    const visibilityBtn = isOwner ? `<button class="btn ${l.isPublic!==false?'green':'gray'}" title="${l.isPublic!==false ? 'Público: a equipe enxerga. Clique para deixar privado.' : 'Privado: só você enxerga. Clique para deixar público.'}" onclick="toggleLeadVisibility('${l.id}')">${l.isPublic!==false ? '👥' : '🔒'}</button>` : (l.isPublic!==false ? '<span class="badge b-green" title="Público">👥</span>' : '<span class="badge b-gray" title="Privado">🔒</span>');
 
-    const tagsHtml = (l.tags && l.tags.length) ? `<div style="margin-top:3px">${l.tags.map(t=>`<span class="badge b-gray" style="margin:0 3px 3px 0;font-size:10px">${esc(t)}</span>`).join('')}</div>` : '';
+    const tagsHtml = (l.tags && l.tags.length) ? ` ${l.tags.map(t=>`<span class="badge b-gray" style="margin-left:3px;font-size:10px">${esc(t)}</span>`).join('')}` : '';
+    const leadResumo = [l.nome, l.cidade, (l.origem==='Indicação' && l.indicador) ? 'indicado por ' + l.indicador : '', (l.tags||[]).join(', ')].filter(Boolean).join(' · ');
     const proximaAcao = sugerirProximaAcaoLead(l);
 
     return `<tr>
-      <td><b style="cursor:pointer;text-decoration:underline dotted" title="Abrir cadastro do cliente" onclick="openLead('${l.id}')">${esc(l.nome)}</b>${(l.origem==='Indicação' && l.indicador) ? ` <span class="muted" style="font-size:11px">(ind ${esc(l.indicador)})</span>` : ''}<br><small style="color:var(--muted)">${esc(l.cidade||'-')}</small>${tagsHtml}</td>
+      <td><b style="cursor:pointer;text-decoration:underline dotted" title="Abrir cadastro do cliente" onclick="openLead('${l.id}')">${esc(l.nome)}</b><span class="tl-sub" title="${esc(leadResumo)}"> · ${esc(l.cidade||'-')}${(l.origem==='Indicação' && l.indicador) ? ` · ind. ${esc(l.indicador)}` : ''}</span>${tagsHtml}</td>
       <td>${esc(l.tel||'-')}${linkWhatsAppTel(l.tel)}</td>
-      <td>${l.nasc ? new Date(l.nasc+'T00:00:00').toLocaleDateString('pt-BR') : '-'}</td>
-      <td><span class="badge b-purple">${esc(l.origem||'Indicação')}</span></td>
-      <td><span class="badge b-blue" style="cursor:pointer" title="Abrir cadastro do vendedor" onclick="abrirCadastroVendedor('${esc(l.responsavel||'')}')">👤 ${esc(l.responsavel||'Geral')}</span></td>
+      <td><span class="badge b-purple">${esc(l.stage||'Prospecção')}</span>${proximaAcao ? ` <span class="badge b-gold tl-corta" style="font-size:10px" title="Próxima ação sugerida: ${esc(proximaAcao)}">${esc(proximaAcao)}</span>` : ''}</td>
       <td>${scoreBadge}</td>
+      <td><span class="badge b-purple">${esc(l.origem||'Indicação')}</span></td>
+      <td data-rot="Nasc.:">${l.nasc ? new Date(l.nasc+'T00:00:00').toLocaleDateString('pt-BR') : '-'}</td>
+      <td><span class="badge b-blue tl-corta" style="cursor:pointer;max-width:140px" title="Abrir cadastro do vendedor: ${esc(l.responsavel||'Geral')}" onclick="abrirCadastroVendedor('${esc(l.responsavel||'')}')">👤 ${esc(l.responsavel||'Geral')}</span></td>
       <td>${visibilityBtn}</td>
-      <td><span class="badge b-purple">${esc(l.stage||'Prospecção')}</span>${proximaAcao ? `<br><span class="badge b-gold" style="margin-top:4px;font-size:10px" title="Próxima ação sugerida">${esc(proximaAcao)}</span>` : ''}</td>
-      <td><button class="btn" onclick="openLeadCommentsModal('${l.id}')">💬 Notas (${comCount})</button></td>
-      <td>
+      <td class="tc-acoes">
         <div class="row">
+          <button class="btn" title="Notas e comentários deste lead" onclick="openLeadCommentsModal('${l.id}')">💬 ${comCount}</button>
           <button class="btn gold" onclick="openSaleModal('${l.id}')">💰 Venda</button>
           <button class="btn" onclick="openLead('${l.id}')">Editar</button>
-          ${isOwner ? `<button class="btn danger" onclick="deleteLead('${l.id}')">✕</button>` : ''}
+          ${isOwner ? `<button class="btn danger" title="Excluir lead" onclick="deleteLead('${l.id}')">✕</button>` : ''}
         </div>
       </td>
     </tr>`;
@@ -9996,6 +10069,28 @@ function renderAgendaDay(calEl){
   calEl.innerHTML = rows;
 }
 
+// Telefone no formato (14) 99999-9999
+function fmtTelBR(tel){
+  const d = String(tel || '').replace(/\D/g, '');
+  const n = (d.length > 11 && d.startsWith('55')) ? d.slice(2) : d;
+  if (n.length === 11) return `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`;
+  if (n.length === 10) return `(${n.slice(0,2)}) ${n.slice(2,6)}-${n.slice(6)}`;
+  return String(tel || '').trim();
+}
+// Topo do painel do agendamento: o nome abre o cadastro do cliente e o telefone aparece ao lado
+function agendaClienteHtml(item, leadObj){
+  if (!leadObj || !canUserAccessLead(leadObj)) return `👤 ${esc(item.lead)}`;
+  const tel = fmtTelBR(leadObj.tel);
+  const digitos = String(leadObj.tel || '').replace(/\D/g, '');
+  return `👤 <span class="ag-cliente" title="Abrir o cadastro do cliente" onclick="abrirCadastroDaAgenda('${leadObj.id}')">${esc(item.lead)}</span>` +
+    (tel ? `<span class="ag-tel">📞 <a href="tel:${digitos}" title="Ligar">${esc(tel)}</a>${linkWhatsAppTel(leadObj.tel)}</span>`
+         : '<span class="ag-tel sem">sem telefone no cadastro</span>');
+}
+function abrirCadastroDaAgenda(leadId){
+  window.__muralContexto = null;
+  openLead(leadId);
+}
+
 function openFollowActionModal(item, opts){
   opts = opts || {};
   const isDone = item.status === 'Encerrado';
@@ -10005,7 +10100,7 @@ function openFollowActionModal(item, opts){
   openModal(`
     <div class="between"><h2>📞 Follow-up</h2><button class="btn" onclick="closeModal()">✕</button></div>
     <div style="margin:12px 0;padding:12px;background:${isDone ? '#f8fafc' : '#faf5ff'};border-radius:10px;border:1px solid var(--line);border-left:5px solid ${isDone ? '#cbd5e1' : (item.color || DEFAULT_EVENT_COLOR)}">
-      <h3 style="margin:0 0 6px">👤 ${esc(item.lead)}</h3>
+      <h3 style="margin:0 0 6px">${agendaClienteHtml(item, leadObj)}</h3>
       <p style="margin:2px 0"><b>Data:</b> ${fmtDataHoraCurta(item.date)} · <b>Responsável:</b> ${esc(item.responsavel||'-')}</p>
       <p style="margin:2px 0"><b>Situação:</b> ${isDone ? '✔ Encerrado' : '🟣 Em aberto — precisa de atenção'}</p>
       <div style="margin-top:8px;white-space:pre-wrap;color:#1e293b;font-size:13.5px">${esc(comentario ? comentario.text : (item.obj || ''))}</div>
@@ -10060,7 +10155,7 @@ function openEventActionModal(id, type, opts){
   openModal(`
     <div class="between"><h2>Painel do Agendamento</h2><button class="btn" onclick="closeModal()">✕</button></div>
     <div style="margin:12px 0;padding:12px;background:#f8fafc;border-radius:10px;border:1px solid var(--line)">
-      <h3 style="margin:0 0 6px">👤 ${esc(item.lead)}</h3>
+      <h3 style="margin:0 0 6px">${agendaClienteHtml(item, leadObj)}</h3>
       <p style="margin:2px 0"><b>Data:</b> ${item.date ? new Date(item.date).toLocaleString('pt-BR') : '-'}</p>
       <p style="margin:2px 0"><b>Responsável:</b> ${esc(item.responsavel||'-')}</p>
       <p style="margin:2px 0"><b>Pauta:</b> ${esc(item.obj || '-')}</p>
