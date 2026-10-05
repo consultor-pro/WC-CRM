@@ -715,6 +715,10 @@ table:not(.excel-table) td > .row { gap: 5px; flex-wrap: nowrap; }
 table:not(.excel-table) td .semaforo-dot { width: 10px; height: 10px; border-width: 0; box-shadow: none; }
 table:not(.excel-table) td .user-avatar { width: 22px !important; height: 22px !important; font-size: 10px !important; }
 .tl-sub { color: var(--muted); font-size: 11.5px; font-weight: 400; }
+/* Leads: linhas bem juntas, para ver mais leads de uma vez */
+#leadTable td { padding-top: 2px; padding-bottom: 2px; line-height: 1.3; }
+#leadTable td > .btn, #leadTable td > .row > .btn { padding-top: 0; padding-bottom: 0; line-height: 1.45; }
+#leadTable td .badge { padding-top: 0; padding-bottom: 0; }
 /* Leads: o que é longo é cortado com "..." (o texto inteiro aparece ao parar o mouse em cima) */
 #leadTable td:first-child { max-width: 300px; overflow: hidden; text-overflow: ellipsis; }
 .tl-corta { display: inline-block; max-width: 150px; overflow: hidden; text-overflow: ellipsis; vertical-align: middle; }
@@ -736,6 +740,10 @@ table:not(.excel-table) td .user-avatar { width: 22px !important; height: 22px !
   table.tb-cartoes tbody td:first-child, table.tb-cartoes tbody td.tc-acoes { display: block; }
   table.tb-cartoes tbody td:first-child { font-size: 13.5px; }
   table.tb-cartoes tbody td.tc-acoes > .row { flex-wrap: wrap; margin-top: 3px; }
+  table.tb-cartoes.tb-acoes-fim tbody tr { padding: 5px 2px; }
+  table.tb-cartoes.tb-acoes-fim tbody td.tc-acoes { display: inline-block; vertical-align: middle; }
+  table.tb-cartoes.tb-acoes-fim tbody td.tc-acoes > .row { margin-top: 0; }
+  table.tb-cartoes.tb-acoes-fim tbody td.tc-acoes .btn { padding: 3px 10px; }
   table.tb-cartoes tbody td.tc-acoes .btn { padding: 5px 11px; }
   table.tb-cartoes tbody td[data-rot]::before { content: attr(data-rot); color: var(--muted); font-size: 11px; margin-right: 4px; }
   [data-theme="dark"] table.tb-cartoes tbody tr:nth-child(even) { background: #1a2029; }
@@ -9895,6 +9903,7 @@ async function saveMeeting(){
       id: crypto.randomUUID(), lead: leadNome, responsavel: cleanResp,
       date: dateVal, obj: objVal, color: colorVal, meetUrl, googleEventId, status: 'Ativo', comments: []
     };
+    if (l) novaReuniao.leadId = l.id;
     if (googlePendente) novaReuniao.googlePendente = true;
     db.meetings.push(novaReuniao);
 
@@ -10077,6 +10086,16 @@ function fmtTelBR(tel){
   if (n.length === 10) return `(${n.slice(0,2)}) ${n.slice(2,6)}-${n.slice(6)}`;
   return String(tel || '').trim();
 }
+// Acha o cadastro pelo nome mesmo com diferença de espaço, acento ou maiúscula (só quando sobra um único candidato)
+function chaveNomeLead(nome){
+  return String(nome || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+function leadPorNomeAproximado(nome){
+  const chave = chaveNomeLead(nome);
+  if (!chave) return null;
+  const achados = (db.leads || []).filter(l => chaveNomeLead(l.nome) === chave);
+  return achados.length ? achados[0] : null;
+}
 // Topo do painel do agendamento: o nome abre o cadastro do cliente e o telefone aparece ao lado
 function agendaClienteHtml(item, leadObj){
   if (!leadObj || !canUserAccessLead(leadObj)) return `👤 ${esc(item.lead)}`;
@@ -10094,7 +10113,7 @@ function abrirCadastroDaAgenda(leadId){
 function openFollowActionModal(item, opts){
   opts = opts || {};
   const isDone = item.status === 'Encerrado';
-  const leadObj = db.leads.find(l => l.id === item.leadId) || db.leads.find(l => (l.nome||'').toLowerCase() === (item.lead||'').toLowerCase());
+  const leadObj = db.leads.find(l => l.id === item.leadId) || db.leads.find(l => (l.nome||'').toLowerCase() === (item.lead||'').toLowerCase()) || leadPorNomeAproximado(item.lead);
   const comentario = leadObj ? (leadObj.comments || []).find(c => c.id === item.commentId) : null;
   const waLink = leadObj ? buildWhatsAppLink(leadObj.tel, `Olá ${(leadObj.nome||'').split(' ')[0]}, tudo bem?`) : '';
   openModal(`
@@ -10127,7 +10146,7 @@ function openEventActionModal(id, type, opts){
   if(!item.comments) item.comments = [];
 
   const isDone = item.status === 'Encerrado';
-  const leadObj = (item.leadId && db.leads.find(l => l.id === item.leadId)) || db.leads.find(l=>(l.nome||'').toLowerCase() === (item.lead||'').toLowerCase());
+  const leadObj = (item.leadId && db.leads.find(l => l.id === item.leadId)) || db.leads.find(l=>(l.nome||'').toLowerCase() === (item.lead||'').toLowerCase()) || leadPorNomeAproximado(item.lead);
   const meetUrl = item.meetUrl || '';
   // Comentários antigos que ficaram presos só na reunião (antes de irem para o lead): só leitura
   const legadoHtml = (item.comments||[]).map(c=>`
