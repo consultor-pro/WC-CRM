@@ -15307,6 +15307,11 @@ function aprDesenharTraco(ctx, t){
   ctx.lineCap = k.reto ? 'butt' : 'round'; ctx.lineJoin = 'round';
   if (n === 1) {
     ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(0.5, t.l / 2 * (k.varia ? 0.5 + 0.5 * p[2] : 1)), 0, 6.2832); ctx.fill();
+  } else if (t.g) {      // forma ajustada (linha, círculo, quadrado...): trechos retos, largura igual do começo ao fim
+    ctx.lineWidth = Math.max(0.6, t.l * (k.varia ? (1 - k.varia) + k.varia * 0.62 : 1)); ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+    for (let i = 1; i < n; i++) ctx.lineTo(p[i * 3], p[i * 3 + 1]);
+    if (n > 3 && p[0] === p[(n - 1) * 3] && p[1] === p[(n - 1) * 3 + 1]) ctx.closePath();
+    ctx.stroke();
   } else if (!k.varia) {
     ctx.lineWidth = t.l; ctx.beginPath(); ctx.moveTo(p[0], p[1]);
     for (let i = 1; i < n - 1; i++) { const x = p[i * 3], y = p[i * 3 + 1]; ctx.quadraticCurveTo(x, y, (x + p[i * 3 + 3]) / 2, (y + p[i * 3 + 4]) / 2); }
@@ -15560,7 +15565,7 @@ function aprNotaAperta(ev){
   if (ev.pointerType === 'touch') {
     N.toques.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     if (N.toques.size === 2) {          // dois dedos: zoom e mover (cancela o traço que tivesse começado)
-      if (N.modo === 'traco') { const apagava = APR_CANETAS[N.traco.f].apaga; N.traco = null; if (apagava) aprNotaTinta(); aprNotaVivo(); }
+      if (N.modo === 'traco') { const apagava = APR_CANETAS[N.traco.f].apaga; N.traco = null; clearTimeout(N.tParado); if (N.ajuste) { aprNotaPag().t[N.ajuste.i] = N.ajuste.antes; N.ajuste = null; } if (apagava || N.travado) aprNotaTinta(); aprNotaVivo(); }
       const [a, b] = [...N.toques.values()];
       N.modo = 'pinca'; N.pinca = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2 - r.left, my: (a.y + b.y) / 2 - r.top, s: N.s, ox: N.ox, oy: N.oy };
       return;
@@ -15580,6 +15585,7 @@ function aprNotaAperta(ev){
   const pr = ev.pointerType === 'pen' && ev.pressure > 0 ? ev.pressure : 0.55;
   N.traco = { f, c: e.c, l: Math.round(e.e * k.mult * 10) / 10, p: [x, y, Math.round(pr * 100) / 100] };
   N.modo = 'traco'; N.idAtivo = ev.pointerId; N.tAnt = ev.timeStamp; N.prAnt = pr; N.xAnt = ev.clientX; N.yAnt = ev.clientY;
+  N.travado = false; N.ajuste = null; N.formaFeita = null; N.ancX = ev.clientX; N.ancY = ev.clientY; clearTimeout(N.tParado);
   if (k.apaga) { const [xt] = aprNotaCtx('aprNtTinta'); xt.save(); aprNotaNaFolha(xt); aprDesenharTraco(xt, N.traco); xt.restore(); } else aprNotaVivo();
 }
 function aprNotaMove(ev){
@@ -15595,7 +15601,9 @@ function aprNotaMove(ev){
   }
   if (ev.pointerId !== N.idAtivo) return;
   if (N.modo === 'mover') { N.ox += ev.clientX - N.ant.x; N.oy += ev.clientY - N.ant.y; N.ant = { x: ev.clientX, y: ev.clientY }; aprNotaLimitar(); aprNotaVista(); return; }
-  if (N.modo !== 'traco') return;
+  if (N.modo !== 'traco' || N.travado) return;      // travado: a forma já foi ajustada, espera soltar
+  // parou de mexer? (o dedo sempre treme um pouco: só conta como movimento acima de 6 pontos da tela)
+  if (Math.hypot(ev.clientX - N.ancX, ev.clientY - N.ancY) > 6) { N.ancX = ev.clientX; N.ancY = ev.clientY; clearTimeout(N.tParado); N.tParado = setTimeout(aprNotaParou, 550); }
   const t = N.traco, k = APR_CANETAS[t.f], lista = (ev.getCoalescedEvents && ev.getCoalescedEvents().length) ? ev.getCoalescedEvents() : [ev];
   const inicio = t.p.length / 3;
   for (const e2 of lista) {
@@ -15625,10 +15633,13 @@ function aprNotaSolta(ev){
   N.idAtivo = null;
   if (N.modo === 'mover') { N.modo = null; area.style.cursor = ''; return; }
   if (N.modo !== 'traco') return;
+  clearTimeout(N.tParado);
   N.modo = null; const t = N.traco; N.traco = null;
   if (!t) return;
   if (ev.type === 'pointercancel' && t.p.length <= 3) { aprNotaVivo(); return; }
-  aprNotaPag().t.push(t); N.hist.push({ a: 'traco' }); N.refaz = [];
+  const pg = aprNotaPag(), acao = { a: 'traco' }; pg.t.push(t);
+  if (N.ajuste) { acao.ajuste = N.ajuste; N.ajuste = null; }
+  N.hist.push(acao); N.refaz = []; N.ultFim = { i: pg.t.length - 1, quando: performance.now() };
   if (!APR_CANETAS[t.f].apaga) { const [xt] = aprNotaCtx('aprNtTinta'); xt.save(); aprNotaNaFolha(xt); aprDesenharTraco(xt, t); xt.restore(); }
   aprNotaVivo(); aprNotaBotoes(); aprNotaSujo();
 }
@@ -15646,12 +15657,12 @@ window.addEventListener('keyup', ev => { const N = APR.nota; if (N && ev.key ===
 // ---- desfazer, páginas, folha ----
 function aprNotaDesfazer(){
   const N = APR.nota, a = N.hist.pop(); if (!a) return; const pg = aprNotaPag();
-  if (a.a === 'traco') a.traco = pg.t.pop(); else if (a.a === 'limpar') { pg.t = a.antes; }
-  N.refaz.push(a); aprNotaTinta(); aprNotaBotoes(); aprNotaSujo();
+  if (a.a === 'traco') { a.traco = pg.t.pop(); if (a.ajuste) pg.t[a.ajuste.i] = a.ajuste.antes; } else if (a.a === 'limpar') { pg.t = a.antes; }
+  N.ultFim = null; N.refaz.push(a); aprNotaTinta(); aprNotaBotoes(); aprNotaSujo();
 }
 function aprNotaRefazer(){
   const N = APR.nota, a = N.refaz.pop(); if (!a) return; const pg = aprNotaPag();
-  if (a.a === 'traco') pg.t.push(a.traco); else if (a.a === 'limpar') { a.antes = pg.t; pg.t = []; }
+  if (a.a === 'traco') { if (a.ajuste) pg.t[a.ajuste.i] = a.ajuste.depois; pg.t.push(a.traco); } else if (a.a === 'limpar') { a.antes = pg.t; pg.t = []; }
   N.hist.push(a); aprNotaTinta(); aprNotaBotoes(); aprNotaSujo();
 }
 function aprNotaLimparPagina(){
@@ -15659,7 +15670,7 @@ function aprNotaLimparPagina(){
   N.hist.push({ a: 'limpar', antes: pg.t }); N.refaz = []; pg.t = [];
   aprNotaTinta(); aprNotaBotoes(); aprNotaSujo(); aprNotaMenu(false); showToast('Página limpa. Use Desfazer se foi sem querer.');
 }
-function aprNotaIrPagina(i){ const N = APR.nota; N.pag = Math.max(0, Math.min(N.doc.paginas.length - 1, i)); N.hist = []; N.refaz = []; aprNotaTudo(); }
+function aprNotaIrPagina(i){ const N = APR.nota; N.pag = Math.max(0, Math.min(N.doc.paginas.length - 1, i)); N.hist = []; N.refaz = []; N.ultFim = null; aprNotaTudo(); }
 function aprNotaPagina(d){ const N = APR.nota; if (N.pag + d < 0 || N.pag + d >= N.doc.paginas.length) return; aprNotaIrPagina(N.pag + d); }
 function aprNotaNovaPagina(){ const N = APR.nota; N.doc.paginas.splice(N.pag + 1, 0, { t: [] }); aprNotaSujo(); aprNotaIrPagina(N.pag + 1); aprNotaAjustar(); }
 function aprNotaExcluirPagina(){
@@ -15682,6 +15693,8 @@ function aprNotaMenu(abrir){
     <div class="op">${Object.keys(APR_PAPEIS).map(k => `<button class="${N.doc.papel === k ? 'ativo' : ''}" onclick="aprNotaFolhaMudar('papel','${k}')"><i style="background:${APR_PAPEIS[k][0]}"></i><span>${APR_PAPEIS[k][3]}</span></button>`).join('')}</div>
     <h4>Formato</h4>
     <div class="op" style="grid-template-columns:repeat(2,1fr)"><button class="${N.doc.folha !== 'deitada' ? 'ativo' : ''}" onclick="aprNotaFolhaMudar('folha','pe')"><span style="padding:8px 2px">Folha em pé</span></button><button class="${N.doc.folha === 'deitada' ? 'ativo' : ''}" onclick="aprNotaFolhaMudar('folha','deitada')"><span style="padding:8px 2px">Folha deitada</span></button></div>
+    <h4>Formas certinhas</h4>
+    <div class="linha" style="margin-bottom:10px"><button class="apr-bt ${APR.indice.formas === false ? '' : 'ativo'}" onclick="aprNotaFormasLigar()" style="height:auto;padding:7px 10px;white-space:normal;text-align:left">${APR.indice.formas === false ? 'Desligado. Toque para ligar.' : 'Ligado: desenhe e segure parado no fim do traço'}</button></div>
     <h4>Esta página</h4>
     <div class="linha">
       <button class="apr-bt" onclick="aprNotaBaixar()">Baixar como imagem</button>
@@ -15851,6 +15864,195 @@ function aprRestaurarCopia(){
   const mostrarOriginal = show;
   show = function(id, btn){ mostrarOriginal(id, btn); if (id === 'apresentacoes') { aprRender(); aprPdfMiniaturas(); } };
 })();
+
+// ====================== FORMAS INTELIGENTES ======================
+// Desenhe e segure parado no fim do traço: a nota reconhece e troca pelo desenho certinho.
+// Reconhece linha reta, círculo, elipse, quadrado, retângulo, losango, triângulo e outros polígonos de 4 ou 5 lados.
+// Duas linhas que se cruzam no meio viram um sinal de + (ou um ×) alinhado.
+function aprFormaLista(p){ const a = []; for (let i = 0; i < p.length; i += 3) a.push([p[i], p[i + 1]]); return a; }
+function aprFormaComprimento(pts){ let L = 0; for (let i = 1; i < pts.length; i++) L += Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); return L; }
+// n pontos igualmente espaçados ao longo do traço
+function aprFormaReamostrar(pts, n){
+  const d = [0]; for (let i = 1; i < pts.length; i++) d.push(d[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]));
+  const L = d[d.length - 1]; if (!L) return [pts[0]];
+  const out = []; let j = 1;
+  for (let k = 0; k < n; k++) {
+    const alvo = L * k / (n - 1); while (j < d.length - 1 && d[j] < alvo) j++;
+    const t = (alvo - d[j - 1]) / ((d[j] - d[j - 1]) || 1);
+    out.push([pts[j - 1][0] + (pts[j][0] - pts[j - 1][0]) * t, pts[j - 1][1] + (pts[j][1] - pts[j - 1][1]) * t]);
+  }
+  return out;
+}
+function aprFormaDistSeg(p, a, b){
+  const vx = b[0] - a[0], vy = b[1] - a[1], q = vx * vx + vy * vy;
+  let t = q ? ((p[0] - a[0]) * vx + (p[1] - a[1]) * vy) / q : 0; t = Math.max(0, Math.min(1, t));
+  return Math.hypot(p[0] - a[0] - vx * t, p[1] - a[1] - vy * t);
+}
+// distância média dos pontos até o contorno de um polígono fechado
+function aprFormaErroPoligono(pts, vert){
+  let soma = 0;
+  for (const p of pts) { let m = Infinity; for (let i = 0; i < vert.length; i++) m = Math.min(m, aprFormaDistSeg(p, vert[i], vert[(i + 1) % vert.length])); soma += m; }
+  return soma / pts.length;
+}
+// simplifica um traço aberto mantendo só os cantos (Ramer-Douglas-Peucker)
+function aprFormaCantos(pts, eps){
+  const manter = new Array(pts.length).fill(false); manter[0] = manter[pts.length - 1] = true;
+  const pilha = [[0, pts.length - 1]];
+  while (pilha.length) {
+    const [a, b] = pilha.pop(); let maior = 0, idx = -1;
+    for (let i = a + 1; i < b; i++) { const d = aprFormaDistSeg(pts[i], pts[a], pts[b]); if (d > maior) { maior = d; idx = i; } }
+    if (maior > eps && idx > 0) { manter[idx] = true; pilha.push([a, idx], [idx, b]); }
+  }
+  return pts.filter((_, i) => manter[i]);
+}
+// menor retângulo (em qualquer inclinação) que contém os pontos
+function aprFormaRetangulo(pts){
+  let melhor = null;
+  for (let g = 0; g < 90; g += 1.5) {
+    const c = Math.cos(g * Math.PI / 180), s = Math.sin(g * Math.PI / 180);
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const p of pts) { const u = p[0] * c + p[1] * s, v = -p[0] * s + p[1] * c; if (u < x0) x0 = u; if (u > x1) x1 = u; if (v < y0) y0 = v; if (v > y1) y1 = v; }
+    const area = (x1 - x0) * (y1 - y0);
+    if (!melhor || area < melhor.area) melhor = { area, g, c, s, w: x1 - x0, h: y1 - y0, u: (x0 + x1) / 2, v: (y0 + y1) / 2 };
+  }
+  melhor.cx = melhor.u * melhor.c - melhor.v * melhor.s; melhor.cy = melhor.u * melhor.s + melhor.v * melhor.c;
+  return melhor;
+}
+function aprFormaCasco(pts){   // contorno convexo
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const giro = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const baixo = [], cima = [];
+  for (const q of p) { while (baixo.length >= 2 && giro(baixo[baixo.length - 2], baixo[baixo.length - 1], q) <= 0) baixo.pop(); baixo.push(q); }
+  for (let i = p.length - 1; i >= 0; i--) { const q = p[i]; while (cima.length >= 2 && giro(cima[cima.length - 2], cima[cima.length - 1], q) <= 0) cima.pop(); cima.push(q); }
+  return baixo.slice(0, -1).concat(cima.slice(0, -1));
+}
+function aprFormaMaiorTriangulo(casco){
+  let melhor = null, area = 0;
+  for (let i = 0; i < casco.length; i++) for (let j = i + 1; j < casco.length; j++) for (let k = j + 1; k < casco.length; k++) {
+    const a = Math.abs((casco[j][0] - casco[i][0]) * (casco[k][1] - casco[i][1]) - (casco[j][1] - casco[i][1]) * (casco[k][0] - casco[i][0]));
+    if (a > area) { area = a; melhor = [casco[i], casco[j], casco[k]]; }
+  }
+  return melhor;
+}
+// Recebe os pontos do traço (na folha) e devolve { tipo, pts, fechado } com a forma ideal, ou null se não parecer nenhuma
+function aprFormaReconhecer(bruto){
+  if (bruto.length < 6) return null;
+  const L = aprFormaComprimento(bruto); if (L < 30) return null;
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  for (const p of bruto) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; }
+  const diag = Math.hypot(x1 - x0, y1 - y0) || 1, a = bruto[0], b = bruto[bruto.length - 1], corda = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  // ---- linha reta ----
+  if (corda > 0.8 * L) {
+    let desvio = 0; for (const p of bruto) desvio = Math.max(desvio, aprFormaDistSeg(p, a, b));
+    if (desvio / corda > 0.1) return null;
+    let p1 = a.slice(), p2 = b.slice(); const ang = Math.abs(Math.atan2(p2[1] - p1[1], p2[0] - p1[0]) * 180 / Math.PI);
+    if (ang < 6 || ang > 174) p1[1] = p2[1] = (p1[1] + p2[1]) / 2;            // quase deitada: fica deitada
+    else if (Math.abs(ang - 90) < 6) p1[0] = p2[0] = (p1[0] + p2[0]) / 2;     // quase em pé: fica em pé
+    return { tipo: 'linha', pts: [p1, p2], fechado: false };
+  }
+  // ---- formas fechadas ----
+  if (corda > 0.22 * L || L < 1.8 * diag) return null;
+  const pts = aprFormaReamostrar(bruto, 96);
+  let area = 0; for (let i = 0; i < pts.length; i++) { const q = pts[(i + 1) % pts.length]; area += pts[i][0] * q[1] - q[0] * pts[i][1]; }
+  area = Math.abs(area) / 2;
+  const R = aprFormaRetangulo(pts), razao = area / (R.area || 1), lado = Math.max(R.w, R.h);
+  // precisa dar uma volta só em torno do centro (espiral dá duas ou mais, um "8" dá zero)
+  let voltas = 0; for (let i = 0; i < pts.length - 1; i++) { const ax = pts[i][0] - R.cx, ay = pts[i][1] - R.cy, bx = pts[i + 1][0] - R.cx, by = pts[i + 1][1] - R.cy; voltas += Math.atan2(ax * by - ay * bx, ax * bx + ay * by); }
+  voltas = Math.abs(voltas) / (2 * Math.PI); if (voltas < 0.8 || voltas > 1.25) return null;
+  const local = pts.map(p => [p[0] * R.c + p[1] * R.s - R.u, -p[0] * R.s + p[1] * R.c - R.v]);
+  let eElipse = 0, eRet = 0;
+  for (const q of local) { eElipse += Math.abs(Math.hypot(q[0] / (R.w / 2 || 1), q[1] / (R.h / 2 || 1)) - 1); eRet += Math.min(Math.abs(R.w / 2 - Math.abs(q[0])), Math.abs(R.h / 2 - Math.abs(q[1]))); }
+  eElipse /= local.length; eRet = eRet / local.length / lado;
+  const paraFolha = (u, v) => [(u + R.u) * R.c - (v + R.v) * R.s, (u + R.u) * R.s + (v + R.v) * R.c];
+  const girarEm = (g) => { R.g = g; R.c = Math.cos(g * Math.PI / 180); R.s = Math.sin(g * Math.PI / 180); R.u = R.cx * R.c + R.cy * R.s; R.v = -R.cx * R.s + R.cy * R.c; };
+  // retângulo, quadrado, losango
+  if ((razao > 0.865 && eRet < 0.055) || (razao > 0.82 && eRet < 0.028 && eElipse > 0.09)) {
+    let w = R.w, h = R.h; const quadrado = Math.min(w, h) / Math.max(w, h) > 0.86;
+    if (quadrado) w = h = (w + h) / 2;
+    if (R.g < 9 || R.g > 81) girarEm(0);                                   // quase reto: alinha com a folha
+    else if (quadrado && Math.abs(R.g - 45) < 9) girarEm(45);              // losango
+    if (R.g === 0 && (R.w > R.h) !== ((x1 - x0) > (y1 - y0)) && !quadrado) { const t = w; w = h; h = t; }
+    return { tipo: quadrado ? (R.g === 45 ? 'losango' : 'quadrado') : 'retangulo', fechado: true, pts: [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(q => paraFolha(q[0], q[1])) };
+  }
+  // círculo e elipse
+  if (razao >= 0.66 && eElipse < 0.115) {
+    let rx = R.w / 2, ry = R.h / 2; const redondo = Math.min(rx, ry) / Math.max(rx, ry) > 0.82;
+    if (redondo) rx = ry = (rx + ry) / 2;
+    else if (R.g < 12 || R.g > 78) { const deitada = (x1 - x0) > (y1 - y0); const maior = Math.max(rx, ry), menor = Math.min(rx, ry); girarEm(0); rx = deitada ? maior : menor; ry = deitada ? menor : maior; }
+    const out = []; for (let i = 0; i < 120; i++) { const t = i / 120 * 2 * Math.PI; out.push(paraFolha(rx * Math.cos(t), ry * Math.sin(t))); }
+    return { tipo: redondo ? 'circulo' : 'elipse', pts: out, fechado: true };
+  }
+  // triângulo
+  if (razao > 0.38 && razao < 0.66) {
+    const tri = aprFormaMaiorTriangulo(aprFormaCasco(pts));
+    if (tri && aprFormaErroPoligono(pts, tri) / diag < 0.035) {
+      const base = tri.slice().sort((p, q) => q[1] - p[1]);                 // os dois pontos mais baixos: se quase nivelados, nivela a base
+      if (Math.abs(base[0][1] - base[1][1]) < 0.07 * diag) base[0][1] = base[1][1] = (base[0][1] + base[1][1]) / 2;
+      return { tipo: 'triangulo', pts: tri, fechado: true };
+    }
+  }
+  // outros polígonos de 4 ou 5 cantos (trapézio, losango alongado, pentágono)
+  let ini = 0, longe = -1; for (let i = 0; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - R.cx, pts[i][1] - R.cy); if (d > longe) { longe = d; ini = i; } }
+  const girado = pts.slice(ini).concat(pts.slice(0, ini)); girado.push(girado[0]);
+  const cantos = aprFormaCantos(girado, 0.06 * diag).slice(0, -1);
+  if (cantos.length >= 4 && cantos.length <= 5 && aprFormaErroPoligono(pts, cantos) / diag < 0.022 && eElipse > 0.085) return { tipo: 'poligono', pts: cantos, fechado: true };
+  return null;
+}
+// Transforma a lista de pontos da forma no formato guardado no traço
+function aprFormaEmTraco(forma){
+  const p = []; const lista = forma.fechado ? forma.pts.concat([forma.pts[0]]) : forma.pts;
+  for (const q of lista) p.push(Math.round(q[0] * 10) / 10, Math.round(q[1] * 10) / 10, 0.62);
+  return p;
+}
+function aprFormaEhLinha(t){
+  if (!t || (APR_CANETAS[t.f] || {}).apaga) return null;
+  if (t.g && t.p.length === 6) return [[t.p[0], t.p[1]], [t.p[3], t.p[4]]];
+  const f = aprFormaReconhecer(aprFormaLista(t.p)); return f && f.tipo === 'linha' ? f.pts : null;
+}
+// Duas linhas que se cruzam perto do meio viram um + (ou ×) com os braços iguais. Devolve [linhaA, linhaB] ou null
+function aprFormaCruz(la, lb){
+  const [a1, a2] = la, [b1, b2] = lb, dax = a2[0] - a1[0], day = a2[1] - a1[1], dbx = b2[0] - b1[0], dby = b2[1] - b1[1];
+  const den = dax * dby - day * dbx; if (Math.abs(den) < 1e-6) return null;
+  const t = ((b1[0] - a1[0]) * dby - (b1[1] - a1[1]) * dbx) / den, u = ((b1[0] - a1[0]) * day - (b1[1] - a1[1]) * dax) / den;
+  if (t < 0.2 || t > 0.8 || u < 0.2 || u > 0.8) return null;
+  const ca = Math.hypot(dax, day), cb = Math.hypot(dbx, dby); if (Math.min(ca, cb) / Math.max(ca, cb) < 0.45) return null;
+  let angulo = Math.abs(Math.atan2(den, dax * dbx + day * dby) * 180 / Math.PI); if (angulo > 90) angulo = 180 - angulo;
+  if (angulo < 55) return null;
+  const cx = a1[0] + dax * t, cy = a1[1] + day * t, meio = (ca + cb) / 4;
+  let g = Math.atan2(day, dax); const graus = ((g * 180 / Math.PI) % 90 + 90) % 90;
+  if (graus < 20 || graus > 70) g = Math.round(g / (Math.PI / 2)) * (Math.PI / 2);        // quase reto: vira um + alinhado com a folha
+  else g = Math.round((g - Math.PI / 4) / (Math.PI / 2)) * (Math.PI / 2) + Math.PI / 4;    // senão vira um × certinho
+  const ex = Math.cos(g) * meio, ey = Math.sin(g) * meio;
+  return [[[cx - ex, cy - ey], [cx + ex, cy + ey]], [[cx + ey, cy - ex], [cx - ey, cy + ex]]];
+}
+// Chamado quando a pessoa segura parada no fim do traço
+function aprNotaParou(){
+  const N = APR.nota; if (!N || N.modo !== 'traco' || !N.traco || N.travado) return;
+  const t = N.traco; if (APR_CANETAS[t.f].apaga || (APR.indice && APR.indice.formas === false)) return;
+  let pts = aprFormaLista(t.p); if (pts.length < 6) return;
+  // tira o tremido do fim, feito enquanto segurava parado
+  const fim = pts[pts.length - 1], raio = 7 / N.s; let corte = pts.length - 1;
+  while (corte > 1 && Math.hypot(pts[corte - 1][0] - fim[0], pts[corte - 1][1] - fim[1]) < raio) corte--;
+  pts = pts.slice(0, corte + 1);
+  if (aprFormaComprimento(pts) * N.s < 28) return;      // traço muito pequeno na tela: é um toque parado, não uma forma
+  const forma = aprFormaReconhecer(pts); if (!forma) return;
+  t.p = aprFormaEmTraco(forma); t.g = 1; N.travado = true; N.formaFeita = forma.tipo;
+  if (forma.tipo === 'linha') {          // cruzou a linha anterior no meio? vira um sinal de +
+    const pg = aprNotaPag(), i = pg.t.length - 1, ant = pg.t[i];
+    const recente = N.ultFim && N.ultFim.i === i && (performance.now() - N.ultFim.quando) < 8000, la = recente ? aprFormaEhLinha(ant) : null;
+    const cruz = la ? aprFormaCruz(la, forma.pts) : null;
+    if (cruz) {
+      const antes = JSON.parse(JSON.stringify(ant)), depois = Object.assign({}, antes, { g: 1, p: aprFormaEmTraco({ pts: cruz[0], fechado: false }) });
+      pg.t[i] = depois; t.p = aprFormaEmTraco({ pts: cruz[1], fechado: false }); N.ajuste = { i, antes, depois }; N.formaFeita = 'cruz'; aprNotaTinta();
+    }
+  }
+  aprNotaVivo();
+  try { if (navigator.vibrate) navigator.vibrate(12); } catch(e){}
+}
+function aprNotaFormasLigar(){
+  const ind = APR.indice; ind.formas = ind.formas === false ? true : false; aprGravarIndice(); aprNotaMenu(true);
+  showToast(ind.formas === false ? 'Ajuste de formas desligado.' : 'Ajuste de formas ligado: desenhe e segure parado no fim do traço.');
+}
 </script>
 </body>
 </html>
