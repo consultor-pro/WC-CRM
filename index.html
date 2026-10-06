@@ -14756,10 +14756,19 @@ if (typeof renderAll === 'function') {
 /* ---- apresentação em tela cheia ---- */
 .apr-show { background: #000; z-index: 246; }
 .apr-show-area { flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; }
-.apr-show-area canvas { max-width: 100%; max-height: 100%; background: #fff; }
+/* na apresentação nada pode ser selecionado nem arrastado: senão segurar o dedo/mouse seleciona o texto do slide em vez de ligar o laser */
+.apr-show-area, .apr-show-area * { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-user-drag: none; }
+.apr-show-area.com-zoom { cursor: grab; }
+.apr-show-zoom { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: 0 0; will-change: transform; }
+.apr-show-zoom canvas { max-width: 100%; max-height: 100%; background: #fff; }
+#aprShowRastro { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; }
+.apr-laser { position: absolute; width: 22px; height: 22px; margin: -11px 0 0 -11px; border-radius: 50%; pointer-events: none; display: none; z-index: 4; }
+.apr-show-ctrl #aprShowCor i { display: block; width: 16px; height: 16px; border-radius: 50%; margin: 0 auto; box-shadow: 0 0 0 2px rgba(255,255,255,.75); }
+.apr-show-dica { position: absolute; left: 50%; top: 14px; transform: translateX(-50%); background: rgba(15,23,42,.78); color: #e2e8f0; font-size: 12.5px; padding: 6px 14px; border-radius: 999px; z-index: 3; transition: opacity .5s; max-width: calc(100% - 24px); text-align: center; pointer-events: none; }
+.apr-show-dica.some { opacity: 0; }
 .apr-show-ctrl { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; background: rgba(15,23,42,.78); color: #fff; border-radius: 999px; padding: 5px 8px; font-size: 13px; transition: opacity .25s; z-index: 3; }
 .apr-show-ctrl.some { opacity: 0; pointer-events: none; }
-.apr-show-ctrl button { width: 38px; height: 34px; border: 0; border-radius: 999px; background: transparent; color: #fff; font-size: 17px; cursor: pointer; }
+.apr-show-ctrl button { width: 36px; height: 34px; border: 0; border-radius: 999px; background: transparent; color: #fff; font-size: 17px; cursor: pointer; }
 .apr-show-ctrl button:hover { background: rgba(255,255,255,.16); }
 .apr-show-ctrl span { min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
 .apr-show-msg { color: #e2e8f0; font-size: 15px; text-align: center; padding: 24px; max-width: 520px; line-height: 1.5; }
@@ -14836,6 +14845,7 @@ if (typeof renderAll === 'function') {
 [data-theme="dark"] .apr-item { border-color: #30363d; }
 </style>
 <script>
+const APR_COM_PDF = true;   // este CRM tem a sub-aba de PDFs?
 /* ================= APRESENTAÇÕES: slides, PDFs e notas à mão =================
    Tudo desta aba fica guardado no aparelho (IndexedDB), separado dos dados do CRM:
    não entra no backup normal nem na nuvem, para não pesar. A própria aba tem
@@ -14940,7 +14950,12 @@ async function aprRender(){
   const cx = document.getElementById('aprLista');
   if (!cx || !currentUser) return;
   const ind = await aprCarregar();
+  if (!APR_COM_PDF) {      // este CRM não guarda PDFs (para ficar leve): some com a sub-aba
+    if (APR.sub === 'pdfs') APR.sub = 'slides';
+    const legenda = document.querySelector('#apresentacoes .card small.muted'); if (legenda) legenda.textContent = 'Monte slides e escreva notas à mão. Fica guardado neste aparelho.';
+  }
   document.querySelectorAll('#apresentacoes .tab-pill').forEach(b => {
+    if (b.dataset.sub === 'pdfs' && !APR_COM_PDF) b.style.display = 'none';
     b.classList.toggle('active', b.dataset.sub === APR.sub);
     const n = ind[b.dataset.sub].length; b.querySelector('i').textContent = n ? ' (' + n + ')' : '';
   });
@@ -15150,28 +15165,36 @@ function aprMostrarDeck(deck, inicio){
 }
 
 // ====================== APRESENTAÇÃO EM TELA CHEIA (slides e PDF) ======================
+// Como no PowerPoint: arrastar para o lado troca o slide (tocar não troca), segurar o dedo liga o laser,
+// dois dedos (ou Ctrl + rodinha) dão zoom, e com zoom um dedo move a imagem. Dois toques seguidos aproximam e voltam.
+const APR_LASER_CORES = [['#ff2d2d', 'vermelho'], ['#22e06b', 'verde'], ['#3b9dff', 'azul'], ['#ffd60a', 'amarelo'], ['#ff5cf0', 'rosa'], ['#ffffff', 'branco']];
 function aprMostrar(op){
   const tela = aprCriarTela('aprTelaShow', 'apr-show');
-  tela.innerHTML = `<div class="apr-show-area" id="aprShowArea"></div>
+  const cor = (APR.indice && APR.indice.laserCor) || APR_LASER_CORES[0][0];
+  tela.innerHTML = `<div class="apr-show-area" id="aprShowArea"><div class="apr-show-zoom" id="aprShowZoom"></div><canvas id="aprShowRastro"></canvas><div class="apr-laser" id="aprLaser"></div></div>
     <div class="apr-show-ctrl" id="aprShowCtrl">
-      <button onclick="aprShowIr(-1)" title="Anterior">‹</button><span id="aprShowN"></span><button onclick="aprShowIr(1)" title="Próximo">›</button>
+      <button onclick="aprShowIr(-1)" title="Anterior (seta para a esquerda)">‹</button><span id="aprShowN"></span><button onclick="aprShowIr(1)" title="Próximo (seta para a direita)">›</button>
+      <button onclick="aprShowZoomBotao(1 / 1.4)" title="Diminuir o zoom">−</button><button onclick="aprShowZoomBotao(1.4)" title="Aumentar o zoom">+</button>
+      <button id="aprShowCor" onclick="aprShowTrocarCor()" title="Cor do laser (segure o dedo ou o botão do mouse na tela para apontar)"><i></i></button>
       <button onclick="aprTelaCheia(document.getElementById('aprTelaShow'))" title="Tela cheia">⛶</button><button onclick="aprShowSair()" title="Sair (Esc)">✕</button>
-    </div>`;
+    </div>
+    <div class="apr-show-dica" id="aprShowDica">Arraste para o lado para trocar · segure para apontar com o laser · dois dedos para zoom</div>`;
   tela.classList.add('aberta');
-  APR.show = { op, i: Math.max(0, Math.min(op.inicio || 0, op.total - 1)), vez: 0 };
+  const sh = APR.show = { op, i: Math.max(0, Math.min(op.inicio || 0, op.total - 1)), vez: 0, z: 1, zx: 0, zy: 0, q: 1, cor, dedos: new Map(), rastro: [], laser: false };
   const area = document.getElementById('aprShowArea');
-  const quisCheia = aprEmTelaCheia() ? false : aprTelaCheia(tela);
-  APR.show.entrouCheia = quisCheia;
-  let x0 = null, y0 = null;
-  area.addEventListener('pointerdown', ev => { x0 = ev.clientX; y0 = ev.clientY; });
-  area.addEventListener('pointerup', ev => {
-    if (x0 === null) return; const dx = ev.clientX - x0, dy = ev.clientY - y0; x0 = null;
-    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) aprShowIr(dx < 0 ? 1 : -1);          // arrastou para o lado
-    else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) aprShowIr(ev.clientX < area.clientWidth * 0.3 ? -1 : 1);   // toque: esquerda volta, resto avança
-  });
+  sh.entrouCheia = aprEmTelaCheia() ? false : aprTelaCheia(tela);
+  area.addEventListener('pointerdown', aprShowAperta);
+  area.addEventListener('pointermove', aprShowMove);
+  area.addEventListener('pointerup', aprShowSolta);
+  area.addEventListener('pointercancel', aprShowSolta);
+  area.addEventListener('wheel', aprShowRoda, { passive: false });
+  area.addEventListener('contextmenu', ev => ev.preventDefault());
+  area.addEventListener('dragstart', ev => ev.preventDefault());
+  area.addEventListener('selectstart', ev => ev.preventDefault());
   tela.addEventListener('pointermove', aprShowAcordar);
-  aprMarcaNaTela(tela, APR.indice && APR.indice.marca && APR.indice.marca.apresentar);
+  aprShowPintarCor(); aprMarcaNaTela(tela, APR.indice && APR.indice.marca && APR.indice.marca.apresentar);
   aprShowDesenhar(); aprShowAcordar();
+  setTimeout(() => { const d = document.getElementById('aprShowDica'); if (d) d.classList.add('some'); }, 4200);
 }
 function aprShowAcordar(){
   const c = document.getElementById('aprShowCtrl'); if (!c) return;
@@ -15179,33 +15202,149 @@ function aprShowAcordar(){
 }
 async function aprShowDesenhar(){
   const sh = APR.show; if (!sh) return; const vez = ++sh.vez;
-  const area = document.getElementById('aprShowArea'); document.getElementById('aprShowN').textContent = (sh.i + 1) + ' / ' + sh.op.total;
-  try { await sh.op.desenhar(sh.i, area, () => !APR.show || APR.show.vez !== vez); } catch(e){ console.warn('[Apresentações]', e); }
+  const cx = document.getElementById('aprShowZoom'); document.getElementById('aprShowN').textContent = (sh.i + 1) + ' / ' + sh.op.total;
+  try { await sh.op.desenhar(sh.i, cx, () => !APR.show || APR.show.vez !== vez, sh.q); } catch(e){ console.warn('[Apresentações]', e); }
 }
 function aprShowIr(d){
   const sh = APR.show; if (!sh) return;
   const j = Math.max(0, Math.min(sh.op.total - 1, sh.i + d)); if (j === sh.i) { aprShowAcordar(); return; }
-  sh.i = j; aprShowDesenhar();
+  sh.i = j; sh.z = 1; sh.zx = sh.zy = 0; sh.q = 1; aprShowAplicarZoom(); aprShowDesenhar();
 }
 function aprShowSair(){
-  const sh = APR.show; if (!sh) return; APR.show = null;
+  const sh = APR.show; if (!sh) return; APR.show = null; clearTimeout(sh.tSegura); cancelAnimationFrame(sh.quadro);
   if (aprEmTelaCheia()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
   const tela = document.getElementById('aprTelaShow'); tela.classList.remove('aberta'); tela.innerHTML = '';
   if (sh.op.aoSair) sh.op.aoSair();
 }
+// ---- zoom ----
+function aprShowAplicarZoom(){
+  const sh = APR.show, cx = document.getElementById('aprShowZoom'), area = document.getElementById('aprShowArea'); if (!sh || !cx) return;
+  const W = area.clientWidth, H = area.clientHeight;
+  sh.z = Math.max(1, Math.min(6, sh.z)); if (sh.z < 1.02) sh.z = 1;
+  sh.zx = Math.min(0, Math.max(W - W * sh.z, sh.zx)); sh.zy = Math.min(0, Math.max(H - H * sh.z, sh.zy));
+  cx.style.transform = sh.z === 1 ? '' : 'translate(' + sh.zx + 'px, ' + sh.zy + 'px) scale(' + sh.z + ')';
+  area.classList.toggle('com-zoom', sh.z > 1);
+  // PDF: depois que o zoom para, redesenha a página com mais pontos para não ficar borrada
+  if (sh.op.nitidez) { clearTimeout(sh.tNitidez); sh.tNitidez = setTimeout(() => { if (APR.show !== sh) return; const q = Math.min(3, Math.ceil(sh.z - 0.15)); if (q !== sh.q) { sh.q = q; aprShowDesenhar(); } }, 320); }
+}
+function aprShowZoomEm(fator, px, py){
+  const sh = APR.show; if (!sh) return; const antes = sh.z, novo = Math.max(1, Math.min(6, sh.z * fator));
+  sh.zx = px - (px - sh.zx) * (novo / antes); sh.zy = py - (py - sh.zy) * (novo / antes); sh.z = novo; aprShowAplicarZoom();
+}
+function aprShowZoomBotao(f){ const a = document.getElementById('aprShowArea'); aprShowZoomEm(f, a.clientWidth / 2, a.clientHeight / 2); aprShowAcordar(); }
+function aprShowRoda(ev){
+  const sh = APR.show; if (!sh) return; ev.preventDefault();
+  const r = ev.currentTarget.getBoundingClientRect();
+  if (ev.ctrlKey || ev.metaKey) { aprShowZoomEm(Math.exp(-ev.deltaY * 0.0022), ev.clientX - r.left, ev.clientY - r.top); return; }
+  if (sh.z > 1) { sh.zx -= ev.deltaX; sh.zy -= ev.deltaY; aprShowAplicarZoom(); return; }
+  const agora = performance.now(); if (agora - (sh.tRoda || 0) < 380 || Math.abs(ev.deltaY) < 8) return;   // rodinha sem zoom: troca o slide
+  sh.tRoda = agora; aprShowIr(ev.deltaY > 0 ? 1 : -1);
+}
+// ---- laser ----
+function aprShowPintarCor(){
+  const sh = APR.show, b = document.querySelector('#aprShowCor i'), l = document.getElementById('aprLaser'); if (!sh) return;
+  if (b) b.style.background = sh.cor;
+  if (l) { l.style.background = 'radial-gradient(circle, #fff 0 22%, ' + sh.cor + ' 42%, ' + sh.cor + ' 60%, transparent 72%)'; l.style.boxShadow = '0 0 14px 5px ' + sh.cor + ', 0 0 34px 12px ' + sh.cor + '55'; }
+}
+function aprShowTrocarCor(){
+  const sh = APR.show; if (!sh) return;
+  const i = APR_LASER_CORES.findIndex(c => c[0] === sh.cor), prox = APR_LASER_CORES[(i + 1) % APR_LASER_CORES.length];
+  sh.cor = prox[0]; aprShowPintarCor(); aprShowAcordar();
+  if (APR.indice) { APR.indice.laserCor = sh.cor; aprGravarIndice(); }
+  showToast('Laser ' + prox[1] + '. Segure o dedo na tela para apontar.');
+}
+function aprShowLaser(ligar, x, y){
+  const sh = APR.show, l = document.getElementById('aprLaser'); if (!sh || !l) return;
+  sh.laser = ligar; l.style.display = ligar ? 'block' : 'none';
+  if (ligar) { aprShowLaserPara(x, y); const d = document.getElementById('aprShowDica'); if (d) d.classList.add('some'); }
+}
+function aprShowLaserPara(x, y){
+  const sh = APR.show, l = document.getElementById('aprLaser'); if (!sh || !l) return;
+  l.style.left = x + 'px'; l.style.top = y + 'px';
+  sh.rastro.push({ x, y, t: performance.now() }); if (sh.rastro.length > 90) sh.rastro.shift();
+  if (!sh.quadro) sh.quadro = requestAnimationFrame(aprShowRastro);
+}
+function aprShowRastro(){     // risco que some atrás do laser
+  const sh = APR.show; if (!sh) return; sh.quadro = 0;
+  const c = document.getElementById('aprShowRastro'), area = document.getElementById('aprShowArea'); if (!c || !area) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2), W = Math.round(area.clientWidth * dpr), H = Math.round(area.clientHeight * dpr);
+  if (c.width !== W || c.height !== H) { c.width = W; c.height = H; }
+  const x = c.getContext('2d'), agora = performance.now(), vida = 420; x.clearRect(0, 0, W, H);
+  sh.rastro = sh.rastro.filter(p => agora - p.t < vida);
+  x.lineCap = 'round'; x.strokeStyle = sh.cor; x.shadowColor = sh.cor; x.shadowBlur = 8 * dpr;
+  for (let i = 1; i < sh.rastro.length; i++) {
+    const a = sh.rastro[i - 1], b = sh.rastro[i], forca = 1 - (agora - b.t) / vida; if (Math.hypot(a.x - b.x, a.y - b.y) > 160) continue;
+    x.globalAlpha = Math.max(0, forca) * 0.75; x.lineWidth = (2 + 6 * forca) * dpr; x.beginPath(); x.moveTo(a.x * dpr, a.y * dpr); x.lineTo(b.x * dpr, b.y * dpr); x.stroke();
+  }
+  if (sh.rastro.length > 1 || (sh.laser && sh.rastro.length)) sh.quadro = requestAnimationFrame(aprShowRastro); else { x.clearRect(0, 0, W, H); sh.rastro = []; }
+}
+// ---- dedos e mouse ----
+function aprShowAperta(ev){
+  const sh = APR.show; if (!sh) return; const area = ev.currentTarget, r = area.getBoundingClientRect();
+  if ((ev.pointerType === 'mouse' && ev.button !== 0) || ev.target.closest('a')) return;
+  try { area.setPointerCapture(ev.pointerId); } catch(e){}
+  sh.dedos.set(ev.pointerId, { x: ev.clientX - r.left, y: ev.clientY - r.top });
+  clearTimeout(sh.tSegura);
+  if (sh.dedos.size === 2) {                        // dois dedos: zoom
+    if (sh.laser) aprShowLaser(false);
+    const [a, b] = [...sh.dedos.values()];
+    sh.pinca = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, z: sh.z, zx: sh.zx, zy: sh.zy }; sh.gesto = 'pinca'; return;
+  }
+  if (sh.dedos.size > 2) return;
+  const p = sh.dedos.get(ev.pointerId);
+  sh.gesto = 'espera'; sh.ini = { x: p.x, y: p.y, t: performance.now(), id: ev.pointerId }; sh.ult = { x: p.x, y: p.y };
+  sh.tSegura = setTimeout(() => { if (APR.show === sh && sh.gesto === 'espera') { sh.gesto = 'laser'; aprShowLaser(true, sh.ult.x, sh.ult.y); try { if (navigator.vibrate) navigator.vibrate(10); } catch(e){} } }, 300);   // segurou parado: laser
+}
+function aprShowMove(ev){
+  const sh = APR.show; if (!sh) return; const r = ev.currentTarget.getBoundingClientRect(), x = ev.clientX - r.left, y = ev.clientY - r.top;
+  if (sh.laserSolto && ev.pointerType === 'mouse' && !sh.dedos.size) { if (!sh.laser) aprShowLaser(true, x, y); else aprShowLaserPara(x, y); return; }   // tecla L: laser segue o mouse
+  if (!sh.dedos.has(ev.pointerId)) return;
+  sh.dedos.set(ev.pointerId, { x, y });
+  if (sh.gesto === 'pinca') {
+    if (sh.dedos.size < 2) return;
+    const [a, b] = [...sh.dedos.values()], p = sh.pinca, d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+    const novo = Math.max(1, Math.min(6, p.z * d / p.d)); sh.zx = mx - (p.mx - p.zx) * (novo / p.z); sh.zy = my - (p.my - p.zy) * (novo / p.z); sh.z = novo; aprShowAplicarZoom(); return;
+  }
+  if (!sh.ini || ev.pointerId !== sh.ini.id) return;
+  if (sh.gesto === 'laser') { aprShowLaserPara(x, y); sh.ult = { x, y }; return; }
+  if (sh.gesto === 'espera' && Math.hypot(x - sh.ini.x, y - sh.ini.y) > 10) { clearTimeout(sh.tSegura); sh.gesto = sh.z > 1 ? 'mover' : 'arrasto'; }   // mexeu antes de segurar: arrastar
+  if (sh.gesto === 'mover') { sh.zx += x - sh.ult.x; sh.zy += y - sh.ult.y; aprShowAplicarZoom(); }
+  sh.ult = { x, y };
+}
+function aprShowSolta(ev){
+  const sh = APR.show; if (!sh || !sh.dedos.has(ev.pointerId)) return;
+  const fim = sh.dedos.get(ev.pointerId); sh.dedos.delete(ev.pointerId); clearTimeout(sh.tSegura);
+  if (sh.gesto === 'pinca') { if (sh.dedos.size < 2) { sh.gesto = sh.dedos.size ? 'ignora' : null; aprShowAplicarZoom(); } return; }
+  if (sh.dedos.size) return;
+  const g = sh.gesto, ini = sh.ini; sh.gesto = null; sh.ini = null;
+  if (g === 'laser') { aprShowLaser(false); return; }
+  if (!ini || g === 'ignora') return;
+  const dx = fim.x - ini.x, dy = fim.y - ini.y;
+  if (g === 'arrasto') { if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.2) aprShowIr(dx < 0 ? 1 : -1); return; }   // arrastou para o lado: troca o slide
+  if (g === 'espera' && ev.type !== 'pointercancel') {      // toque rápido: não troca o slide; dois toques seguidos dão zoom
+    const agora = performance.now(), t = sh.toque;
+    if (t && agora - t.t < 320 && Math.hypot(t.x - fim.x, t.y - fim.y) < 40) { sh.toque = null; if (sh.z > 1) { sh.z = 1; sh.zx = sh.zy = 0; aprShowAplicarZoom(); } else aprShowZoomEm(2.4, fim.x, fim.y); }
+    else sh.toque = { x: fim.x, y: fim.y, t: agora };
+    aprShowAcordar();
+  }
+}
 window.addEventListener('keydown', ev => {
-  if (!APR.show) return;
+  const sh = APR.show; if (!sh) return;
   const t = { ArrowRight: 1, ArrowDown: 1, PageDown: 1, ' ': 1, Enter: 1, ArrowLeft: -1, ArrowUp: -1, PageUp: -1, Backspace: -1 }[ev.key];
   if (t) { ev.preventDefault(); ev.stopPropagation(); aprShowIr(t); }
   else if (ev.key === 'Home') { ev.preventDefault(); aprShowIr(-9999); }
   else if (ev.key === 'End') { ev.preventDefault(); aprShowIr(9999); }
+  else if (ev.key === '+' || ev.key === '=') { ev.preventDefault(); aprShowZoomBotao(1.4); }
+  else if (ev.key === '-') { ev.preventDefault(); aprShowZoomBotao(1 / 1.4); }
+  else if (ev.key === '0') { ev.preventDefault(); sh.z = 1; sh.zx = sh.zy = 0; aprShowAplicarZoom(); }
+  else if ((ev.key || '').toLowerCase() === 'l') { ev.preventDefault(); sh.laserSolto = !sh.laserSolto; if (!sh.laserSolto) aprShowLaser(false); showToast(sh.laserSolto ? 'Laser ligado: ele segue o mouse. Aperte L para desligar.' : 'Laser desligado.'); }
   else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); aprShowSair(); }
 }, true);
 ['fullscreenchange', 'webkitfullscreenchange'].forEach(nome => document.addEventListener(nome, () => {
-  if (APR.show) { if (!aprEmTelaCheia() && APR.show.entrouCheia) aprShowSair(); else setTimeout(aprShowDesenhar, 120); }   // Esc do navegador sai da tela cheia: fecha a apresentação
+  if (APR.show) { if (!aprEmTelaCheia() && APR.show.entrouCheia) aprShowSair(); else setTimeout(() => { if (APR.show) { aprShowAplicarZoom(); aprShowDesenhar(); } }, 120); }   // Esc do navegador sai da tela cheia: fecha a apresentação
   if (APR.nota) { aprNotaBotoes(); setTimeout(aprNotaRedimensionar, 120); }
 }));
-window.addEventListener('resize', () => { if (APR.show) { clearTimeout(APR.tRedim); APR.tRedim = setTimeout(aprShowDesenhar, 150); } });
+window.addEventListener('resize', () => { if (APR.show) { clearTimeout(APR.tRedim); APR.tRedim = setTimeout(() => { if (APR.show) { aprShowAplicarZoom(); aprShowDesenhar(); } }, 150); } });
 
 // ====================== PDFs ======================
 const APR_PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
@@ -15221,6 +15360,7 @@ function aprCarregarPdfJs(){
   return APR.pdfjs;
 }
 function aprEnviarPdf(){
+  if (!APR_COM_PDF) return;
   aprPedirArquivo('application/pdf,.pdf', true, async arquivos => {
     const ind = await aprCarregar(); let entrou = 0;
     for (const f of arquivos) {
@@ -15237,6 +15377,7 @@ function aprEnviarPdf(){
 }
 // Conta as páginas e faz a miniatura da capa (precisa do leitor de PDF; se estiver sem internet, fica para depois)
 async function aprPdfMiniaturas(){
+  if (!APR_COM_PDF) return;
   const ind = await aprCarregar(); const faltam = ind.pdfs.filter(p => !p.paginas); if (!faltam.length) return;
   let lib; try { lib = await aprCarregarPdfJs(); } catch(e){ return; }
   for (const p of faltam) {
@@ -15258,7 +15399,7 @@ async function aprApresentarPdf(id){
   const ind = await aprCarregar(); const p = ind.pdfs.find(x => x.id === id); const blob = await idbGetArquivo(aprChave('pdf_' + id));
   if (!p || !blob) { showToast('Não encontrei esse PDF neste aparelho.', 'error'); return; }
   let doc = null;
-  aprMostrar({ total: Math.max(1, p.paginas || 1), aoSair: () => { if (doc) doc.destroy(); }, desenhar: async (i, area, cancelado) => {
+  aprMostrar({ total: Math.max(1, p.paginas || 1), nitidez: true, aoSair: () => { if (doc) doc.destroy(); }, desenhar: async (i, area, cancelado, qualidade) => {
     if (!doc) {
       area.innerHTML = '<div class="apr-show-msg">Abrindo o PDF...</div>';
       try { const lib = await aprCarregarPdfJs(); doc = await lib.getDocument({ data: await blob.arrayBuffer() }).promise; }
@@ -15273,7 +15414,9 @@ async function aprApresentarPdf(id){
     }
     const pg = await doc.getPage(i + 1); if (cancelado()) return;
     const v0 = pg.getViewport({ scale: 1 }); const esc0 = Math.min(area.clientWidth / v0.width, area.clientHeight / v0.height);
-    const dpr = Math.min(window.devicePixelRatio || 1, 2.5); const v = pg.getViewport({ scale: esc0 * dpr });
+    let fator = Math.min(window.devicePixelRatio || 1, 2.5) * (qualidade || 1);
+    fator = Math.min(fator, Math.sqrt(16e6 / Math.max(1, v0.width * esc0 * v0.height * esc0)));      // no máximo uns 16 milhões de pontos, para não pesar no celular
+    const v = pg.getViewport({ scale: esc0 * fator });
     const c = document.createElement('canvas'); c.width = Math.round(v.width); c.height = Math.round(v.height);
     c.style.width = Math.round(v0.width * esc0) + 'px'; c.style.height = Math.round(v0.height * esc0) + 'px';
     await pg.render({ canvasContext: c.getContext('2d'), viewport: v }).promise; if (cancelado()) return;
@@ -15831,8 +15974,8 @@ async function aprMarcaSalvar(){
 function aprAbrirCopia(){
   openModal(`
     <div class="between"><h2 style="margin:0">Cópia de segurança</h2><button class="btn" onclick="closeModal()">✕</button></div>
-    <p style="font-size:13.5px;line-height:1.5;margin:8px 0 12px">Os slides, PDFs e notas ficam guardados <b>só neste aparelho</b>. Eles não entram no Backup normal do CRM nem na nuvem, para não deixar o CRM pesado. Para levar para outro aparelho, ou se proteger caso o navegador seja limpo, baixe uma cópia aqui de vez em quando.</p>
-    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:12px"><input type="checkbox" id="aprCpPdf" style="width:auto;margin:0"> Incluir os PDFs (o arquivo fica bem maior)</label>
+    <p style="font-size:13.5px;line-height:1.5;margin:8px 0 12px">Os slides${APR_COM_PDF ? ', PDFs' : ''} e notas ficam guardados <b>só neste aparelho</b>. Eles não entram no Backup normal do CRM nem na nuvem, para não deixar o CRM pesado. Para levar para outro aparelho, ou se proteger caso o navegador seja limpo, baixe uma cópia aqui de vez em quando.</p>
+    ${APR_COM_PDF ? `<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:12px"><input type="checkbox" id="aprCpPdf" style="width:auto;margin:0"> Incluir os PDFs (o arquivo fica bem maior)</label>` : ''}
     <div class="row"><button class="btn primary" onclick="aprBaixarCopia()">Baixar cópia</button><button class="btn" onclick="aprRestaurarCopia()">Trazer de uma cópia</button></div>
     <small class="muted" style="display:block;margin-top:10px">"Trazer de uma cópia" acrescenta o que estiver no arquivo, sem apagar o que já existe aqui.</small>`);
 }
@@ -15853,7 +15996,7 @@ function aprRestaurarCopia(){
     const ind = await aprCarregar(); let n = 0;
     for (const d of pacote.slides || []) { if (!d || !Array.isArray(d.slides) || !d.slides.length) continue; if (ind.slides.some(x => x.id === d.id)) d.id = aprId(); await aprGravarDeck(d); n++; }
     for (const d of pacote.notas || []) { if (!d || !Array.isArray(d.paginas) || !d.paginas.length) continue; if (ind.notas.some(x => x.id === d.id)) d.id = aprId(); await aprGravarNota(d); n++; }
-    for (const p of pacote.pdfs || []) { try { const blob = await (await fetch(p.dados)).blob(); const id = aprId(); if (await idbSetArquivo(aprChave('pdf_' + id), blob)) { ind.pdfs.push({ id, nome: p.nome || 'PDF', tamanho: blob.size, criado: new Date().toISOString(), paginas: 0, mini: '' }); n++; } } catch(e){} }
+    for (const p of (APR_COM_PDF ? pacote.pdfs || [] : [])) { try { const blob = await (await fetch(p.dados)).blob(); const id = aprId(); if (await idbSetArquivo(aprChave('pdf_' + id), blob)) { ind.pdfs.push({ id, nome: p.nome || 'PDF', tamanho: blob.size, criado: new Date().toISOString(), paginas: 0, mini: '' }); n++; } } catch(e){} }
     if (pacote.marca && ind.marca.modo === 'nenhuma') { ind.marca = Object.assign({}, APR_MARCA_PADRAO, pacote.marca); if (pacote.marcaImg) { APR.marcaImg = pacote.marcaImg; await idbSetArquivo(aprChave('marca_img'), pacote.marcaImg); } }
     await aprGravarIndice(); closeModal(); aprRender(); aprPdfMiniaturas(); showToast(n + ' item(ns) trazido(s) da cópia.');
   });
