@@ -14903,7 +14903,14 @@ if (typeof renderAll === 'function') {
 .apr-slide .s-texto ul { margin: 0; padding-left: 1.15em; }
 .apr-slide .s-texto li { margin-bottom: .35em; }
 .apr-slide .s-texto p { margin: 0 0 .5em; }
-.apr-slide .s-img { background-size: cover; background-position: center; background-color: rgba(127,127,127,.14); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 600; opacity: .9; }
+.apr-slide .s-img.tem { background-color: transparent; }
+.apr-slide .s-img-in { position: absolute; inset: 0; background-position: center; background-repeat: no-repeat; transform-origin: 50% 50%; }
+#aprEdSlide .s-img.tem { cursor: grab; touch-action: none; }
+#aprEdSlide .s-img.tem.movendo { cursor: grabbing; outline: 3px dashed rgba(255,255,255,.75); outline-offset: -3px; }
+.apr-ed-img { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.apr-ed-pct { min-width: 40px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.apr-ed-dica { color: #64748b; font-size: 11.5px; }
+.apr-slide .s-img { position: relative; overflow: hidden; background-size: cover; background-position: center; background-color: rgba(127,127,127,.14); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 600; opacity: .9; }
 .apr-slide [contenteditable] { outline: none; border-radius: 8px; cursor: text; }
 .apr-slide [contenteditable]:hover { box-shadow: 0 0 0 2px rgba(100,116,139,.28); }
 .apr-slide [contenteditable]:focus { box-shadow: 0 0 0 3px rgba(37,99,235,.45); }
@@ -15226,6 +15233,10 @@ function aprTextoHtml(txt){
   String(txt || '').split('\n').forEach(l => { const m = l.match(/^\s*[-•*]\s+(.*)$/); if (m) lista.push(m[1]); else { fecha(); if (l.trim()) html += '<p>' + esc(l) + '</p>'; } });
   fecha(); return html;
 }
+// Imagem do slide: imgModo = 'cobrir' (preenche o espaço, pode cortar) ou 'caber' (aparece inteira);
+// imgZoom = tamanho em % (100 = normal); imgX / imgY = deslocamento em % do espaço da imagem.
+function aprImgZoom(s){ return Math.max(20, Math.min(400, Number(s && s.imgZoom) || 100)); }
+function aprImgTransform(s){ return `translate(${Number(s && s.imgX) || 0}%, ${Number(s && s.imgY) || 0}%) scale(${aprImgZoom(s) / 100})`; }
 function aprSlideHtml(s, tema, editar){
   s = s || {}; const lay = APR_LAYOUTS.some(l => l[0] === s.layout) ? s.layout : 'texto';
   const ed = (campo, dica) => editar ? ` contenteditable="${APR_EDITAVEL}" spellcheck="false" data-campo="${campo}" data-dica="${dica}"` : '';
@@ -15233,7 +15244,7 @@ function aprSlideHtml(s, tema, editar){
   const dicaTexto = { capa: 'Subtítulo', destaque: 'Escreva a frase de destaque' }[lay] || 'Texto. Comece a linha com "- " para fazer tópicos';
   const titulo = `<div class="s-titulo apr-auto"${ed('titulo', dicaTitulo)}>${esc(s.titulo || '')}</div>`;
   const texto = `<div class="s-texto apr-auto"${ed('texto', dicaTexto)}>${editar ? esc(s.texto || '') : aprTextoHtml(s.texto)}</div>`;
-  const img = `<div class="s-img"${s.img ? ` style="background-image:url('${aprUrlImagem(s.img)}')"` : ''}>${s.img || !editar ? '' : 'Sem imagem: use "Escolher imagem"'}</div>`;
+  const img = `<div class="s-img${s.img ? ' tem' : ''}">${s.img ? `<div class="s-img-in" style="background-image:url('${aprUrlImagem(s.img)}');background-size:${s.imgModo === 'caber' ? 'contain' : 'cover'};transform:${aprImgTransform(s)}"></div>` : (editar ? 'Sem imagem: use "Escolher imagem"' : '')}</div>`;
   let dentro;
   if (lay === 'imgdir') dentro = `<div class="s-col">${titulo}${texto}</div>${img}`;
   else if (lay === 'imagem') dentro = img + ((s.titulo || editar) ? titulo : '');
@@ -15300,6 +15311,15 @@ function aprEditarDeck(deck){
           <span class="apr-sep"></span><span class="rot">Modelo</span>
           <select id="aprEdLayout" onchange="aprEdLayout(this.value)" style="width:auto;margin:0;padding:5px 8px;font-size:12px">${APR_LAYOUTS.map(l => `<option value="${l[0]}">${l[1]}</option>`).join('')}</select>
           <button class="apr-bt" id="aprEdBtImg" onclick="aprEdImagem()">Escolher imagem</button><button class="apr-bt" id="aprEdBtSemImg" onclick="aprEdSemImagem()">Tirar imagem</button>
+          <span id="aprEdImgAjuste" class="apr-ed-img" style="display:none">
+            <span class="apr-sep"></span><span class="rot">Imagem</span>
+            <button class="apr-bt" id="aprEdImgInteira" onclick="aprEdImgModo('caber')" title="Mostra a imagem inteira, sem cortar">Inteira</button><button class="apr-bt" id="aprEdImgCobrir" onclick="aprEdImgModo('cobrir')" title="Preenche todo o espaço da imagem, cortando o que sobrar">Preencher</button>
+            <button class="apr-bt" onclick="aprEdImgZoom(-10)" title="Diminuir a imagem">${aprSvg(APR_IC.menos)}</button>
+            <span id="aprEdImgPct" class="apr-ed-pct">100%</span>
+            <button class="apr-bt" onclick="aprEdImgZoom(10)" title="Aumentar a imagem">${aprSvg(APR_IC.mais)}</button>
+            <button class="apr-bt" onclick="aprEdImgCentro()" title="Volta ao tamanho normal, no centro">Centralizar</button>
+            <span class="apr-ed-dica">Arraste a imagem para posicionar</span>
+          </span>
         </div>
         <div class="apr-palco" id="aprEdPalco"><div class="apr-palco-in" id="aprEdSlide"></div></div>
       </div>
@@ -15311,6 +15331,7 @@ function aprEditarDeck(deck){
     APR.ed.deck.slides[APR.ed.i][el.dataset.campo] = el.innerText.replace(/ /g, ' ').replace(/\n$/, '');
     aprAjustarTexto(palco.firstElementChild); aprEdSujo(); clearTimeout(APR.ed.tMini); APR.ed.tMini = setTimeout(() => aprEdMini(APR.ed.i), 350);
   });
+  aprEdImgLigar(palco);
   palco.addEventListener('paste', ev => {   // cola só o texto, sem formatação de fora
     const el = ev.target.closest('[data-campo]'); if (!el) return;
     ev.preventDefault(); document.execCommand('insertText', false, (ev.clipboardData || window.clipboardData).getData('text/plain'));
@@ -15338,6 +15359,60 @@ function aprEdSlide(){
   const usaImg = s.layout === 'imgdir' || s.layout === 'imagem';
   document.getElementById('aprEdBtImg').style.display = usaImg ? '' : 'none';
   document.getElementById('aprEdBtSemImg').style.display = usaImg && s.img ? '' : 'none';
+  const aj = document.getElementById('aprEdImgAjuste');
+  if (aj) {
+    aj.style.display = usaImg && s.img ? '' : 'none';
+    aprEdImgBotoes(s);
+  }
+}
+// ---------- ajuste da imagem do slide (tamanho, encaixe e posição) ----------
+function aprEdImgAplicar(salvar){
+  const s = APR.ed.deck.slides[APR.ed.i], el = document.querySelector('#aprEdSlide .s-img-in');
+  if (el) { el.style.backgroundSize = s.imgModo === 'caber' ? 'contain' : 'cover'; el.style.transform = aprImgTransform(s); }
+  aprEdImgBotoes(s);
+  if (salvar !== false) { aprEdSujo(); clearTimeout(APR.ed.tMini); APR.ed.tMini = setTimeout(() => aprEdMini(APR.ed.i), 250); }
+}
+function aprEdImgBotoes(s){
+  const pct = document.getElementById('aprEdImgPct'); if (pct) pct.textContent = aprImgZoom(s) + '%';
+  const a = document.getElementById('aprEdImgInteira'), b = document.getElementById('aprEdImgCobrir');
+  if (a) a.classList.toggle('ativo', s.imgModo === 'caber'); if (b) b.classList.toggle('ativo', s.imgModo !== 'caber');
+}
+function aprEdImgModo(modo){ const s = APR.ed.deck.slides[APR.ed.i]; if ((s.imgModo === 'caber' ? 'caber' : 'cobrir') === modo) return; s.imgModo = modo; s.imgX = 0; s.imgY = 0; s.imgZoom = 100; aprEdImgAplicar(); }
+function aprEdImgZoom(passo, exato){ const s = APR.ed.deck.slides[APR.ed.i]; s.imgZoom = Math.max(20, Math.min(400, Math.round(exato || (aprImgZoom(s) + passo)))); aprEdImgAplicar(); }
+function aprEdImgCentro(){ const s = APR.ed.deck.slides[APR.ed.i]; s.imgX = 0; s.imgY = 0; s.imgZoom = 100; aprEdImgAplicar(); }
+// arrastar move a imagem; dois dedos (ou a rodinha do mouse) mudam o tamanho
+function aprEdImgLigar(palco){
+  const dedos = new Map(); let gesto = null;
+  const caixa = ev => { const c = ev.target.closest && ev.target.closest('.s-img.tem'); return c && palco.contains(c) ? c : null; };
+  const dist = () => { const p = [...dedos.values()]; return Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y); };
+  palco.addEventListener('pointerdown', ev => {
+    const c = caixa(ev); if (!c || !APR.ed) return;
+    ev.preventDefault(); try { c.setPointerCapture(ev.pointerId); } catch (e) {}
+    dedos.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    const s = APR.ed.deck.slides[APR.ed.i], r = c.getBoundingClientRect();
+    gesto = dedos.size >= 2 ? { tipo: 'pinca', d0: dist(), z0: aprImgZoom(s) }
+                            : { tipo: 'mover', x0: ev.clientX, y0: ev.clientY, ix: Number(s.imgX) || 0, iy: Number(s.imgY) || 0, w: r.width || 1, h: r.height || 1 };
+    c.classList.add('movendo');
+  });
+  palco.addEventListener('pointermove', ev => {
+    if (!gesto || !dedos.has(ev.pointerId) || !APR.ed) return;
+    dedos.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    const s = APR.ed.deck.slides[APR.ed.i];
+    if (gesto.tipo === 'pinca' && dedos.size >= 2) s.imgZoom = Math.max(20, Math.min(400, Math.round(gesto.z0 * dist() / (gesto.d0 || 1))));
+    else if (gesto.tipo === 'mover') {
+      s.imgX = Math.max(-150, Math.min(150, Math.round((gesto.ix + (ev.clientX - gesto.x0) / gesto.w * 100) * 10) / 10));
+      s.imgY = Math.max(-150, Math.min(150, Math.round((gesto.iy + (ev.clientY - gesto.y0) / gesto.h * 100) * 10) / 10));
+    }
+    aprEdImgAplicar(false);
+  });
+  const solta = ev => {
+    if (!dedos.has(ev.pointerId)) return;
+    dedos.delete(ev.pointerId);
+    if (!dedos.size) { gesto = null; palco.querySelectorAll('.s-img.movendo').forEach(c => c.classList.remove('movendo')); if (APR.ed) aprEdImgAplicar(); }
+    else gesto = null;   // sobrou um dedo depois da pinça: espera soltar para não dar um pulo
+  };
+  palco.addEventListener('pointerup', solta); palco.addEventListener('pointercancel', solta);
+  palco.addEventListener('wheel', ev => { if (!caixa(ev) || !APR.ed) return; ev.preventDefault(); aprEdImgZoom(ev.deltaY < 0 ? 5 : -5); }, { passive: false });
 }
 function aprEdIr(i){ APR.ed.i = i; document.querySelectorAll('#aprEdLista .apr-ed-mini').forEach(m => m.classList.toggle('sel', Number(m.dataset.i) === i)); aprEdSlide(); }
 function aprEdNovo(){ APR.ed.deck.slides.splice(APR.ed.i + 1, 0, { layout: 'texto', titulo: '', texto: '' }); APR.ed.i++; aprEdSujo(); aprEdTudo(); }
@@ -15353,13 +15428,14 @@ function aprEdExcluir(){
 }
 function aprEdLayout(l){ APR.ed.deck.slides[APR.ed.i].layout = l; aprEdSujo(); aprEdMini(APR.ed.i); aprEdSlide(); }
 function aprEdTema(t){ APR.ed.deck.tema = t; aprEdSujo(); aprEdTudo(); }
+// imagem nova entra inteira (sem cortar) e no centro
 function aprEdImagem(){
   aprPedirArquivo('image/*', false, async fs => {
-    try { APR.ed.deck.slides[APR.ed.i].img = await aprReduzirImagem(fs[0], 1600, false); aprEdSujo(); aprEdMini(APR.ed.i); aprEdSlide(); }
+    try { const s = APR.ed.deck.slides[APR.ed.i]; s.img = await aprReduzirImagem(fs[0], 1600, false); s.imgModo = 'caber'; s.imgX = 0; s.imgY = 0; s.imgZoom = 100; aprEdSujo(); aprEdMini(APR.ed.i); aprEdSlide(); }
     catch(e){ showToast(e.message || 'Não foi possível usar essa imagem.', 'error'); }
   });
 }
-function aprEdSemImagem(){ delete APR.ed.deck.slides[APR.ed.i].img; aprEdSujo(); aprEdMini(APR.ed.i); aprEdSlide(); }
+function aprEdSemImagem(){ const s = APR.ed.deck.slides[APR.ed.i]; delete s.img; delete s.imgX; delete s.imgY; delete s.imgZoom; aprEdSujo(); aprEdMini(APR.ed.i); aprEdSlide(); }
 async function aprEdFechar(){
   clearTimeout(APR.ed.tSalvar); await aprGravarDeck(APR.ed.deck);
   document.getElementById('aprTelaSlides').classList.remove('aberta'); document.getElementById('aprTelaSlides').innerHTML = ''; APR.ed = null; aprRender();
