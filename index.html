@@ -1037,6 +1037,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
 </div>
 
 <section id="dashboard" class="page active">
+  <div class="card ph-card" id="paraHojeCard" style="margin-bottom:16px;display:none"><div id="paraHoje"></div></div>
   <div class="card" style="margin-bottom:16px">
     <div class="between">
       <div>
@@ -1167,7 +1168,6 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     </div>
   </div>
 
-  <div class="card"><h2>Prioridades de Retorno / Acompanhamento</h2><div id="today"></div></div>
 </section>
 
 <section id="leads" class="page">
@@ -1182,7 +1182,9 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <h2>Carteira de Leads & Clientes <span class="badge b-blue" id="leadFilterCount" style="font-size:12px;vertical-align:middle">0 leads</span></h2>
       <small class="muted">Gerenciamento seguro com hierarquia de visibilidade e privacidade.</small>
     </div>
-    <div class="row">
+    <div class="row leads-barra" id="leadsBarra">
+      <button class="btn" id="leadsFiltrosBt" onclick="leadsFiltrosAlternar()">⚙️ Filtros</button>
+      <button class="btn" id="leadsFiltrosLimpar" onclick="leadsFiltrosLimpar()" style="display:none">Limpar</button>
       <button class="btn" onclick="abrirImportarPlanilha()">📥 Importar Planilha</button>
       <button class="btn green" onclick="abrirExportarLeads()">📤 Exportar seleção</button>
       <select id="leadFilterScore" onchange="renderLeads()" style="max-width:190px">
@@ -1593,6 +1595,10 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       </div>
     </div>
     <small class="muted">Os botões de Publicidade, WhatsApp e Proposta agora ficam embaixo de cada card, logo abaixo ⬇ — essas configurações valem pra todos eles.</small>
+    <div class="row" style="margin-top:10px;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" onclick="aprSimulacaoEmSlides()">🎞️ Virar apresentação</button>
+      <small class="muted">Monta os slides desta simulação na aba Apresentações, prontos para mostrar ao cliente.</small>
+    </div>
     <div id="exportSimStatus" class="muted" style="font-size:12px;margin-top:6px"></div>
   </div>
 
@@ -2171,6 +2177,27 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     <div id="configMenuOcultosWrap" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:2px"></div>
   </div>
 
+  <div class="card" style="margin-top:20px" id="bkpCard">
+    <h2>🛟 Cópias automáticas</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:10px">
+      Todo dia, ao abrir, o CRM guarda sozinho uma cópia de como os dados estavam, e também guarda uma cópia
+      antes de qualquer importação. Se algo for apagado ou importado por engano, é só voltar para uma delas.
+      <b>Essas cópias ficam neste aparelho</b>: se o aparelho for perdido ou o navegador for limpo, o que salva é o
+      arquivo de backup baixado. Por isso o CRM também baixa esse arquivo sozinho, na frequência abaixo.
+    </p>
+    <div class="row" style="align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <label for="bkpBaixarSel" style="font-size:13px;font-weight:700;margin:0">Baixar o arquivo de backup sozinho:</label>
+      <select id="bkpBaixarSel" onchange="bkpMudarFrequencia(this.value)" style="max-width:220px;margin:0">
+        <option value="semanal">Toda semana</option>
+        <option value="diario">Todo dia</option>
+        <option value="nunca">Não baixar sozinho</option>
+      </select>
+      <button class="btn" onclick="exportData()">💾 Baixar agora</button>
+      <span class="muted" style="font-size:12px" id="bkpUltimoTxt"></span>
+    </div>
+    <div id="bkpLista"></div>
+  </div>
+
   <div class="card" style="margin-top:20px">
     <h2>🔀 Importar e Mesclar Backup de Outro CRM</h2>
     <p class="muted" style="font-size:13px;margin-bottom:10px">
@@ -2302,7 +2329,61 @@ function compressImage(file, maxWidth = 800, quality = 0.7) {
 
 // === ARMAZENAMENTO EXCLUSIVAMENTE LOCAL (LOCALSTORAGE) ===
 const urlParams = new URLSearchParams(window.location.search);
-const EQUIPE_ID = urlParams.get('equipe') || 'equipe_principal';
+// === GAVETA DE DADOS ===
+// Vários CRMs moram no mesmo endereço (consultor-pro.github.io). Para um nunca
+// enxergar os dados do outro no mesmo navegador, cada um guarda tudo numa
+// "gaveta" com nome próprio.
+//  - GAVETA_FIXA vazia: o nome sai sozinho do endereço do CRM
+//    (ex.: .../JOAO-CRM/ usa a gaveta "joao-crm"). É o certo para cópias novas.
+//  - GAVETA_FIXA preenchida: usa sempre esse nome. NÃO troque num CRM que já
+//    tem dados: o navegador passaria a olhar para uma gaveta vazia.
+const GAVETA_FIXA = 'wc-pessoal';
+const GAVETA_TRAZ_ANTIGA = true; // true só no CRM que precisa buscar os dados da gaveta antiga
+const GAVETA_ANTIGA = 'equipe_principal';
+function gavetaPeloEndereco(){
+  try {
+    if (!/^https?:$/.test(location.protocol)) return GAVETA_ANTIGA;
+    const partes = location.pathname.split('/').filter(p => p && !/\.html?$/i.test(p));
+    const nome = (partes[0] || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    return nome || GAVETA_ANTIGA;
+  } catch (e) { return GAVETA_ANTIGA; }
+}
+const EQUIPE_ID = urlParams.get('equipe') || GAVETA_FIXA || gavetaPeloEndereco();
+
+// Mudança de gaveta: na primeira vez que este CRM abre com a gaveta nova, ele
+// traz tudo que estava na antiga (e só então esvazia a antiga). Cada item é
+// conferido depois de copiado; se algo falhar, o original fica onde estava.
+(function gavetaTrazerDadosAntigos(){
+  if (!GAVETA_TRAZ_ANTIGA || EQUIPE_ID === GAVETA_ANTIGA || EQUIPE_ID !== GAVETA_FIXA) return;
+  const marca = 'crm_gaveta_' + EQUIPE_ID;
+  try {
+    const estado = localStorage.getItem(marca);
+    if (estado === 'ok') return;
+    if (estado !== 'trazendo' && localStorage.getItem('crm_users_' + EQUIPE_ID) !== null) { localStorage.setItem(marca, 'ok'); return; }
+    const sufixo = '_' + GAVETA_ANTIGA, antigas = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf('crm_') === 0 && (k.endsWith(sufixo) || k.indexOf(sufixo + '_') > 0)) antigas.push(k);
+    }
+    if (!antigas.length) { localStorage.setItem(marca, 'ok'); return; }
+    try { localStorage.setItem(marca, 'trazendo'); } catch (e) {} // armazenamento cheio: segue assim mesmo, a mudança não ocupa espaço a mais
+    antigas.sort((a, b) => localStorage.getItem(a).length - localStorage.getItem(b).length);
+    let falhou = false;
+    antigas.forEach(k => {
+      const nova = k.replace(sufixo, '_' + EQUIPE_ID), valor = localStorage.getItem(k);
+      try { localStorage.setItem(nova, valor); }
+      catch (e) {
+        // sem espaço para as duas cópias ao mesmo tempo: tira a antiga e grava a nova;
+        // se nem assim couber, devolve a antiga para o lugar
+        localStorage.removeItem(k);
+        try { localStorage.setItem(nova, valor); }
+        catch (e2) { try { localStorage.setItem(k, valor); } catch (e3) {} falhou = true; return; }
+      }
+      if (localStorage.getItem(nova) === valor) localStorage.removeItem(k); else falhou = true;
+    });
+    if (!falhou) { try { localStorage.setItem('crm_gaveta_idb_' + EQUIPE_ID, 'pendente'); localStorage.setItem(marca, 'ok'); } catch (e) {} }
+  } catch (e) { console.warn('[gaveta] não consegui trazer os dados antigos agora:', e); }
+})();
 
 // Número da versão deste CRM. Suba esse número toda vez que subir uma
 // atualização no GitHub — é o que aparece no rodapé do sistema, para
@@ -2691,7 +2772,60 @@ const IDB_STORE = 'dados';
 const IDB_STORE_ARQUIVOS = 'arquivos'; // fotos de avatar e anexos pesados da aba Informações
 let idbConexao = null;
 
+let gavetaIdbTentou = false, gavetaIdbPromessa = null;
+function gavetaIdbPendente(){
+  try {
+    if (gavetaIdbTentou) return false;
+    const m = localStorage.getItem('crm_gaveta_idb_' + EQUIPE_ID);
+    // sem marca nenhuma num CRM que muda de gaveta: confere mesmo assim se ficou foto ou nota na gaveta antiga
+    return m === 'pendente' || (m === null && GAVETA_TRAZ_ANTIGA && EQUIPE_ID === GAVETA_FIXA && EQUIPE_ID !== GAVETA_ANTIGA);
+  } catch (e) { return false; }
+}
+async function gavetaTrazerIdb(){
+  gavetaIdbTentou = true;
+  const nomeAntigo = 'crm_wc_storage_' + GAVETA_ANTIGA, marca = 'crm_gaveta_idb_' + EQUIPE_ID;
+  const antigo = await new Promise(resolve => {
+    let criouAgora = false, respondeu = false;
+    const fim = v => { if (!respondeu) { respondeu = true; resolve(v); } };
+    let req; try { req = indexedDB.open(nomeAntigo); } catch (e) { return fim(null); }
+    // se o banco antigo nem existe, o navegador tentaria criar um vazio: cancela
+    req.onupgradeneeded = () => { criouAgora = true; try { req.transaction.abort(); } catch (e) {} };
+    req.onsuccess = () => { if (criouAgora) { try { req.result.close(); } catch (e) {} fim('vazio'); } else fim(req.result); };
+    req.onerror = ev => { if (ev && ev.preventDefault) ev.preventDefault(); fim(criouAgora ? 'vazio' : null); };
+    setTimeout(() => fim(null), 4000);
+  });
+  if (antigo === 'vazio') { try { localStorage.setItem(marca, 'ok'); } catch (e) {} return; }
+  if (!antigo) return; // não abriu agora: tenta de novo na próxima vez
+  const novo = await abrirIndexedDBDireto();
+  const pedir = (r) => new Promise((ok, erro) => { r.onsuccess = () => ok(r.result); r.onerror = () => erro(r.error); });
+  for (const loja of [IDB_STORE, IDB_STORE_ARQUIVOS]) {
+    if (!antigo.objectStoreNames.contains(loja)) continue;
+    const chaves = await pedir(antigo.transaction(loja, 'readonly').objectStore(loja).getAllKeys());
+    for (const chave of chaves) {
+      const valor = await pedir(antigo.transaction(loja, 'readonly').objectStore(loja).get(chave));
+      const nova = (loja === IDB_STORE && typeof chave === 'string') ? chave.replace('_' + GAVETA_ANTIGA, '_' + EQUIPE_ID) : chave;
+      await new Promise((ok, erro) => {
+        const tx = novo.transaction(loja, 'readwrite');
+        // "add" não passa por cima do que já existir na gaveta nova
+        const r = tx.objectStore(loja).add(valor, nova);
+        r.onerror = ev => { ev.preventDefault(); ev.stopPropagation(); };
+        tx.oncomplete = () => ok(); tx.onerror = () => erro(tx.error); tx.onabort = () => erro(tx.error);
+      });
+    }
+  }
+  try { antigo.close(); } catch (e) {}
+  try { localStorage.setItem(marca, 'ok'); } catch (e) {}
+  try { indexedDB.deleteDatabase(nomeAntigo); } catch (e) {}
+}
 function abrirIndexedDB(){
+  if (!idbConexao && gavetaIdbPendente()) {
+    if (!gavetaIdbPromessa) gavetaIdbPromessa = gavetaTrazerIdb().catch(e => console.warn('[gaveta] fotos e anexos antigos ficam para a próxima abertura:', e));
+    return gavetaIdbPromessa.then(() => abrirIndexedDBDireto());
+  }
+  if (gavetaIdbPromessa) return gavetaIdbPromessa.then(() => abrirIndexedDBDireto());
+  return abrirIndexedDBDireto();
+}
+function abrirIndexedDBDireto(){
   return new Promise((resolve, reject) => {
     if(!window.indexedDB){ reject(new Error('IndexedDB não suportado neste navegador.')); return; }
     if(idbConexao){ resolve(idbConexao); return; }
@@ -2776,6 +2910,8 @@ function setItemSeguro(chave, valor){
 }
 
 function persistirChave(chave, jsonSerializado, valorOriginal){
+  // a lista de usuários nunca é gravada com senha legível
+  if (chave === KEY_USERS && senhasProtegerLista()) { jsonSerializado = JSON.stringify(usersList); valorOriginal = usersList; }
   // Estourou o limite do localStorage (ou outra falha de escrita)? setItemSeguro já avisa
   // na tela. Ainda assim tentamos guardar no IndexedDB (que aguenta muito mais) como uma
   // segunda chance de não perder o que foi feito agora.
@@ -3097,6 +3233,7 @@ async function carregarDaNuvem() {
           localStorage.setItem(`crm_active_user_${EQUIPE_ID}`, JSON.stringify(currentUser));
         }
       }
+      senhasProtegerSessao();
 
       renderAll();
       if (typeof updateUserInterface === 'function' && currentUser) updateUserInterface();
@@ -3302,6 +3439,8 @@ if (currentUser) {
     localStorage.setItem(`crm_active_user_${EQUIPE_ID}`, JSON.stringify(currentUser));
   }
 }
+
+senhasProtegerSessao(); // sessão antiga pode ter a senha legível guardada: converte ao abrir
 
 let activeResetPin = null;
 let activeResetUserId = null;
@@ -3528,6 +3667,49 @@ window.eloSalvarRecuperacaoNuvem = async function(){
 // digital irreversível), nunca o código em si. Quem esquecer a senha digita o
 // código e cadastra uma senha nova. Depois de usado, o código é trocado por outro.
 // Quem não tiver código pede ao gestor, que redefine a senha em Permissões.
+
+// ================== SENHAS EMBARALHADAS ==================
+// A senha não fica mais escrita em lugar nenhum (nem no aparelho, nem no backup,
+// nem na nuvem). Fica só uma "impressão digital" dela: dá para conferir se a
+// senha digitada bate, mas não dá para ler a senha de volta.
+// Formato guardado em u.pass:  s1$<tempero>$<impressão digital>
+function senhaProtegida(p){ return typeof p === 'string' && /^s1\$[0-9a-f]{16}\$[0-9a-f]{64}$/.test(p); }
+function senhaBytes(s){ try { return unescape(encodeURIComponent(String(s))); } catch (e) { return String(s); } }
+function senhaGerar(senha){
+  const n = new Uint8Array(8);
+  (window.crypto && crypto.getRandomValues) ? crypto.getRandomValues(n) : n.forEach((_, i) => n[i] = Math.floor(Math.random() * 256));
+  const tempero = Array.from(n).map(b => (b < 16 ? '0' : '') + b.toString(16)).join('');
+  return 's1$' + tempero + '$' + eloSha256(senhaBytes('elo-senha|' + tempero + '|' + senha));
+}
+function senhaConfere(u, digitada){
+  const p = u && u.pass;
+  if (!p || !digitada) return false;
+  if (!senhaProtegida(p)) return p === digitada; // senha antiga ainda não convertida
+  const partes = p.split('$');
+  return eloSha256(senhaBytes('elo-senha|' + partes[1] + '|' + digitada)) === partes[2];
+}
+// Converte qualquer senha ainda legível da lista (inclusive as que chegam de
+// um backup antigo ou de outro aparelho). Devolve true se mudou alguma coisa.
+function senhasProtegerLista(){
+  let mudou = false;
+  (Array.isArray(usersList) ? usersList : []).forEach(u => {
+    if (u && typeof u.pass === 'string' && u.pass && !senhaProtegida(u.pass)) { u.pass = senhaGerar(u.pass); mudou = true; }
+  });
+  return mudou;
+}
+// Mantém a sessão aberta (usuário logado) sem senha legível guardada
+function senhasProtegerSessao(){
+  try {
+    if (!currentUser) return;
+    const daLista = (usersList || []).find(u => u.id === currentUser.id);
+    if (daLista && senhaProtegida(daLista.pass)) currentUser.pass = daLista.pass;
+    else if (currentUser.pass && !senhaProtegida(currentUser.pass)) currentUser.pass = senhaGerar(currentUser.pass);
+    const chave = `crm_active_user_${EQUIPE_ID}`, cru = localStorage.getItem(chave);
+    if (!cru) return;
+    let salvo = null; try { salvo = JSON.parse(cru); } catch (e) {}
+    if (!salvo || salvo.pass !== currentUser.pass) localStorage.setItem(chave, JSON.stringify(currentUser));
+  } catch (e) {}
+}
 
 // SHA-256 em JavaScript puro (funciona até abrindo o arquivo direto no PC)
 function eloSha256(ascii){
@@ -4123,12 +4305,13 @@ function handleAuth(){
   // QUALQUER usuário, mesmo depois de trocar a senha. Isso anulava a proteção de
   // senha individual por comprador — foi removido de propósito. Agora só a senha
   // realmente configurada para aquele usuário (found.pass) é aceita.
-  const isUserPass = (found.pass && found.pass === pass);
+  const isUserPass = senhaConfere(found, pass);
 
   if (!isUserPass) {
     return alert('Senha incorreta.');
   }
 
+  if (senhasProtegerLista()) persistirChave(KEY_USERS, JSON.stringify(usersList), usersList);
   currentUser = found;
   localStorage.setItem(`crm_active_user_${EQUIPE_ID}`, JSON.stringify(currentUser));
   localStorage.setItem(`crm_login_timestamp_${EQUIPE_ID}`, String(Date.now()));
@@ -4149,6 +4332,7 @@ function logout(){
 }
 
 function save(){
+  senhasProtegerLista(); senhasProtegerSessao();
   registrarMudancaNoHistorico();
   lastLocalSaveTime = Date.now();
   marcarModificacaoLocal();
@@ -7119,7 +7303,7 @@ function openLead(id=null){
   const vendasDoLead = id ? (db.sales || []).filter(v => v.leadId === id).length : 0;
 
   openModal(`
-    <div class="between"><h2>${id?'Editar Cadastro':'Novo Lead'}</h2><div class="row">${id && canUserAccessLead(l) ? `<button class="btn gold" onclick="abrirVendaDoCadastro('${id}')" title="Lançar uma venda para este cliente sem sair daqui">💰 Adicionar venda${vendasDoLead ? ` (${vendasDoLead} já lançada${vendasDoLead > 1 ? 's' : ''})` : ''}</button>` : ''}<button class="btn" onclick="closeModal()">✕</button></div></div>
+    <div class="between"><h2>${id?'Editar Cadastro':'Novo Lead'}</h2><div class="row">${id && canUserAccessLead(l) ? `<button class="btn gold" onclick="abrirVendaDoCadastro('${id}')" title="Lançar uma venda para este cliente sem sair daqui">💰 Adicionar venda${vendasDoLead ? ` (${vendasDoLead} já lançada${vendasDoLead > 1 ? 's' : ''})` : ''}</button><button class="btn" onclick="aprNotaDoCadastro('${id}')" title="Escrever à mão para este cliente (ou abrir as notas dele)">✍️ Nota à mão${aprContarNotas(id) ? ` (${aprContarNotas(id)})` : ''}</button>` : ''}<button class="btn" onclick="closeModal()">✕</button></div></div>
     <div class="grid2">
       <div>
         <div class="field"><label>Nome do Lead</label><input id="fNome" value="${esc(l.nome||'')}"></div>
@@ -9850,8 +10034,7 @@ function renderDashboard(){
 
   document.getElementById('goalText').textContent = `${db.leads.length}`;
   
-  const todayBox = document.getElementById('today');
-  if(todayBox) todayBox.innerHTML = '<p style="color:var(--muted);font-size:13px">Painel comercial sincronizado localmente.</p>';
+  if (typeof renderParaHoje === 'function') renderParaHoje();
 }
 
 function prevMonth(){ shiftAgendaDate(-1); }
@@ -10132,7 +10315,8 @@ function agendaClienteHtml(item, leadObj){
   const digitos = String(leadObj.tel || '').replace(/\D/g, '');
   return `👤 <span class="ag-cliente" title="Abrir o cadastro do cliente" onclick="abrirCadastroDaAgenda('${leadObj.id}')">${esc(item.lead)}</span>` +
     (tel ? `<span class="ag-tel">📞 <a href="tel:${digitos}" title="Ligar">${esc(tel)}</a>${linkWhatsAppTel(leadObj.tel)}</span>`
-         : '<span class="ag-tel sem">sem telefone no cadastro</span>');
+         : '<span class="ag-tel sem">sem telefone no cadastro</span>') +
+    (item && item.id ? `<span class="ag-nota" onclick="aprNotaDaAgenda('${leadObj.id}','${item.id}')" title="Escrever à mão para este cliente (ou abrir as notas dele)">✍️ Nota</span>` : '');
 }
 function abrirCadastroDaAgenda(leadId){
   window.__muralContexto = null;
@@ -12353,8 +12537,15 @@ function renderConfigMenuOcultos(){
 // (antes usava um confirm() bloqueante que aparecia até na tela de login —
 // substituído por um banner discreto e dispensável, que só aparece depois
 // que o usuário já está logado e vendo o app.)
+// A data do último backup baixado é guardada por CRM (antes era uma só para
+// todos os CRMs do mesmo endereço, e um "enganava" o aviso do outro).
+function bkpUltimoBaixado(){
+  try { return localStorage.getItem(`crm_ultimo_backup_${EQUIPE_ID}`) || (GAVETA_TRAZ_ANTIGA || EQUIPE_ID === GAVETA_ANTIGA ? localStorage.getItem('ultimo_backup_timestamp') : null); }
+  catch (e) { return null; }
+}
+function bkpMarcarBaixado(){ setItemSeguro(`crm_ultimo_backup_${EQUIPE_ID}`, Date.now().toString()); }
 function verificarAlertaBackupLocal() {
-  const ultimoBackup = localStorage.getItem('ultimo_backup_timestamp');
+  const ultimoBackup = bkpUltimoBaixado();
   const seteDiasEmMs = 7 * 24 * 60 * 60 * 1000;
   const agora = Date.now();
   const precisaAvisar = !ultimoBackup || (agora - parseInt(ultimoBackup, 10)) > seteDiasEmMs;
@@ -12393,7 +12584,7 @@ const exportDataOriginal = exportData;
 exportData = function() {
   // Usa setItemSeguro pra não deixar uma falha aqui (ex: armazenamento cheio) impedir
   // o download do backup -- que é justamente a ação que salva o usuário nesse cenário.
-  setItemSeguro('ultimo_backup_timestamp', Date.now().toString());
+  bkpMarcarBaixado();
   exportDataOriginal();
   removerBannerBackup();
   showToast('💾 Backup baixado com sucesso!');
@@ -14174,7 +14365,7 @@ openSaleModal = function(leadId) {
 function resetarBancoDeDadosLocal() {
   const pass = prompt('Área protegida. Digite a senha para resetar o CRM local:');
   if (pass === null) return;
-  if (pass !== SENHA_MEUS_DADOS) { alert('Senha incorreta! Operação cancelada.'); return; }
+  if (!senhaMestraConfere(pass)) { alert('Senha incorreta! Operação cancelada.'); return; }
   if (confirm('⚠️ ATENÇÃO: Deseja REALMENTE zerar todos os cadastros deste CRM?\n\nEsta ação apaga leads, cotas e comissões locais.')) {
     if (confirm('Tem certeza absoluta? Faça um Backup antes se necessário!')) {
       localStorage.removeItem(KEY_DB);
@@ -14266,7 +14457,12 @@ garantirInterfaceCompleta();
 </script>
 <!-- CÓDIGO DE CORREÇÃO DEFINITIVA (COLE ANTES DE </body>) -->
 <script>
-const SENHA_MEUS_DADOS = "admin123"; // Senha usada para proteger abas restritas e o reset do CRM
+// Senha das áreas restritas e do reset do CRM. Fica aqui só a "impressão digital"
+// dela, não a senha escrita. Para trocar: abra o CRM, aperte F12, vá em "Console",
+// digite  senhaMestraNova('SUA-NOVA-SENHA')  e cole abaixo o código que aparecer.
+const SENHA_MEUS_DADOS_HASH = 'c5d8e37cac3f7fcb04114866267d6c9865ac0a14f4b892a1abbd47285da3aad8';
+function senhaMestraConfere(digitada){ return !!digitada && eloSha256(senhaBytes('elo-mestra|' + digitada)) === SENHA_MEUS_DADOS_HASH; }
+function senhaMestraNova(nova){ const h = eloSha256(senhaBytes('elo-mestra|' + nova)); console.log("const SENHA_MEUS_DADOS_HASH = '" + h + "';"); return h; }
 (function() {
   // 1. RESTRIÇÃO DE ACESSO POR SENHA (desativada por pedido do Wellington — a
   //    aba "Equipe & Hierarquia" abre livremente aqui, sem pedir senha. Fica
@@ -14279,7 +14475,7 @@ const SENHA_MEUS_DADOS = "admin123"; // Senha usada para proteger abas restritas
     
     if (abasProtegidas.includes(pageStr)) {
       const pass = prompt("Área restrita. Digite a senha para acessar:");
-      if (pass !== SENHA_MEUS_DADOS) {
+      if (!senhaMestraConfere(pass)) {
         alert("Senha incorreta! Acesso negado.");
         return;
       }
@@ -14301,11 +14497,12 @@ const SENHA_MEUS_DADOS = "admin123"; // Senha usada para proteger abas restritas
   // 2. RESET TOTAL DO LOCAL STORAGE (apaga literalmente tudo, com senha)
   window.zerarCacheSistema = function() {
     const pass = prompt("ATENÇÃO: Isso apagará TODOS os dados salvos localmente.\nDigite a senha para confirmar:");
-    if (pass === SENHA_MEUS_DADOS) {
+    if (senhaMestraConfere(pass)) {
       if (confirm("Tem certeza absoluta que deseja resetar todo o Local Storage?")) {
-        localStorage.clear();
+        // apaga só a gaveta DESTE CRM (antes apagava também os outros CRMs do mesmo endereço)
+        Object.keys(localStorage).forEach(k => { if (k.endsWith('_' + EQUIPE_ID) || k.indexOf('_' + EQUIPE_ID + '_') > 0) localStorage.removeItem(k); });
         sessionStorage.clear();
-        alert("Local Storage zerado com sucesso!");
+        alert("Dados locais deste CRM zerados com sucesso!");
         window.location.reload();
       }
     } else if (pass !== null) {
@@ -14843,6 +15040,22 @@ if (typeof renderAll === 'function') {
 }
 [data-theme="dark"] .apr-mini { background: #0d1117; }
 [data-theme="dark"] .apr-item { border-color: #30363d; }
+
+/* ---------- painel pequeno (escolher cliente, notas do cliente, PDF pronto) ---------- */
+.apr-painel { position: fixed; inset: 0; z-index: 270; background: rgba(15,23,42,.55); display: flex; align-items: center; justify-content: center; padding: 14px; font-family: var(--font-body); color: #0f172a; }
+.apr-painel-cx { background: #fff; border-radius: 14px; width: 100%; max-width: 440px; max-height: 86vh; display: flex; flex-direction: column; padding: 16px; box-shadow: 0 20px 50px rgba(0,0,0,.3); }
+.apr-painel-topo { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; font-size: 15px; }
+.apr-painel-cx input { width: 100%; margin: 0 0 8px; padding: 10px 12px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 9px; }
+.apr-painel-lista { overflow-y: auto; min-height: 60px; display: flex; flex-direction: column; gap: 4px; }
+.apr-painel-item { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; width: 100%; text-align: left; padding: 8px 10px; border: 1px solid #e2e8f0; border-radius: 9px; background: #fff; cursor: pointer; font: inherit; color: inherit; }
+.apr-painel-item:hover { background: #f1f5f9; }
+.apr-painel-item b { font-size: 13.5px; }
+.apr-painel-item small { font-size: 12px; color: #64748b; }
+.apr-painel-item.nota { flex-direction: row; align-items: center; gap: 10px; }
+.apr-painel-item.nota img, .apr-painel-item.nota i { width: 38px; height: 52px; object-fit: cover; border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; flex: 0 0 auto; }
+.apr-painel-item.nota span { display: flex; flex-direction: column; min-width: 0; }
+.apr-painel-aviso { font-size: 12.5px; color: #64748b; margin: 8px 0; text-align: center; }
+.ag-nota { margin-left: 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; color: var(--blue); }
 </style>
 <script>
 const APR_COM_PDF = true;   // este CRM tem a sub-aba de PDFs?
@@ -14860,6 +15073,7 @@ function aprQuando(iso){
 function aprTamanho(bytes){ return bytes > 1048576 ? (bytes / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB'; }
 function aprSvg(caminho){ return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + caminho + '</svg>'; }
 const APR_IC = {
+  pessoa: '<circle cx="12" cy="8" r="3.6"/><path d="M5 20c.6-3.800 3.400-5.800 7-5.800s6.400 2 7 5.800"/>',
   voltar: '<path d="M15 5l-7 7 7 7"/>', frente: '<path d="M9 5l7 7-7 7"/>', mais: '<path d="M12 5v14M5 12h14"/>', menos: '<path d="M5 12h14"/>',
   desfazer: '<path d="M8 7L4 11l4 4"/><path d="M4 11h10a5.5 5.5 0 0 1 0 11h-3"/>', refazer: '<path d="M16 7l4 4-4 4"/><path d="M20 11H10a5.5 5.5 0 0 0 0 11h3"/>',
   cheia: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', sair: '<path d="M6 6l12 12M18 6L6 18"/>', tocar: '<path d="M7 5l12 7-12 7z"/>',
@@ -14984,7 +15198,7 @@ async function aprRender(){
       (ind.notas.length ? `<div class="apr-grade">${ordena(ind.notas).map(d => `
         <div class="apr-item">
           <div class="apr-mini nota" onclick="aprAbrirNota('${d.id}')" title="Abrir">${d.mini ? `<img src="${d.mini}" alt="">` : '<span class="apr-vazio" style="align-self:center">Nota</span>'}</div>
-          <div class="apr-item-corpo"><b title="${esc(d.titulo)}">${esc(d.titulo || 'Sem título')}</b><small>${d.paginas || 1} página(s) · ${aprQuando(d.atualizado)}</small>
+          <div class="apr-item-corpo"><b title="${esc(d.titulo)}">${esc(d.titulo || 'Sem título')}</b><small>${d.leadNome ? '👤 ' + esc(d.leadNome) + ' · ' : ''}${d.paginas || 1} página(s) · ${aprQuando(d.atualizado)}</small>
             <div class="apr-item-botoes"><button class="btn primary" onclick="aprAbrirNota('${d.id}')">Abrir</button><button class="btn" onclick="aprDuplicarNota('${d.id}')">Duplicar</button><button class="btn danger" onclick="aprExcluir('notas','${d.id}')">Excluir</button></div></div>
         </div>`).join('')}</div>`
       : `<div class="apr-vazio-lista">Nenhuma nota ainda.<br>Clique em <b>+ Nova nota</b> para escrever à mão, com caneta, dedo ou mouse.</div>`);
@@ -15509,7 +15723,7 @@ async function aprGravarNota(doc){
   const ind = await aprCarregar(); doc.atualizado = new Date().toISOString();
   await idbSetArquivo(aprChave('nota_' + doc.id), doc);
   let mini = ''; try { mini = (await aprPaginaEmCanvas(doc, 0, 300, false)).toDataURL('image/jpeg', 0.72); } catch(e){}
-  const resumo = { id: doc.id, titulo: doc.titulo, paginas: doc.paginas.length, atualizado: doc.atualizado, mini };
+  const resumo = { id: doc.id, titulo: doc.titulo, paginas: doc.paginas.length, atualizado: doc.atualizado, mini, leadId: doc.leadId || '', leadNome: doc.leadNome || '' };
   const i = ind.notas.findIndex(x => x.id === doc.id);
   if (i >= 0) ind.notas[i] = resumo; else ind.notas.push(resumo);
   await aprGravarIndice();
@@ -15542,6 +15756,7 @@ function aprEditarNota(doc){
     <div class="apr-barra">
       <button class="apr-bt" onclick="aprNotaFechar()" title="Salvar e voltar">${aprSvg(APR_IC.voltar)}<span class="txt">Voltar</span></button>
       <input class="apr-titulo" id="aprNotaTitulo" value="${esc(doc.titulo || '')}" placeholder="Nome da nota" oninput="APR.nota.doc.titulo = this.value; aprNotaSujo()">
+      <button class="apr-bt" id="aprNtCliente" onclick="aprNotaEscolherCliente()">${aprSvg(APR_IC.pessoa)}<span class="txt">Cliente</span></button>
       <span class="apr-espaco"></span>
       <button class="apr-bt" id="aprNtDesf" onclick="aprNotaDesfazer()" title="Desfazer (Ctrl+Z)">${aprSvg(APR_IC.desfazer)}</button>
       <button class="apr-bt" id="aprNtRef" onclick="aprNotaRefazer()" title="Refazer (Ctrl+Y)">${aprSvg(APR_IC.refazer)}</button>
@@ -15573,7 +15788,7 @@ function aprEditarNota(doc){
   area.addEventListener('wheel', aprNotaRoda, { passive: false });
   area.addEventListener('contextmenu', ev => ev.preventDefault());
   if (window.ResizeObserver) { N.obs = new ResizeObserver(() => aprNotaRedimensionar()); N.obs.observe(area); }
-  aprNotaFerramentas(); aprNotaBotoes(); aprMarcaNaTela(area, true);
+  aprNotaFerramentas(); aprNotaBotoes(); aprMarcaNaTela(area, true); aprNotaClienteBotao();
   aprNotaRedimensionar(true);
 }
 function aprNotaPag(){ const N = APR.nota; return N.doc.paginas[N.pag]; }
@@ -15595,7 +15810,8 @@ async function aprNotaFechar(){
   APR.indice.canetas = Object.assign({}, N.est, { atual: N.ferr }); APR.indice.dedoMove = N.dedoEscolhido ? N.dedoMove : null;
   APR.indice.ultimaFolha = { papel: N.doc.papel, pauta: N.doc.pauta, folha: N.doc.folha }; await aprGravarIndice();
   if (N.obs) N.obs.disconnect();
-  APR.nota = null; const tela = document.getElementById('aprTelaNota'); tela.classList.remove('aberta'); tela.innerHTML = ''; aprRender();
+  APR.nota = null; const tela = document.getElementById('aprTelaNota'); tela.classList.remove('aberta'); tela.innerHTML = ''; aprPainelFechar(); aprRender();
+  aprNotaVoltar();
 }
 
 // ---- barras ----
@@ -15838,6 +16054,11 @@ function aprNotaMenu(abrir){
     <div class="op" style="grid-template-columns:repeat(2,1fr)"><button class="${N.doc.folha !== 'deitada' ? 'ativo' : ''}" onclick="aprNotaFolhaMudar('folha','pe')"><span style="padding:8px 2px">Folha em pé</span></button><button class="${N.doc.folha === 'deitada' ? 'ativo' : ''}" onclick="aprNotaFolhaMudar('folha','deitada')"><span style="padding:8px 2px">Folha deitada</span></button></div>
     <h4>Formas certinhas</h4>
     <div class="linha" style="margin-bottom:10px"><button class="apr-bt ${APR.indice.formas === false ? '' : 'ativo'}" onclick="aprNotaFormasLigar()" style="height:auto;padding:7px 10px;white-space:normal;text-align:left">${APR.indice.formas === false ? 'Desligado. Toque para ligar.' : 'Ligado: desenhe e segure parado no fim do traço'}</button></div>
+    <h4>Cliente e envio</h4>
+    <div class="linha" style="margin-bottom:10px">
+      <button class="apr-bt" onclick="aprNotaEscolherCliente()">${N.doc.leadNome ? 'Cliente: ' + esc(N.doc.leadNome) + ' (trocar)' : 'Ligar esta nota a um cliente'}</button>
+      <button class="apr-bt" onclick="aprNotaEnviar()">PDF da nota: baixar ou enviar no WhatsApp</button>
+    </div>
     <h4>Esta página</h4>
     <div class="linha">
       <button class="apr-bt" onclick="aprNotaBaixar()">Baixar como imagem</button>
@@ -16196,6 +16417,481 @@ function aprNotaFormasLigar(){
   const ind = APR.indice; ind.formas = ind.formas === false ? true : false; aprGravarIndice(); aprNotaMenu(true);
   showToast(ind.formas === false ? 'Ajuste de formas desligado.' : 'Ajuste de formas ligado: desenhe e segure parado no fim do traço.');
 }
+
+// ====================== NOTA LIGADA AO CLIENTE ======================
+function aprPainel(html){
+  aprPainelFechar();
+  const p = document.createElement('div'); p.id = 'aprPainel'; p.className = 'apr-painel';
+  p.innerHTML = '<div class="apr-painel-cx">' + html + '</div>';
+  p.addEventListener('pointerdown', ev => { if (ev.target === p) aprPainelFechar(); });
+  // em tela cheia só aparece o que está dentro do elemento em tela cheia
+  (document.fullscreenElement || document.webkitFullscreenElement || document.body).appendChild(p);
+  return p;
+}
+function aprPainelFechar(){ const p = document.getElementById('aprPainel'); if (p) p.remove(); }
+function aprNomeArquivo(doc){ return ((doc.titulo || 'nota').replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'nota').slice(0, 80); }
+function aprSemAcento(t){ return String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase(); }
+// Quantas notas este cliente tem (só responde depois que a lista de notas já foi lida)
+function aprContarNotas(leadId){
+  try { return (APR.indice && currentUser && APR.uid === currentUser.id) ? APR.indice.notas.filter(n => n.leadId === leadId).length : 0; } catch (e) { return 0; }
+}
+function aprNotaClienteBotao(){
+  const N = APR.nota, b = document.getElementById('aprNtCliente'); if (!N || !b) return;
+  const nome = N.doc.leadNome || '';
+  b.classList.toggle('ativo', !!nome);
+  b.querySelector('span').textContent = nome ? nome.split(' ').slice(0, 2).join(' ') : 'Cliente';
+  b.title = nome ? 'Nota de ' + nome + '. Toque para trocar.' : 'Ligar esta nota a um cliente';
+}
+function aprNotaEscolherCliente(){
+  const N = APR.nota; if (!N) return; aprNotaMenu(false);
+  aprPainel(`
+    <div class="apr-painel-topo"><b>De qual cliente é esta nota?</b><button class="apr-bt" onclick="aprPainelFechar()">Fechar</button></div>
+    <input id="aprEscolhaBusca" placeholder="Buscar por nome ou telefone" oninput="aprEscolhaLista()" autocomplete="off">
+    <div class="apr-painel-lista" id="aprEscolhaLista"></div>
+    ${N.doc.leadId ? `<button class="apr-bt" style="width:100%;margin-top:8px" onclick="aprNotaLigar('')">Tirar a ligação com ${esc(N.doc.leadNome || 'o cliente')}</button>` : ''}`);
+  aprEscolhaLista();
+}
+function aprEscolhaLista(){
+  const cx = document.getElementById('aprEscolhaLista'); if (!cx) return;
+  const termo = aprSemAcento(document.getElementById('aprEscolhaBusca')?.value || '').trim(), digitos = termo.replace(/\D/g, '');
+  let lista = (db.leads || []).filter(canUserAccessLead);
+  if (termo) lista = lista.filter(l => aprSemAcento(l.nome).includes(termo) || (digitos.length >= 3 && String(l.tel || '').replace(/\D/g, '').includes(digitos)));
+  lista = lista.slice().sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'));
+  const total = lista.length; lista = lista.slice(0, 40);
+  cx.innerHTML = lista.length ? lista.map(l => `<button class="apr-painel-item" onclick="aprNotaLigar('${l.id}')"><b>${esc(l.nome || 'Sem nome')}</b><small>${esc(fmtTelBR(l.tel) || 'sem telefone')} · ${esc(l.stage || 'Prospecção')}</small></button>`).join('') +
+    (total > 40 ? `<p class="apr-painel-aviso">Mostrando 40 de ${total}. Digite parte do nome para achar mais rápido.</p>` : '')
+    : '<p class="apr-painel-aviso">Nenhum cliente encontrado com esse nome ou telefone.</p>';
+}
+function aprNotaLigar(leadId){
+  const N = APR.nota; if (!N) return;
+  const l = leadId ? (db.leads || []).find(x => x.id === leadId) : null;
+  N.doc.leadId = l ? l.id : ''; N.doc.leadNome = l ? (l.nome || '') : '';
+  if (l && /^Nota de \d/.test(N.doc.titulo || '')) {   // nome automático: troca pelo nome do cliente
+    N.doc.titulo = l.nome + ' - ' + new Date().toLocaleDateString('pt-BR');
+    const campo = document.getElementById('aprNotaTitulo'); if (campo) campo.value = N.doc.titulo;
+  }
+  aprNotaSujo(); aprNotaClienteBotao(); aprPainelFechar();
+  showToast(l ? 'Nota ligada a ' + l.nome + '. Ela aparece no cadastro dele.' : 'Nota sem cliente ligado.');
+}
+async function aprNovaNotaDoCliente(leadId){
+  const l = (db.leads || []).find(x => x.id === leadId); if (!l) return;
+  const ind = await aprCarregar(), ultima = ind.ultimaFolha || {};
+  const doc = { id: aprId(), titulo: (l.nome || 'Cliente') + ' - ' + new Date().toLocaleDateString('pt-BR'), papel: ultima.papel || 'branco', pauta: ultima.pauta || 'linhas', folha: ultima.folha || 'pe', paginas: [{ t: [] }], leadId: l.id, leadNome: l.nome || '' };
+  await aprGravarNota(doc); aprEditarNota(doc);
+}
+// Abre as notas de um cliente a partir do cadastro ou da agenda. "voltar" é
+// o que reabrir quando a nota for fechada (o cadastro ou o compromisso).
+async function aprAbrirNotasDoCliente(leadId, voltar){
+  const l = (db.leads || []).find(x => x.id === leadId); if (!l) return;
+  const ind = await aprCarregar();
+  const notas = ind.notas.filter(n => n.leadId === leadId).sort((a, b) => String(b.atualizado || '').localeCompare(String(a.atualizado || '')));
+  APR.voltarPara = voltar || null;
+  if (!notas.length) { closeModal(); return aprNovaNotaDoCliente(leadId); }
+  aprPainel(`
+    <div class="apr-painel-topo"><b>Notas de ${esc(l.nome || 'cliente')}</b><button class="apr-bt" onclick="APR.voltarPara = null; aprPainelFechar()">Fechar</button></div>
+    <div class="apr-painel-lista">${notas.map(n => `<button class="apr-painel-item nota" onclick="aprPainelAbrirNota('${n.id}')">${n.mini ? `<img src="${n.mini}" alt="">` : '<i></i>'}<span><b>${esc(n.titulo || 'Sem título')}</b><small>${n.paginas || 1} página(s) · ${aprQuando(n.atualizado)}</small></span></button>`).join('')}</div>
+    <button class="apr-bt forte" style="width:100%;margin-top:10px" onclick="aprPainelFechar(); closeModal(); aprNovaNotaDoCliente('${leadId}')">+ Nova nota para este cliente</button>`);
+}
+function aprPainelAbrirNota(id){ aprPainelFechar(); closeModal(); aprAbrirNota(id); }
+function aprNotaDoCadastro(leadId){
+  if (document.getElementById('fNome') && typeof leadFormSnapshot === 'function' && leadFormSnapshot() !== window.__leadFormSnap) {
+    if (!confirm('Você alterou dados deste cadastro e ainda não salvou.\n\nOK = salvar o cadastro e abrir a nota\nCancelar = voltar para o cadastro')) return;
+    saveLead(leadId);
+    if (document.getElementById('modal')?.classList.contains('show')) return;   // faltou algum dado: continua no cadastro
+  }
+  aprAbrirNotasDoCliente(leadId, () => openLead(leadId));
+}
+function aprNotaDaAgenda(leadId, compromissoId){
+  aprAbrirNotasDoCliente(leadId, () => openEventActionModal(compromissoId, 'meeting'));
+}
+function aprNotaVoltar(){
+  const f = APR.voltarPara; APR.voltarPara = null;
+  if (typeof f === 'function') { try { f(); } catch (e) { console.warn(e); } }
+}
+
+// ---------- PDF da nota e envio ----------
+async function aprNotaPdf(doc){
+  if (!window.jspdf) throw new Error('A parte de PDF ainda não carregou. Confira a internet e tente de novo.');
+  const { jsPDF } = window.jspdf, deitada = doc.folha === 'deitada', W = deitada ? 297 : 210, H = deitada ? 210 : 297;
+  const pdf = new jsPDF({ orientation: deitada ? 'l' : 'p', unit: 'mm', format: 'a4', compress: true });
+  for (let i = 0; i < doc.paginas.length; i++) {
+    const c = await aprPaginaEmCanvas(doc, i, (APR_FOLHA[doc.folha] || APR_FOLHA.pe)[0], true);
+    if (i) pdf.addPage('a4', deitada ? 'l' : 'p');
+    pdf.addImage(c.toDataURL('image/jpeg', 0.88), 'JPEG', 0, 0, W, H);
+  }
+  return pdf.output('blob');
+}
+function aprBaixarBlob(blob, nome){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = nome; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }
+// Monta o PDF primeiro e só depois mostra os botões: o celular só deixa abrir
+// a tela de "compartilhar" em resposta direta a um toque.
+async function aprNotaEnviar(){
+  const N = APR.nota; if (!N) return; aprNotaMenu(false);
+  aprPainel('<div class="apr-painel-topo"><b>Montando o PDF...</b></div><p class="apr-painel-aviso">Só um instante.</p>');
+  try {
+    const blob = await aprNotaPdf(N.doc);
+    APR.pdfPronto = { blob, nome: aprNomeArquivo(N.doc) + '.pdf', leadId: N.doc.leadId || '', titulo: N.doc.titulo || 'Nota' };
+    const l = N.doc.leadId ? (db.leads || []).find(x => x.id === N.doc.leadId) : null;
+    aprPainel(`
+      <div class="apr-painel-topo"><b>PDF pronto</b><button class="apr-bt" onclick="aprPainelFechar()">Fechar</button></div>
+      <p class="apr-painel-aviso" style="text-align:left">${N.doc.paginas.length} página(s) · ${aprTamanho(blob.size)}${l ? ' · cliente: ' + esc(l.nome || '') : ''}</p>
+      <button class="apr-bt forte" style="width:100%;height:42px" onclick="aprPdfWhatsApp()">Enviar pelo WhatsApp</button>
+      <button class="apr-bt" style="width:100%;height:42px;margin-top:8px" onclick="aprBaixarBlob(APR.pdfPronto.blob, APR.pdfPronto.nome); aprPainelFechar()">Baixar o PDF</button>
+      ${l ? '' : '<p class="apr-painel-aviso">Dica: ligue a nota a um cliente (botão "Cliente") para a conversa dele abrir direto.</p>'}`);
+  } catch (e) {
+    aprPainelFechar(); showToast((e && e.message) || 'Não consegui montar o PDF.', 'error');
+  }
+}
+async function aprPdfWhatsApp(){
+  const p = APR.pdfPronto; if (!p) return;
+  const l = p.leadId ? (db.leads || []).find(x => x.id === p.leadId) : null;
+  const texto = (l && l.nome ? 'Olá, ' + l.nome.split(' ')[0] + '! ' : '') + 'Segue o resumo do que conversamos.';
+  try {
+    const arquivo = new File([p.blob], p.nome, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [arquivo] })) {
+      await navigator.share({ files: [arquivo], title: p.titulo, text: texto });
+      aprPainelFechar(); return;
+    }
+  } catch (e) { if (e && e.name === 'AbortError') return; }
+  // computador (ou navegador sem "compartilhar"): baixa o PDF e abre a conversa
+  aprBaixarBlob(p.blob, p.nome);
+  const link = l ? buildWhatsAppLink(l.tel, texto) : '';
+  aprPainelFechar();
+  showToast(link ? 'PDF baixado. A conversa do cliente vai abrir: é só anexar o arquivo.' : 'PDF baixado. Abra o WhatsApp e anexe o arquivo na conversa.', 'info');
+  if (link) window.open(link, '_blank');
+}
+
+// ====================== SIMULAÇÃO VIRA APRESENTAÇÃO ======================
+async function aprSimulacaoEmSlides(){
+  if (!currentUser) return;
+  if (typeof calcularSimulacao === 'function' && (!ultimaSimulacao || !ultimaSimulacao.credito)) calcularSimulacao();
+  const sim = ultimaSimulacao || {};
+  if (!sim.credito || !sim.prazo) { showToast('Preencha o valor do crédito no simulador antes de criar a apresentação.', 'warn'); return; }
+  const R = v => fmtBRExport(v), pct = pctSelecionadoExport(), parcela = parcelaPercentualExport(sim, pct), manual = camposManuaisExport();
+  const modalidade = nomeModalidadeExport(sim.modalidade);
+  const taxaTotal = (sim.taxaAdmin * 100).toFixed(1).replace('.', ','), taxaMes = ((sim.taxaAdmin / sim.prazo) * 100).toFixed(2).replace('.', ',');
+  const parc = v => v > 1 ? R(v) : 'quitado';
+  const slides = [
+    { layout: 'capa', titulo: 'Consórcio de ' + modalidade, texto: 'Crédito de ' + R(sim.credito) + ' em ' + sim.prazo + ' meses' },
+    { layout: 'destaque', titulo: pct < 100 ? 'Parcela reduzida (' + pct + '%)' : 'Parcela mensal', texto: R(parcela) },
+    { layout: 'texto', titulo: 'Como é o seu plano', texto: [
+        '- Crédito contratado: ' + R(sim.credito),
+        '- Prazo: ' + sim.prazo + ' meses',
+        '- Taxa de administração: ' + taxaTotal + '% no plano todo (' + taxaMes + '% ao mês)',
+        '- Parcela cheia: ' + R(sim.parcelaCheia || parcelaPercentualExport(sim, 100)),
+        pct < 100 ? '- Parcela reduzida (' + pct + '%): ' + R(parcela) : '',
+        '- Reajuste anual pelo ' + (sim.indiceReajuste || 'índice do grupo') + ' (crédito e parcela)',
+        '- Sem juros: você paga taxa de administração, não juros de financiamento'
+      ].filter(Boolean).join('\n') }
+  ];
+  const cen = k => cenarioExport(k, sim), t = cen('tradicional'), f = cen('fixo'), lim = cen('limitado'), liv = cen('livre');
+  slides.push({ layout: 'texto', titulo: 'Caminhos para a contemplação', texto: [
+    '- Sorteio (sem lance): recebe o crédito inteiro de ' + R(t.creditoLiquido),
+    f.embutido ? '- Lance fixo: usa ' + R(f.embutido) + ' da própria carta, recebe ' + R(f.creditoLiquido) : '',
+    (lim.bolso || lim.embutido) ? '- Lance limitado: ' + R(lim.bolso) + ' do bolso + ' + R(lim.embutido) + ' da carta, recebe ' + R(lim.creditoLiquido) : '',
+    liv.bolso ? '- Lance livre: ' + R(liv.bolso) + ' do bolso, recebe o crédito inteiro de ' + R(liv.creditoLiquido) : ''
+  ].filter(Boolean).join('\n') });
+  [[f, 'Lance fixo'], [lim, 'Lance limitado'], [liv, 'Lance livre']].forEach(([c, nome]) => {
+    if (!(c.bolso || c.embutido)) return;
+    slides.push({ layout: 'texto', titulo: nome, texto: [
+      c.bolso ? '- Valor do seu bolso: ' + R(c.bolso) : '',
+      c.embutido ? '- Valor usado da própria carta: ' + R(c.embutido) : '',
+      '- Crédito que você recebe: ' + R(c.creditoLiquido),
+      '- Parcela depois de contemplado: ' + parc(c.parcela)
+    ].filter(Boolean).join('\n') });
+  });
+  if (manual.observacao || manual.vagas) slides.push({ layout: 'destaque', titulo: manual.vagas || '', texto: manual.observacao || manual.vagas });
+  slides.push({ layout: 'capa', titulo: 'Vamos dar o próximo passo?', texto: [currentUser.nome || '', fmtTelBR(currentUser.tel) || ''].filter(Boolean).join(' · ') });
+  const deck = { id: aprId(), titulo: 'Simulação ' + modalidade + ' ' + R(sim.credito) + ' - ' + new Date().toLocaleDateString('pt-BR'), tema: 'bordo', slides };
+  await aprCarregar(); await aprGravarDeck(deck);
+  aprEditarDeck(deck);
+  showToast('Apresentação criada com ' + slides.length + ' slides. Ajuste o que quiser e toque em Apresentar.');
+}
+
+// deixa a lista de notas lida logo depois de abrir, para o cadastro mostrar quantas notas o cliente tem
+setTimeout(() => { if (typeof currentUser !== 'undefined' && currentUser) aprCarregar().catch(() => {}); }, 2500);
+</script>
+<style id="segEstilos">
+/* ---------- Para hoje ---------- */
+.ph-topo h2 { font-size: 19px; }
+.ph-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; cursor: pointer; }
+.ph-grupo { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.ph-titulo { font-size: 11.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.ph-titulo span { display: inline-block; min-width: 18px; padding: 0 6px; border-radius: 999px; background: var(--line); color: inherit; text-align: center; font-size: 11px; letter-spacing: 0; }
+.ph-linha { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13px; border-bottom: 1px dashed var(--line); min-width: 0; }
+.ph-linha:last-of-type { border-bottom: 0; }
+.ph-hora { flex: 0 0 auto; min-width: 46px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ph-hora.ph-etapa { min-width: 86px; font-weight: 700; font-size: 11.5px; color: var(--muted); }
+.ph-nome { flex: 0 1 auto; min-width: 0; font-weight: 700; cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-nome:hover { text-decoration-color: currentColor; }
+.ph-info { flex: 1 1 0; min-width: 0; color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ph-tel { flex: 0 0 auto; font-size: 12.5px; white-space: nowrap; }
+.ph-mais { margin-top: 6px; background: none; border: 0; padding: 4px 0; color: var(--blue, #2563eb); font-weight: 700; font-size: 12.5px; cursor: pointer; }
+@media (max-width: 720px) {
+  .ph-linha { flex-wrap: wrap; gap: 2px 8px; padding: 7px 0; }
+  .ph-hora.ph-etapa { min-width: 0; }
+  .ph-nome { flex: 1 1 60%; }
+  .ph-info { flex: 1 1 100%; order: 3; white-space: normal; }
+  .ph-tel { order: 2; }
+}
+
+/* ---------- Filtros de Leads: no celular ficam atrás do botão "Filtros" ---------- */
+#leadsFiltrosBt, #leadsFiltrosLimpar { display: none; }
+@media (max-width: 720px) {
+  .leads-topo { flex-direction: column; align-items: stretch !important; gap: 10px; }
+  .leads-topo h2 { font-size: 19px; }
+  #leadsBarra { width: 100%; gap: 8px; }
+  #leadsBarra #leadSearch { order: -2; flex: 1 1 0; min-width: 0; max-width: none !important; margin: 0; }
+  #leadsBarra #leadsFiltrosBt { order: -1; display: inline-flex; flex: 0 0 auto; }
+  #leadsBarra:not(.aberto) > select, #leadsBarra:not(.aberto) > button:not(#leadsFiltrosBt) { display: none !important; }
+  #leadsBarra.aberto > select { display: block; flex: 1 1 46%; min-width: 0; max-width: none !important; margin: 0; }
+  #leadsBarra.aberto > button:not(#leadsFiltrosBt):not(#leadsFiltrosLimpar) { display: inline-flex; flex: 1 1 46%; justify-content: center; }
+  #leadsBarra.aberto > #leadsFiltrosLimpar { flex: 1 1 100%; justify-content: center; }
+  #leadsBarra.aberto > #leadsFiltrosLimpar:not([style*="none"]) { display: inline-flex; }
+}
+
+</style>
+<script id="segScript">
+// ====================== CÓPIAS AUTOMÁTICAS ======================
+// Ficam na parte "grande" do armazenamento do navegador (a mesma das fotos),
+// então não disputam espaço com os dados do dia a dia.
+const BKP_DIAS = 7;      // quantos dias de cópia ficam guardados
+const BKP_ANTES = 4;     // quantas cópias "antes de importar/voltar" ficam guardadas
+function bkpCfg(){
+  try { return Object.assign({ baixar: 'semanal' }, JSON.parse(localStorage.getItem(`crm_bkp_cfg_${EQUIPE_ID}`)) || {}); }
+  catch (e) { return { baixar: 'semanal' }; }
+}
+function bkpDataDeHoje(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+function bkpTemDados(){ return ((db.leads || []).length + (db.sales || []).length + (db.meetings || []).length) > 0; }
+async function bkpIndice(){ const i = await idbGetArquivo('bkp_indice'); return Array.isArray(i) ? i : []; }
+async function bkpGuardar(tipo, rotulo){
+  try {
+    const texto = JSON.stringify({ db, usersList, brand, notifications, infoPosts, googleConfig });
+    const id = tipo === 'dia' ? 'bkp_dia_' + bkpDataDeHoje() : 'bkp_antes_' + Date.now();
+    if (!(await idbSetArquivo(id, texto))) return false;
+    let ind = (await bkpIndice()).filter(x => x.id !== id);
+    ind.push({ id, tipo, rotulo: rotulo || '', quando: Date.now(), kb: Math.max(1, Math.round(texto.length / 1024)), leads: (db.leads || []).length, vendas: (db.sales || []).length });
+    const doTipo = t => ind.filter(x => x.tipo === t).sort((a, b) => b.quando - a.quando);
+    const dias = doTipo('dia'), antes = doTipo('antes');
+    for (const x of dias.slice(BKP_DIAS).concat(antes.slice(BKP_ANTES))) await idbDeleteArquivo(x.id);
+    await idbSetArquivo('bkp_indice', dias.slice(0, BKP_DIAS).concat(antes.slice(0, BKP_ANTES)));
+    return true;
+  } catch (e) { console.warn('[cópia automática] não consegui guardar:', e); return false; }
+}
+// Uma cópia por dia, feita na primeira vez que o CRM é aberto no dia
+let bkpRodando = false;
+async function bkpRotina(){
+  if (bkpRodando || !currentUser || !bkpTemDados()) return;
+  bkpRodando = true;
+  try {
+    const ind = await bkpIndice();
+    if (!ind.some(x => x.id === 'bkp_dia_' + bkpDataDeHoje())) { await bkpGuardar('dia'); bkpRender(); }
+  } finally { bkpRodando = false; }
+}
+function bkpQuando(x){
+  const d = new Date(x.quando);
+  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' }).replace('.', '') + ' às ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+async function bkpRender(){
+  const cx = document.getElementById('bkpLista'); if (!cx) return;
+  const sel = document.getElementById('bkpBaixarSel'); if (sel) sel.value = bkpCfg().baixar;
+  const ult = Number(bkpUltimoBaixado() || 0), txt = document.getElementById('bkpUltimoTxt');
+  if (txt) txt.textContent = ult ? 'Último arquivo baixado: ' + new Date(ult).toLocaleDateString('pt-BR') : 'Nenhum arquivo de backup baixado ainda neste aparelho.';
+  const ind = (await bkpIndice()).sort((a, b) => b.quando - a.quando);
+  if (!ind.length) { cx.innerHTML = '<p class="muted" style="font-size:13px;margin:0">Ainda não há cópias guardadas. A primeira é feita sozinha, alguns segundos depois de abrir o CRM com dados cadastrados.</p>'; return; }
+  cx.innerHTML = '<div style="overflow-x:auto"><table class="tb-cartoes"><thead><tr><th>Cópia</th><th>O que tinha</th><th>Tamanho</th><th>Ações</th></tr></thead><tbody>' + ind.map(x => `
+    <tr>
+      <td data-rot="Cópia"><b>${esc(bkpQuando(x))}</b><span class="tl-sub"> · ${x.tipo === 'dia' ? 'cópia do dia' : esc(x.rotulo || 'antes de uma mudança')}</span></td>
+      <td data-rot="O que tinha">${x.leads} lead(s) · ${x.vendas} venda(s)</td>
+      <td data-rot="Tamanho">${x.kb > 1024 ? (x.kb / 1024).toFixed(1).replace('.', ',') + ' MB' : x.kb + ' KB'}</td>
+      <td class="tc-acoes"><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn" style="font-size:12px;padding:5px 9px" onclick="bkpRestaurar('${x.id}')">↩ Voltar para esta</button><button class="btn" style="font-size:12px;padding:5px 9px" onclick="bkpBaixarCopia('${x.id}')">Baixar</button></div></td>
+    </tr>`).join('') + '</tbody></table></div>';
+}
+function bkpMudarFrequencia(v){
+  setItemSeguro(`crm_bkp_cfg_${EQUIPE_ID}`, JSON.stringify(Object.assign(bkpCfg(), { baixar: v })));
+  showToast(v === 'nunca' ? 'O CRM não vai mais baixar o backup sozinho. Lembre de baixar de vez em quando.' : 'Combinado: backup baixado sozinho ' + (v === 'diario' ? 'todo dia.' : 'toda semana.'), v === 'nunca' ? 'warn' : 'success');
+}
+async function bkpBaixarCopia(id){
+  const x = (await bkpIndice()).find(i => i.id === id), texto = await idbGetArquivo(id);
+  if (!x || !texto) return showToast('Não encontrei mais essa cópia neste aparelho.', 'error');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([texto], { type: 'application/json' }));
+  a.download = `copia_${BACKUP_FILE_PREFIX}_${new Date(x.quando).toISOString().slice(0, 10)}.json`; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+const bkpImportarOriginal = importData;
+async function bkpRestaurar(id){
+  const x = (await bkpIndice()).find(i => i.id === id); if (!x) return;
+  if (!confirm(`Voltar o CRM para como estava em ${bkpQuando(x)}?\n\nO que foi cadastrado ou alterado depois disso sai da tela.\nAntes de voltar, o CRM guarda uma cópia de como está agora, para você poder desfazer.`)) return;
+  const texto = await idbGetArquivo(id);
+  if (!texto) return showToast('Não encontrei mais essa cópia neste aparelho.', 'error');
+  await bkpGuardar('antes', 'antes de voltar para ' + new Date(x.quando).toLocaleDateString('pt-BR'));
+  bkpImportarOriginal({ target: { files: [new Blob([texto], { type: 'application/json' })] } });
+  setTimeout(bkpRender, 800);
+}
+// Guarda uma cópia antes de tudo que troca os dados de uma vez
+importData = function(e){
+  if (!e || !e.target || !e.target.files || !e.target.files[0] || !bkpTemDados()) return bkpImportarOriginal(e);
+  bkpGuardar('antes', 'antes de importar um backup').finally(() => { bkpImportarOriginal(e); setTimeout(bkpRender, 800); });
+};
+if (typeof importarMesclado === 'function') {
+  const mesclarOriginal = importarMesclado;
+  importarMesclado = function(e){
+    if (!e || !e.target || !e.target.files || !e.target.files[0] || !bkpTemDados()) return mesclarOriginal(e);
+    bkpGuardar('antes', 'antes de mesclar um backup').finally(() => { mesclarOriginal(e); setTimeout(bkpRender, 800); });
+  };
+}
+if (typeof resetarBancoDeDadosLocal === 'function') {
+  const zerarOriginal = resetarBancoDeDadosLocal;
+  resetarBancoDeDadosLocal = function(){
+    if (!bkpTemDados()) return zerarOriginal();
+    bkpGuardar('antes', 'antes de zerar o CRM').finally(() => zerarOriginal());
+  };
+}
+// Baixa o arquivo de backup sozinho quando vence o prazo. O navegador só deixa
+// baixar em resposta a um toque, então o download sai no primeiro toque do dia.
+let bkpProximaChecagem = 0, bkpBaixando = false;
+document.addEventListener('click', function(){
+  if (bkpBaixando || !currentUser || Date.now() < bkpProximaChecagem) return;
+  bkpProximaChecagem = Date.now() + 10 * 60 * 1000;
+  const cfg = bkpCfg();
+  if (cfg.baixar === 'nunca' || !bkpTemDados()) return;
+  const tela = document.getElementById('authScreen'); if (tela && tela.style.display !== 'none') return;
+  const ult = Number(bkpUltimoBaixado() || 0), prazo = (cfg.baixar === 'diario' ? 1 : 7) * 86400000;
+  if (ult && Date.now() - ult < prazo) return;
+  bkpBaixando = true;
+  try {
+    exportData();
+    setTimeout(() => showToast('Backup automático baixado. Guarde o arquivo fora do aparelho (Google Drive, e-mail ou WhatsApp para você mesmo).', 'info'), 600);
+  } catch (e) { console.warn('[backup automático]', e); }
+  bkpBaixando = false; bkpRender();
+}, true);
+setTimeout(bkpRotina, 6000);
+setInterval(bkpRotina, 30 * 60 * 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(bkpRotina, 1500); });
+
+// ====================== PARA HOJE (Dashboard) ======================
+let phVerTudo = {};
+function phFechado(){ try { return localStorage.getItem(`crm_parahoje_fechado_${EQUIPE_ID}`) === '1'; } catch (e) { return false; } }
+function phAlternar(){ try { localStorage.setItem(`crm_parahoje_fechado_${EQUIPE_ID}`, phFechado() ? '0' : '1'); } catch (e) {} renderParaHoje(); }
+function phMais(grupo){ phVerTudo[grupo] = !phVerTudo[grupo]; renderParaHoje(); }
+function phMeu(x){ return !x.responsavel || x.responsavel === currentUser.nome; }
+function phDados(){
+  const agora = new Date(), ini = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate()).getTime(), fim = ini + 86400000;
+  const porId = new Map(), porNome = new Map();
+  (db.leads || []).forEach(l => { porId.set(l.id, l); const k = (l.nome || '').trim().toLowerCase(); if (k && !porNome.has(k)) porNome.set(k, l); });
+  const leadDe = m => (m.leadId && porId.get(m.leadId)) || porNome.get((m.lead || '').trim().toLowerCase()) || null;
+  const reunioesPorNome = new Map(), hoje = [], atrasados = [];
+  (db.meetings || []).forEach(m => {
+    if (!m.date) return;
+    const k = (m.lead || '').trim().toLowerCase();
+    if (!reunioesPorNome.has(k)) reunioesPorNome.set(k, []);
+    reunioesPorNome.get(k).push(m);
+    if (m.status !== 'Ativo' || !phMeu(m) || !canUserAccessMeeting(m)) return;
+    const t = new Date(m.date).getTime(); if (isNaN(t)) return;
+    if (t >= ini && t < fim) hoje.push({ m, t, lead: leadDe(m) });
+    else if (t < ini) atrasados.push({ m, t, lead: leadDe(m) });
+  });
+  hoje.sort((a, b) => a.t - b.t); atrasados.sort((a, b) => b.t - a.t);
+  // leads parados: mesma regra da coluna "próxima ação" da aba Leads
+  const parados = [];
+  (db.leads || []).forEach(l => {
+    const etapa = l.stage || 'Prospecção';
+    if (etapa === 'Cliente fechado' || etapa === 'Cliente não fechado' || !phMeu(l) || !canUserAccessLead(l)) return;
+    const dias = l.created ? Math.floor((Date.now() - new Date(l.created).getTime()) / 86400000) : 0;
+    const rs = reunioesPorNome.get((l.nome || '').trim().toLowerCase()) || [];
+    const futura = rs.some(m => m.status === 'Ativo' && new Date(m.date) > agora);
+    const passadaAberta = rs.some(m => m.status === 'Ativo' && new Date(m.date) <= agora);
+    let acao = null, peso = 0;
+    if (etapa === 'Prospecção') { if (!futura && dias >= 2) { acao = 'Agendar reunião, parado há ' + dias + ' dias'; peso = 1; } }
+    else if (etapa === 'Agendado') { if (passadaAberta) { acao = null; } else if (!futura) { acao = 'Sem reunião marcada: conferir agendamento'; peso = 2; } }
+    else if (etapa === 'Negociação') { if (dias >= 5) { acao = 'Em negociação: fazer contato'; peso = 3; } }
+    if (acao) parados.push({ l, acao, peso, dias });
+  });
+  parados.sort((a, b) => b.peso - a.peso || b.dias - a.dias);
+  // aniversariantes de hoje
+  const mes = agora.getMonth() + 1, dia = agora.getDate(), niver = [];
+  const ehHoje = nasc => { const p = String(nasc || '').split('-').map(Number); return p[1] === mes && p[2] === dia; };
+  (db.leads || []).forEach(l => { if (l.nasc && ehHoje(l.nasc) && canUserAccessLead(l)) niver.push({ nome: l.nome, tel: l.tel, leadId: l.id, tipo: 'Cliente' }); });
+  (usersList || []).forEach(u => { if (u.nasc && ehHoje(u.nasc) && u.id !== currentUser.id) niver.push({ nome: u.nome, tel: u.tel, tipo: 'Equipe' }); });
+  return { hoje, atrasados, parados, niver };
+}
+function phTel(lead){
+  if (!lead || !lead.tel) return '';
+  return `<span class="ph-tel">${esc(fmtTelBR(lead.tel))}${linkWhatsAppTel(lead.tel)}</span>`;
+}
+function renderParaHoje(){
+  const card = document.getElementById('paraHojeCard'), cx = document.getElementById('paraHoje');
+  if (!card || !cx) return;
+  if (!currentUser) { card.style.display = 'none'; return; }
+  let d; try { d = phDados(); } catch (e) { console.warn('[para hoje]', e); card.style.display = 'none'; return; }
+  const total = d.hoje.length + d.atrasados.length + d.parados.length + d.niver.length;
+  const fechado = phFechado();
+  card.style.display = '';
+  const dataTxt = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+  let html = `<div class="ph-topo" onclick="phAlternar()" title="${fechado ? 'Mostrar' : 'Esconder'}">
+      <div><h2 style="margin:0">📌 Para hoje <span class="badge ${total ? 'b-gold' : 'b-green'}" style="font-size:12px;vertical-align:middle">${total ? total + (total === 1 ? ' item' : ' itens') : 'tudo em dia'}</span></h2><small class="muted">${esc(dataTxt)}</small></div>
+      <button class="btn" style="font-size:12px;padding:5px 10px">${fechado ? 'Mostrar' : 'Esconder'}</button>
+    </div>`;
+  if (!fechado) {
+    const grupo = (chave, titulo, itens, linha, rodape) => {
+      if (!itens.length) return '';
+      const limite = 5, mostra = phVerTudo[chave] ? itens : itens.slice(0, limite);
+      return `<div class="ph-grupo"><div class="ph-titulo">${titulo} <span>${itens.length}</span></div>${mostra.map(linha).join('')}` +
+        (itens.length > limite ? `<button class="ph-mais" onclick="phMais('${chave}')">${phVerTudo[chave] ? 'Mostrar menos' : 'Ver os outros ' + (itens.length - limite)}</button>` : '') + (rodape || '') + '</div>';
+    };
+    const hora = t => new Date(t).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const linhaReuniao = comData => x => `<div class="ph-linha">
+        <span class="ph-hora">${comData ? new Date(x.t).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' : ''}${hora(x.t)}</span>
+        <span class="ph-nome" onclick="openEventActionModal('${x.m.id}','meeting')" title="Abrir o compromisso">${x.m.tipo === 'followup' ? '📞' : '📹'} ${esc(x.m.lead || 'Sem nome')}</span>
+        <span class="ph-info">${esc(x.m.obj || (x.m.tipo === 'followup' ? 'Retorno' : ''))}</span>${phTel(x.lead)}</div>`;
+    html += grupo('hoje', 'Compromissos de hoje', d.hoje, linhaReuniao(false));
+    html += grupo('atrasados', 'Passaram do dia e continuam em aberto', d.atrasados, linhaReuniao(true));
+    html += grupo('parados', 'Leads esperando você', d.parados, x => `<div class="ph-linha">
+        <span class="ph-hora ph-etapa">${esc(x.l.stage || 'Prospecção')}</span>
+        <span class="ph-nome" onclick="openLead('${x.l.id}')" title="Abrir o cadastro">👤 ${esc(x.l.nome || 'Sem nome')}</span>
+        <span class="ph-info">${esc(x.acao)}</span>${phTel(x.l)}</div>`);
+    html += grupo('niver', 'Aniversariantes de hoje', d.niver, x => {
+      const wa = buildWhatsAppLink(x.tel, `Feliz aniversário, ${(x.nome || '').split(' ')[0]}! 🎉 Muita saúde, paz e conquistas. Um grande abraço!`);
+      return `<div class="ph-linha"><span class="ph-hora ph-etapa">${x.tipo}</span>
+        <span class="ph-nome" ${x.leadId ? `onclick="openLead('${x.leadId}')"` : 'style="cursor:default;text-decoration:none"'}>🎂 ${esc(x.nome || '')}</span>
+        <span class="ph-info"></span>${wa ? `<a class="btn green" style="font-size:12px;padding:4px 9px;text-decoration:none" href="${wa}" target="_blank" rel="noopener">Dar parabéns</a>` : ''}</div>`;
+    });
+    if (!total) html += '<p class="muted" style="font-size:13px;margin:10px 0 0">Nenhum compromisso para hoje, nada atrasado e nenhum lead parado na sua carteira.</p>';
+  }
+  cx.innerHTML = html;
+}
+
+// ====================== FILTROS DE LEADS NO CELULAR ======================
+const LEADS_FILTROS = [['leadFilterScore', 'all'], ['leadFilterStage', 'all'], ['leadFilterOrigem', 'all'], ['leadFilterIndicador', 'all'], ['leadFilterUser', 'all'], ['leadSortOrder', 'last']];
+function leadsFiltrosAtivos(){ return LEADS_FILTROS.filter(([id, padrao]) => { const el = document.getElementById(id); return el && el.value !== padrao && id !== 'leadSortOrder'; }).length; }
+function leadsFiltrosContar(){
+  const n = leadsFiltrosAtivos(), bt = document.getElementById('leadsFiltrosBt'), limpar = document.getElementById('leadsFiltrosLimpar'), barra = document.getElementById('leadsBarra');
+  if (bt) { bt.textContent = (barra && barra.classList.contains('aberto') ? '▲ Fechar filtros' : '⚙️ Filtros') + (n ? ' (' + n + ')' : ''); bt.classList.toggle('primary', n > 0); }
+  if (limpar) limpar.style.display = n ? '' : 'none';
+}
+function leadsFiltrosAlternar(){ const b = document.getElementById('leadsBarra'); if (b) b.classList.toggle('aberto'); leadsFiltrosContar(); }
+function leadsFiltrosLimpar(){
+  LEADS_FILTROS.forEach(([id, padrao]) => { const el = document.getElementById(id); if (el && id !== 'leadSortOrder') el.value = padrao; });
+  renderLeads(); leadsFiltrosContar();
+}
+(function(){
+  const b = document.getElementById('leadsBarra'); if (!b) return;
+  if (b.parentElement) b.parentElement.classList.add('leads-topo');
+  b.addEventListener('change', leadsFiltrosContar);
+  leadsFiltrosContar();
+})();
+
+// ====================== LIGAÇÕES COM O RESTO DA TELA ======================
+(function(){
+  const showAnterior = window.show;
+  window.show = function(id){
+    const r = showAnterior.apply(this, arguments);
+    if (id === 'configuracoes') setTimeout(bkpRender, 0);
+    if (id === 'leads') setTimeout(leadsFiltrosContar, 0);
+    return r;
+  };
+  renderParaHoje();
+})();
+
 </script>
 </body>
 </html>
