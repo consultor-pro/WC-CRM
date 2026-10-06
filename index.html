@@ -992,6 +992,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     <button onclick="show('calculadora',this)">🧮 Calculadora</button>
     <button onclick="show('aniversarios',this)">🎂 Aniversariantes</button>
     <button onclick="show('materialApoio',this)">📚 Material de Apoio</button>
+    <button id="btnNavApresentacoes" onclick="show('apresentacoes',this)">🎞️ Apresentações</button>
     <button onclick="show('informacoes',this)">📢 Informações & Arquivos</button>
 
     <div class="nav-section-label" data-group="equipe">EQUIPE</div>
@@ -2018,6 +2019,24 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       </table>
     </div>
   </div>
+</section>
+
+<section id="apresentacoes" class="page">
+ <div class="card">
+  <div class="between" style="flex-wrap:wrap;gap:10px">
+    <div>
+      <h2 style="margin:0">Apresentações</h2>
+      <small class="muted">Monte slides, apresente PDFs e escreva notas à mão. Fica guardado neste aparelho.</small>
+    </div>
+    <div class="row"><button class="btn" onclick="aprAbrirCopia()">Cópia de segurança</button></div>
+  </div>
+  <div class="tab-pills" style="margin-top:14px">
+    <button class="tab-pill active" data-sub="slides" onclick="aprTrocarSub('slides')">Slides<i style="font-style:normal"></i></button>
+    <button class="tab-pill" data-sub="pdfs" onclick="aprTrocarSub('pdfs')">PDFs<i style="font-style:normal"></i></button>
+    <button class="tab-pill" data-sub="notas" onclick="aprTrocarSub('notas')">Notas<i style="font-style:normal"></i></button>
+  </div>
+  <div id="aprLista"></div>
+ </div>
 </section>
 
 <section id="agenda" class="page">
@@ -4280,6 +4299,7 @@ const ICONS = {
   usuarios: '<path d="M12 2 20 5.5v5C20 16 16.9 19.8 12 21.5 7.1 19.8 4 16 4 10.5v-5Z"/>',
   consultoresVendas: '<rect x="4" y="5" width="16" height="15" rx="2"/><circle cx="12" cy="11" r="2.4"/><path d="M8.2 17c0-1.9 1.7-3 3.8-3s3.8 1.1 3.8 3"/>',
   configuracoes: '<line x1="4" y1="6" x2="20" y2="6"/><circle cx="9" cy="6" r="2"/><line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="8" cy="18" r="2"/>',
+  apresentacoes: '<rect x="3" y="4" width="18" height="12" rx="1.5"/><line x1="12" y1="16" x2="12" y2="19.5"/><line x1="8" y1="20" x2="16" y2="20"/><path d="M10.2 7.8v4.4l3.8-2.2z"/>',
   mais: '<line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/>',
   search: '<circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.3" y1="15.3" x2="21" y2="21"/>',
   moon: '<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/>',
@@ -4482,7 +4502,7 @@ const PAGE_TITLES = {
   materialApoio: 'Material de Apoio', informacoes: 'Informações & Arquivos', aniversarios: 'Aniversariantes',
   calculadora: 'Calculadora',
   agenda: 'Agenda Comercial', usuarios: 'Equipe & Hierarquia', configuracoes: 'Configurações',
-  consultoresVendas: 'Consultores & Vendas', indicesGrupo: 'INCC e INPC'
+  consultoresVendas: 'Consultores & Vendas', indicesGrupo: 'INCC e INPC', apresentacoes: 'Apresentações'
 };
 
 // ================== BUSCA GLOBAL ==================
@@ -4930,6 +4950,7 @@ function abrirMenuMaisMobile(){
     { id: 'calculadora', label: '🧮 Calculadora' },
     { id: 'aniversarios', label: '🎂 Aniversariantes' },
     { id: 'materialApoio', label: '📚 Material de Apoio' },
+  { id: 'apresentacoes', label: '🎞️ Apresentações' },
     { id: 'informacoes', label: '📢 Informações & Arquivos' },
     { id: 'usuarios', label: '🛡️ Equipe & Hierarquia' },
     { id: 'consultoresVendas', label: '👔 Consultores & Vendas' },
@@ -12287,6 +12308,7 @@ const MENU_ITENS_OCULTAVEIS = [
   { id: 'calculadora', label: '🧮 Calculadora' },
   { id: 'aniversarios', label: '🎂 Aniversariantes' },
   { id: 'materialApoio', label: '📚 Material de Apoio' },
+  { id: 'apresentacoes', label: '🎞️ Apresentações' },
   { id: 'informacoes', label: '📢 Informações & Arquivos' },
   { id: 'usuarios', label: '🛡️ Equipe & Hierarquia' },
   { id: 'consultoresVendas', label: '👔 Consultores & Vendas' },
@@ -14636,6 +14658,1199 @@ if (typeof renderAll === 'function') {
     injetarBotaoExportarExcel();
   };
 }
+</script>
+<style id="aprEstilos">
+/* ================= APRESENTAÇÕES: slides, PDFs e notas à mão ================= */
+.apr-acoes-topo { display: flex; gap: 8px; flex-wrap: wrap; }
+.apr-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 14px; margin-top: 14px; }
+.apr-item { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--card); display: flex; flex-direction: column; }
+.apr-mini { aspect-ratio: 16 / 9; background: #eef1f5; display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer; position: relative; }
+.apr-mini.nota { aspect-ratio: 4 / 3; align-items: flex-start; }
+.apr-mini img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.apr-mini .apr-vazio { color: #94a3b8; font-size: 12px; font-weight: 600; }
+.apr-mini-slide { position: absolute; left: 0; top: 0; transform-origin: 0 0; pointer-events: none; }
+.apr-item-corpo { padding: 9px 11px 10px; display: flex; flex-direction: column; gap: 6px; }
+.apr-item-corpo b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.apr-item-corpo small { color: var(--muted); font-size: 11.5px; }
+.apr-item-botoes { display: flex; gap: 5px; flex-wrap: wrap; }
+.apr-item-botoes .btn { padding: 4px 9px; font-size: 11.5px; border-radius: 6px; }
+.apr-vazio-lista { text-align: center; color: var(--muted); padding: 34px 12px; border: 1px dashed var(--line); border-radius: 12px; margin-top: 14px; }
+
+/* ---- telas inteiras (editor de slides, apresentação, notas) ---- */
+.apr-tela { position: fixed; inset: 0; z-index: 240; background: #eef1f5; display: none; flex-direction: column; color: #0f172a; font-family: var(--font-body); }
+.apr-tela.aberta { display: flex; }
+.apr-barra { display: flex; align-items: center; gap: 8px; padding: 8px 10px; background: #fff; border-bottom: 1px solid #dbe1e8; flex-wrap: wrap; }
+.apr-barra input.apr-titulo { flex: 1 1 160px; min-width: 110px; max-width: 420px; width: auto; margin: 0; padding: 7px 10px; font-weight: 700; font-size: 14px; border: 1px solid transparent; background: transparent; border-radius: 8px; }
+.apr-barra input.apr-titulo:hover, .apr-barra input.apr-titulo:focus { border-color: #cbd5e1; background: #fff; }
+.apr-barra select { width: auto; margin: 0; padding: 6px 8px; font-size: 13px; }
+.apr-bt { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 34px; height: 34px; padding: 0 10px; border: 1px solid #d5dbe3; border-radius: 8px; background: #fff; color: #1e293b; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.apr-bt:hover { background: #f1f5f9; }
+.apr-bt:disabled { opacity: .4; cursor: default; }
+.apr-bt.forte { background: var(--red); border-color: var(--red); color: #fff; }
+.apr-bt.ativo { background: #0f172a; border-color: #0f172a; color: #fff; }
+.apr-espaco { flex: 1 1 0; }
+.apr-sep { width: 1px; align-self: stretch; background: #dbe1e8; margin: 2px 2px; }
+
+/* ---- slides ---- */
+.apr-ed-corpo { flex: 1; display: flex; min-height: 0; }
+.apr-ed-lista { width: 190px; flex: none; overflow-y: auto; padding: 10px; background: #e3e7ed; display: flex; flex-direction: column; gap: 8px; }
+.apr-ed-mini { position: relative; aspect-ratio: 16 / 9; border-radius: 6px; overflow: hidden; border: 2px solid transparent; background: #fff; cursor: pointer; flex: none; }
+.apr-ed-mini.sel { border-color: var(--red); }
+.apr-ed-mini .n { position: absolute; left: 4px; bottom: 3px; z-index: 2; background: rgba(15,23,42,.72); color: #fff; font-size: 10px; font-weight: 700; padding: 0 5px; border-radius: 4px; }
+.apr-ed-centro { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.apr-ed-opcoes { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 8px 12px; background: #f8fafc; border-bottom: 1px solid #dbe1e8; font-size: 12px; }
+.apr-ed-opcoes .rot { color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; font-size: 10.5px; margin-right: 2px; }
+.apr-ed-opcoes .apr-bt { height: 30px; font-size: 12px; }
+.apr-palco { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+.apr-palco-in { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform-origin: 0 0; box-shadow: 0 10px 34px rgba(15,23,42,.22); }
+
+.apr-slide { width: 1280px; height: 720px; position: relative; overflow: hidden; font-family: var(--font-body); box-sizing: border-box; }
+.apr-slide * { box-sizing: border-box; }
+.apr-slide .s-titulo { font-family: var(--font-display); font-weight: 700; line-height: 1.1; letter-spacing: -.01em; white-space: pre-wrap; overflow-wrap: break-word; }
+.apr-slide .s-texto { line-height: 1.4; white-space: pre-wrap; overflow-wrap: break-word; }
+.apr-slide .s-texto ul { margin: 0; padding-left: 1.15em; }
+.apr-slide .s-texto li { margin-bottom: .35em; }
+.apr-slide .s-texto p { margin: 0 0 .5em; }
+.apr-slide .s-img { background-size: cover; background-position: center; background-color: rgba(127,127,127,.14); display: flex; align-items: center; justify-content: center; font-size: 26px; font-weight: 600; opacity: .9; }
+.apr-slide [contenteditable] { outline: none; border-radius: 8px; cursor: text; }
+.apr-slide [contenteditable]:hover { box-shadow: 0 0 0 2px rgba(100,116,139,.28); }
+.apr-slide [contenteditable]:focus { box-shadow: 0 0 0 3px rgba(37,99,235,.45); }
+.apr-slide [contenteditable]:empty::before { content: attr(data-dica); opacity: .38; }
+.apr-slide .s-faixa { position: absolute; left: 0; top: 0; bottom: 0; width: 18px; }
+/* temas */
+.apr-slide.t-claro { background: #ffffff; color: #0f172a; }
+.apr-slide.t-claro .s-faixa { background: #C8102E; }
+.apr-slide.t-claro .s-texto { color: #334155; }
+.apr-slide.t-escuro { background: #0f172a; color: #f8fafc; }
+.apr-slide.t-escuro .s-faixa { background: #f59e0b; }
+.apr-slide.t-escuro .s-texto { color: #cbd5e1; }
+.apr-slide.t-bordo { background: linear-gradient(135deg, #3A0A12 0%, #6d1023 100%); color: #fff7f0; }
+.apr-slide.t-bordo .s-faixa { background: #e9c98a; }
+.apr-slide.t-bordo .s-texto { color: #f3d9d2; }
+.apr-slide.t-azul { background: linear-gradient(135deg, #0b2a4a 0%, #14507a 100%); color: #f1f7fc; }
+.apr-slide.t-azul .s-faixa { background: #7dd3fc; }
+.apr-slide.t-azul .s-texto { color: #cfe3f3; }
+.apr-slide.t-creme { background: #faf6ee; color: #2b2118; }
+.apr-slide.t-creme .s-faixa { background: #9a6b2f; }
+.apr-slide.t-creme .s-texto { color: #56483a; }
+/* modelos de slide */
+.apr-slide.l-capa { display: flex; flex-direction: column; justify-content: center; padding: 70px 110px 70px 128px; }
+.apr-slide.l-capa .s-titulo { font-size: 84px; max-height: 380px; }
+.apr-slide.l-capa .s-texto { font-size: 34px; margin-top: 30px; max-height: 190px; opacity: .92; }
+.apr-slide.l-texto { padding: 62px 90px 56px 110px; display: flex; flex-direction: column; }
+.apr-slide.l-texto .s-titulo { font-size: 56px; max-height: 190px; flex: none; }
+.apr-slide.l-texto .s-texto { font-size: 32px; margin-top: 30px; flex: 1; min-height: 0; }
+.apr-slide.l-imgdir { padding: 62px 0 56px 110px; display: flex; gap: 48px; }
+.apr-slide.l-imgdir .s-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.apr-slide.l-imgdir .s-titulo { font-size: 50px; max-height: 180px; flex: none; }
+.apr-slide.l-imgdir .s-texto { font-size: 28px; margin-top: 26px; flex: 1; min-height: 0; }
+.apr-slide.l-imgdir .s-img { width: 540px; flex: none; margin: -62px 0 -56px; }
+.apr-slide.l-imagem .s-img { position: absolute; inset: 0; }
+.apr-slide.l-imagem .s-titulo { position: absolute; left: 0; right: 0; bottom: 0; padding: 26px 60px 30px; font-size: 44px; background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff; max-height: 220px; }
+.apr-slide.l-imagem .s-faixa { display: none; }
+.apr-slide.l-destaque { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 70px 130px; }
+.apr-slide.l-destaque .s-titulo { font-size: 30px; letter-spacing: .14em; text-transform: uppercase; opacity: .7; font-family: var(--font-body); max-height: 90px; order: -1; margin-bottom: 26px; }
+.apr-slide.l-destaque .s-texto { font-size: 64px; font-family: var(--font-display); font-weight: 700; line-height: 1.15; max-height: 440px; color: inherit; }
+.apr-slide.l-destaque .s-faixa { width: 100%; height: 14px; bottom: auto; }
+
+/* ---- apresentação em tela cheia ---- */
+.apr-show { background: #000; z-index: 246; }
+.apr-show-area { flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; touch-action: none; }
+.apr-show-area canvas { max-width: 100%; max-height: 100%; background: #fff; }
+.apr-show-ctrl { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; background: rgba(15,23,42,.78); color: #fff; border-radius: 999px; padding: 5px 8px; font-size: 13px; transition: opacity .25s; z-index: 3; }
+.apr-show-ctrl.some { opacity: 0; pointer-events: none; }
+.apr-show-ctrl button { width: 38px; height: 34px; border: 0; border-radius: 999px; background: transparent; color: #fff; font-size: 17px; cursor: pointer; }
+.apr-show-ctrl button:hover { background: rgba(255,255,255,.16); }
+.apr-show-ctrl span { min-width: 62px; text-align: center; font-variant-numeric: tabular-nums; }
+.apr-show-msg { color: #e2e8f0; font-size: 15px; text-align: center; padding: 24px; max-width: 520px; line-height: 1.5; }
+
+/* ---- notas à mão ---- */
+.apr-nota-ferr { display: flex; align-items: center; gap: 6px; padding: 6px 10px; background: #f8fafc; border-bottom: 1px solid #dbe1e8; overflow-x: auto; scrollbar-width: thin; }
+.apr-nota-ferr > * { flex: none; }
+.apr-caneta { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; width: 58px; height: 46px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #334155; font-size: 10.5px; font-weight: 600; cursor: pointer; }
+.apr-caneta svg { width: 22px; height: 22px; }
+.apr-caneta:hover { background: #eef1f5; }
+.apr-caneta.ativo { background: #fff; border-color: #94a3b8; box-shadow: 0 1px 3px rgba(15,23,42,.14); color: #0f172a; }
+.apr-caneta .cor { width: 26px; height: 3px; border-radius: 2px; }
+.apr-cores { display: flex; gap: 5px; align-items: center; }
+.apr-cor { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #cbd5e1; cursor: pointer; padding: 0; }
+.apr-cor.ativo { box-shadow: 0 0 0 2px #0f172a; }
+.apr-cor-livre { width: 28px; height: 28px; padding: 0; margin: 0; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; cursor: pointer; }
+.apr-esp { display: flex; align-items: center; gap: 7px; font-size: 11.5px; color: #475569; font-weight: 600; }
+.apr-esp input[type=range] { width: 110px; margin: 0; padding: 0; border: 0; background: transparent; }
+.apr-esp .bol { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; }
+.apr-esp .bol i { display: block; border-radius: 50%; background: #0f172a; }
+.apr-nota-area { flex: 1; min-height: 0; position: relative; overflow: hidden; background: #d9dee5; touch-action: none; user-select: none; -webkit-user-select: none; cursor: crosshair; }
+.apr-nota-area.mao { cursor: grab; }
+.apr-nota-area canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; }
+.apr-marca { position: absolute; pointer-events: none; z-index: 2; max-width: 70%; }
+.apr-marca.p-id { right: 22px; bottom: 22px; text-align: right; }
+.apr-marca.p-ie { left: 22px; bottom: 22px; text-align: left; }
+.apr-marca.p-sd { right: 22px; top: 18px; text-align: right; }
+.apr-marca.p-se { left: 22px; top: 18px; text-align: left; }
+.apr-marca.p-ce { left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; }
+.apr-marca img { display: block; max-width: 100%; height: auto; }
+.apr-marca.p-id img, .apr-marca.p-sd img { margin-left: auto; }
+.apr-marca.p-ce img { margin: 0 auto; }
+.apr-cartao { display: inline-block; color: #1e293b; line-height: 1.2; text-align: inherit; }
+.apr-cartao .c-nome { font-size: 1em; white-space: nowrap; }
+.apr-cartao .c-extra { font-size: .42em; margin-top: .25em; white-space: nowrap; opacity: .85; }
+.apr-cartao .c-fio { height: 1px; background: currentColor; opacity: .45; margin: .32em 0 .3em; }
+.apr-cartao .c-dados { font-size: .4em; white-space: nowrap; font-family: 'Inter', system-ui, sans-serif; font-weight: 500; letter-spacing: .02em; font-variant-numeric: tabular-nums; }
+.apr-cartao .c-dados span { text-transform: uppercase; letter-spacing: .14em; font-size: .8em; font-weight: 700; opacity: .7; margin-right: .35em; }
+.apr-cartao .c-dados i { font-style: normal; opacity: .5; margin: 0 .6em; }
+.apr-cartao.e-classico .c-nome { font-family: 'Playfair Display', Georgia, 'Times New Roman', serif; font-weight: 700; letter-spacing: .005em; }
+.apr-cartao.e-classico .c-extra { font-family: 'Playfair Display', Georgia, serif; font-style: italic; }
+.apr-cartao.e-moderno .c-nome { font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; font-size: .78em; }
+.apr-cartao.e-moderno .c-extra { font-family: 'Inter', system-ui, sans-serif; text-transform: uppercase; letter-spacing: .18em; font-weight: 600; font-size: .34em; }
+.apr-cartao.e-assinatura .c-nome { font-family: 'Great Vibes', 'Brush Script MT', cursive; font-weight: 400; font-size: 1.5em; line-height: 1.05; }
+.apr-cartao.e-assinatura .c-extra { font-family: 'Inter', system-ui, sans-serif; letter-spacing: .08em; }
+.apr-cartao.claro { color: #f8fafc; }
+.apr-show .apr-cartao { color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.85), 0 0 9px rgba(0,0,0,.55); }
+.apr-show .apr-marca img { filter: drop-shadow(0 1px 3px rgba(0,0,0,.5)); }
+.apr-show .apr-marca { z-index: 2; }
+.apr-marca-previa { position: relative; height: 150px; border: 1px solid var(--line); border-radius: 10px; background: repeating-linear-gradient(#fff, #fff 27px, #dbe4ee 28px); overflow: hidden; margin: 10px 0 4px; }
+.apr-zoom { font-variant-numeric: tabular-nums; min-width: 52px; }
+.apr-menu { position: absolute; z-index: 5; right: 8px; top: 6px; background: #fff; border: 1px solid #cbd5e1; border-radius: 12px; box-shadow: 0 14px 34px rgba(15,23,42,.22); padding: 12px; width: 290px; max-width: calc(100% - 16px); max-height: calc(100% - 12px); overflow-y: auto; display: none; font-size: 13px; }
+.apr-menu.aberto { display: block; }
+.apr-menu h4 { margin: 4px 0 7px; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: #64748b; }
+.apr-menu .op { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 10px; }
+.apr-menu .op button { border: 1px solid #d5dbe3; border-radius: 8px; background: #fff; padding: 0; cursor: pointer; font-size: 11px; font-weight: 600; color: #334155; overflow: hidden; }
+.apr-menu .op button.ativo { border-color: #0f172a; box-shadow: 0 0 0 1px #0f172a; }
+.apr-menu .op button i { display: block; height: 38px; border-bottom: 1px solid #e2e8f0; }
+.apr-menu .op button span { display: block; padding: 3px 2px; }
+.apr-menu .linha { display: flex; flex-direction: column; gap: 5px; }
+.apr-menu .linha .apr-bt { justify-content: flex-start; width: 100%; }
+
+@media (max-width: 760px) {
+  .apr-ed-corpo { flex-direction: column; }
+  .apr-ed-lista { width: auto; flex-direction: row; overflow-x: auto; overflow-y: hidden; padding: 8px; order: 2; }
+  .apr-ed-mini { width: 112px; aspect-ratio: 16 / 9; }
+  .apr-barra { gap: 6px; padding: 6px 8px; }
+  .apr-bt { height: 32px; padding: 0 8px; font-size: 12px; }
+  .apr-bt .txt { display: none; }
+  .apr-esp input[type=range] { width: 84px; }
+  .apr-grade { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+}
+[data-theme="dark"] .apr-mini { background: #0d1117; }
+[data-theme="dark"] .apr-item { border-color: #30363d; }
+</style>
+<script>
+/* ================= APRESENTAÇÕES: slides, PDFs e notas à mão =================
+   Tudo desta aba fica guardado no aparelho (IndexedDB), separado dos dados do CRM:
+   não entra no backup normal nem na nuvem, para não pesar. A própria aba tem
+   "Cópia de segurança" para levar slides e notas para outro aparelho. */
+const APR = { indice: null, uid: null, sub: 'slides', imgUrls: new Map() };
+const APR_MARCA_PADRAO = { modo: 'nenhuma', nome: '', extra: '', cnpj: '', matricula: '', estilo: 'classico', posicao: 'id', tamanho: 30, opacidade: 60, apresentar: false };
+function aprChave(sufixo){ return 'apr_' + ((currentUser && currentUser.id) || 'geral') + '_' + sufixo; }
+function aprId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function aprQuando(iso){
+  try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); } catch(e){ return ''; }
+}
+function aprTamanho(bytes){ return bytes > 1048576 ? (bytes / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(bytes / 1024)) + ' KB'; }
+function aprSvg(caminho){ return '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + caminho + '</svg>'; }
+const APR_IC = {
+  voltar: '<path d="M15 5l-7 7 7 7"/>', frente: '<path d="M9 5l7 7-7 7"/>', mais: '<path d="M12 5v14M5 12h14"/>', menos: '<path d="M5 12h14"/>',
+  desfazer: '<path d="M8 7L4 11l4 4"/><path d="M4 11h10a5.5 5.5 0 0 1 0 11h-3"/>', refazer: '<path d="M16 7l4 4-4 4"/><path d="M20 11H10a5.5 5.5 0 0 0 0 11h3"/>',
+  cheia: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>', sair: '<path d="M6 6l12 12M18 6L6 18"/>', tocar: '<path d="M7 5l12 7-12 7z"/>',
+  folha: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8.5 8h7M8.5 12h7M8.5 16h4.5"/>', ajustar: '<path d="M4 12h16M7 9l-3 3 3 3M17 9l3 3-3 3"/>',
+  dedo: '<path d="M9 11V5.5a1.5 1.5 0 0 1 3 0V11"/><path d="M12 10.5V8a1.5 1.5 0 0 1 3 0v3"/><path d="M15 11.5v-1a1.5 1.5 0 0 1 3 0V15c0 3.6-2.4 6-6 6-2.6 0-4.200-1.3-5.400-3.800L5 14a1.4 1.4 0 0 1 2.400-1.400L9 14.500"/>',
+  caneta: '<path d="M4 20l1-4L16.500 4.500a2.100 2.100 0 0 1 3 3L8 19z"/><path d="M14.500 6.500l3 3"/>',
+  tinteiro: '<path d="M12 3l5 9-5 9-5-9z"/><path d="M12 12.500V21"/><circle cx="12" cy="11" r="1.200"/>',
+  lapis: '<path d="M4 20l1.200-4.800L15.500 5 19 8.500 8.800 18.800z"/><path d="M13.500 7l3.500 3.500M5.200 15.200l3.600 3.600"/>',
+  marca: '<path d="M8.500 13.500L16 6l3 3-7.500 7.500z"/><path d="M9 14l-3 3 2 2h3l1.500-1.500"/><path d="M4 21.500h10"/>',
+  pincel: '<path d="M18.500 3.500a2 2 0 0 1 2.800 2.800L12 15.600l-3-3z"/><path d="M8.600 13.300c-2.600.4-3.300 2.200-3.600 4.200-.2 1.100-.9 1.900-2 2.500 3.800.6 7.900-.7 8-4.400"/>',
+  borracha: '<path d="M8 19.500h11"/><path d="M5 15l8.500-8.500a2 2 0 0 1 2.800 0l2.200 2.200a2 2 0 0 1 0 2.800L11 19H8l-3-3a.7.7 0 0 1 0-1z"/><path d="M10.500 9.500l5 5"/>',
+  mao: '<path d="M8 12.500V6a1.500 1.500 0 0 1 3 0v5"/><path d="M11 10.500V4.500a1.500 1.500 0 0 1 3 0v6"/><path d="M14 11V6.500a1.500 1.500 0 0 1 3 0V15c0 3.600-2.400 6-6 6-2.600 0-4.200-1.300-5.400-3.800L4 14a1.400 1.400 0 0 1 2.400-1.400L8 14.500"/>'
+};
+
+async function aprCarregar(){
+  const uid = (currentUser && currentUser.id) || 'geral';
+  if (APR.indice && APR.uid === uid) return APR.indice;
+  const salvo = await idbGetArquivo(aprChave('indice'));
+  APR.uid = uid;
+  APR.indice = Object.assign({ slides: [], pdfs: [], notas: [], canetas: null, dedoMove: null }, salvo || {});
+  APR.indice.marca = Object.assign({}, APR_MARCA_PADRAO, (salvo && salvo.marca) || {});
+  if (!APR.indice.marca.nome && currentUser) APR.indice.marca.nome = currentUser.nome || '';
+  APR.marcaImg = (await idbGetArquivo(aprChave('marca_img'))) || '';
+  return APR.indice;
+}
+async function aprGravarIndice(){
+  const ok = await idbSetArquivo(aprChave('indice'), APR.indice);
+  if (!ok && !APR.avisouFalha) { APR.avisouFalha = true; showToast('Este navegador não deixou guardar os dados da aba Apresentações. Em janela anônima isso é esperado.', 'error'); }
+  return ok;
+}
+function aprPedirArquivo(aceita, varios, quandoEscolher){
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = aceita; inp.multiple = !!varios; inp.style.display = 'none';
+  inp.id = 'aprArquivoTemp'; const velho = document.getElementById('aprArquivoTemp'); if (velho) velho.remove();
+  inp.addEventListener('change', () => { const fs = [...inp.files]; inp.remove(); if (fs.length) quandoEscolher(fs); });
+  document.body.appendChild(inp); inp.click();
+}
+function aprLerComoDataUrl(arquivo){ return new Promise((ok, erro) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = () => erro(r.error); r.readAsDataURL(arquivo); }); }
+// Reduz a imagem (lado maior até `lado` px). `png` mantém transparência (marca d'água); senão vira JPEG leve.
+function aprReduzirImagem(arquivo, lado, png){
+  return new Promise((ok, erro) => {
+    const url = URL.createObjectURL(arquivo); const img = new Image();
+    img.onload = () => {
+      const f = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * f)); c.height = Math.max(1, Math.round(img.naturalHeight * f));
+      const x = c.getContext('2d'); if (!png) { x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); }
+      x.drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      ok(png ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.84));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); erro(new Error('Não foi possível abrir essa imagem.')); };
+    img.src = url;
+  });
+}
+// As imagens ficam guardadas como texto (data URL); para desenhar várias vezes sem pesar, vira um endereço curto na memória
+function aprUrlImagem(dataUrl){
+  if (!dataUrl) return '';
+  let u = APR.imgUrls.get(dataUrl);
+  if (!u) {
+    try { const [cab, b64] = dataUrl.split(','); const bin = atob(b64); const arr = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+      u = URL.createObjectURL(new Blob([arr], { type: (cab.match(/data:([^;]+)/) || [])[1] || 'image/jpeg' })); } catch(e){ u = dataUrl; }
+    APR.imgUrls.set(dataUrl, u);
+  }
+  return u;
+}
+function aprTelaCheia(el){
+  const atual = document.fullscreenElement || document.webkitFullscreenElement;
+  if (atual) { (document.exitFullscreen || document.webkitExitFullscreen).call(document); return false; }
+  const pedir = el.requestFullscreen || el.webkitRequestFullscreen;
+  if (!pedir) { showToast('Este aparelho não tem tela cheia pelo navegador. A tela já ocupa a janela inteira.'); return false; }
+  try { const r = pedir.call(el); if (r && r.catch) r.catch(() => {}); } catch(e){}
+  return true;
+}
+function aprEmTelaCheia(){ return !!(document.fullscreenElement || document.webkitFullscreenElement); }
+function aprCriarTela(id, classe){
+  let el = document.getElementById(id);
+  if (!el) { el = document.createElement('div'); el.id = id; el.className = 'apr-tela ' + (classe || ''); document.body.appendChild(el); }
+  return el;
+}
+function aprCarregarFontes(){
+  if (document.getElementById('aprFontes')) return;
+  const l = document.createElement('link'); l.id = 'aprFontes'; l.rel = 'stylesheet';
+  l.href = 'https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;1,500&family=Great+Vibes&display=swap';
+  document.head.appendChild(l);
+}
+
+// ---------- lista da aba ----------
+function aprTrocarSub(sub){ APR.sub = sub; aprRender(); }
+async function aprRender(){
+  const cx = document.getElementById('aprLista');
+  if (!cx || !currentUser) return;
+  const ind = await aprCarregar();
+  document.querySelectorAll('#apresentacoes .tab-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.sub === APR.sub);
+    const n = ind[b.dataset.sub].length; b.querySelector('i').textContent = n ? ' (' + n + ')' : '';
+  });
+  const ordena = lista => lista.slice().sort((a, b) => String(b.atualizado || b.criado || '').localeCompare(String(a.atualizado || a.criado || '')));
+  let html = '';
+  if (APR.sub === 'slides') {
+    html = `<div class="apr-acoes-topo"><button class="btn primary" onclick="aprNovoDeck()">+ Nova apresentação</button></div>` +
+      (ind.slides.length ? `<div class="apr-grade">${ordena(ind.slides).map(d => `
+        <div class="apr-item">
+          <div class="apr-mini" onclick="aprAbrirDeck('${d.id}')" title="Abrir para editar"><div class="apr-mini-slide">${aprSlideHtml(d.capa || {}, d.tema, false)}</div></div>
+          <div class="apr-item-corpo"><b title="${esc(d.titulo)}">${esc(d.titulo || 'Sem título')}</b><small>${d.n || 0} slide(s) · ${aprQuando(d.atualizado)}</small>
+            <div class="apr-item-botoes"><button class="btn primary" onclick="aprApresentarDeck('${d.id}')">▶ Apresentar</button><button class="btn" onclick="aprAbrirDeck('${d.id}')">Editar</button><button class="btn" onclick="aprDuplicarDeck('${d.id}')">Duplicar</button><button class="btn danger" onclick="aprExcluir('slides','${d.id}')">Excluir</button></div></div>
+        </div>`).join('')}</div>`
+      : `<div class="apr-vazio-lista">Nenhuma apresentação ainda.<br>Clique em <b>+ Nova apresentação</b> para montar os slides aqui mesmo e apresentar em tela cheia.</div>`);
+  } else if (APR.sub === 'pdfs') {
+    html = `<div class="apr-acoes-topo"><button class="btn primary" onclick="aprEnviarPdf()">+ Enviar PDF</button></div>` +
+      (ind.pdfs.length ? `<div class="apr-grade">${ordena(ind.pdfs).map(d => `
+        <div class="apr-item">
+          <div class="apr-mini" onclick="aprApresentarPdf('${d.id}')" title="Apresentar">${d.mini ? `<img src="${d.mini}" alt="">` : '<span class="apr-vazio">PDF</span>'}</div>
+          <div class="apr-item-corpo"><b title="${esc(d.nome)}">${esc(d.nome)}</b><small>${d.paginas ? d.paginas + ' página(s) · ' : ''}${aprTamanho(d.tamanho || 0)}</small>
+            <div class="apr-item-botoes"><button class="btn primary" onclick="aprApresentarPdf('${d.id}')">▶ Apresentar</button><button class="btn" onclick="aprRenomear('pdfs','${d.id}')">Renomear</button><button class="btn" onclick="aprBaixarPdf('${d.id}')">Baixar</button><button class="btn danger" onclick="aprExcluir('pdfs','${d.id}')">Excluir</button></div></div>
+        </div>`).join('')}</div>`
+      : `<div class="apr-vazio-lista">Nenhum PDF ainda.<br>Clique em <b>+ Enviar PDF</b>. Apresentação feita no PowerPoint entra aqui se for salva como PDF.</div>`);
+  } else {
+    html = `<div class="apr-acoes-topo"><button class="btn primary" onclick="aprNovaNota()">+ Nova nota</button><button class="btn" onclick="aprAbrirMarca()">Marca d'água</button></div>` +
+      (ind.notas.length ? `<div class="apr-grade">${ordena(ind.notas).map(d => `
+        <div class="apr-item">
+          <div class="apr-mini nota" onclick="aprAbrirNota('${d.id}')" title="Abrir">${d.mini ? `<img src="${d.mini}" alt="">` : '<span class="apr-vazio" style="align-self:center">Nota</span>'}</div>
+          <div class="apr-item-corpo"><b title="${esc(d.titulo)}">${esc(d.titulo || 'Sem título')}</b><small>${d.paginas || 1} página(s) · ${aprQuando(d.atualizado)}</small>
+            <div class="apr-item-botoes"><button class="btn primary" onclick="aprAbrirNota('${d.id}')">Abrir</button><button class="btn" onclick="aprDuplicarNota('${d.id}')">Duplicar</button><button class="btn danger" onclick="aprExcluir('notas','${d.id}')">Excluir</button></div></div>
+        </div>`).join('')}</div>`
+      : `<div class="apr-vazio-lista">Nenhuma nota ainda.<br>Clique em <b>+ Nova nota</b> para escrever à mão, com caneta, dedo ou mouse.</div>`);
+  }
+  cx.innerHTML = html;
+  cx.querySelectorAll('.apr-mini-slide').forEach(m => { m.style.transform = 'scale(' + (m.parentElement.clientWidth / 1280) + ')'; aprAjustarTexto(m.firstElementChild); });
+}
+const APR_SUFIXO = { slides: 'slide_', pdfs: 'pdf_', notas: 'nota_' };
+async function aprExcluir(tipo, id){
+  const ind = await aprCarregar(); const it = ind[tipo].find(x => x.id === id);
+  if (!it || !confirm('Excluir "' + (it.titulo || it.nome || 'este item') + '"? Não dá para desfazer.')) return;
+  ind[tipo] = ind[tipo].filter(x => x.id !== id);
+  await idbDeleteArquivo(aprChave(APR_SUFIXO[tipo] + id)); await aprGravarIndice(); aprRender();
+}
+async function aprRenomear(tipo, id){
+  const ind = await aprCarregar(); const it = ind[tipo].find(x => x.id === id); if (!it) return;
+  const campo = tipo === 'pdfs' ? 'nome' : 'titulo';
+  const novo = prompt('Novo nome:', it[campo] || ''); if (novo === null || !novo.trim()) return;
+  it[campo] = novo.trim().slice(0, 120); await aprGravarIndice(); aprRender();
+}
+
+// ====================== SLIDES ======================
+const APR_TEMAS = [['claro', 'Claro'], ['escuro', 'Escuro'], ['bordo', 'Bordô'], ['azul', 'Azul'], ['creme', 'Creme']];
+const APR_LAYOUTS = [['capa', 'Capa'], ['texto', 'Título e texto'], ['imgdir', 'Texto e imagem'], ['imagem', 'Imagem inteira'], ['destaque', 'Frase em destaque']];
+const APR_EDITAVEL = (() => { try { const d = document.createElement('div'); d.contentEditable = 'plaintext-only'; return d.contentEditable === 'plaintext-only' ? 'plaintext-only' : 'true'; } catch(e){ return 'true'; } })();
+// Linhas que começam com "- " viram lista de tópicos na apresentação
+function aprTextoHtml(txt){
+  let html = '', lista = [];
+  const fecha = () => { if (lista.length) { html += '<ul>' + lista.map(l => '<li>' + esc(l) + '</li>').join('') + '</ul>'; lista = []; } };
+  String(txt || '').split('\n').forEach(l => { const m = l.match(/^\s*[-•*]\s+(.*)$/); if (m) lista.push(m[1]); else { fecha(); if (l.trim()) html += '<p>' + esc(l) + '</p>'; } });
+  fecha(); return html;
+}
+function aprSlideHtml(s, tema, editar){
+  s = s || {}; const lay = APR_LAYOUTS.some(l => l[0] === s.layout) ? s.layout : 'texto';
+  const ed = (campo, dica) => editar ? ` contenteditable="${APR_EDITAVEL}" spellcheck="false" data-campo="${campo}" data-dica="${dica}"` : '';
+  const dicaTitulo = { capa: 'Título da apresentação', destaque: 'Rótulo pequeno (opcional)', imagem: 'Legenda (opcional)' }[lay] || 'Título do slide';
+  const dicaTexto = { capa: 'Subtítulo', destaque: 'Escreva a frase de destaque' }[lay] || 'Texto. Comece a linha com "- " para fazer tópicos';
+  const titulo = `<div class="s-titulo apr-auto"${ed('titulo', dicaTitulo)}>${esc(s.titulo || '')}</div>`;
+  const texto = `<div class="s-texto apr-auto"${ed('texto', dicaTexto)}>${editar ? esc(s.texto || '') : aprTextoHtml(s.texto)}</div>`;
+  const img = `<div class="s-img"${s.img ? ` style="background-image:url('${aprUrlImagem(s.img)}')"` : ''}>${s.img || !editar ? '' : 'Sem imagem: use "Escolher imagem"'}</div>`;
+  let dentro;
+  if (lay === 'imgdir') dentro = `<div class="s-col">${titulo}${texto}</div>${img}`;
+  else if (lay === 'imagem') dentro = img + ((s.titulo || editar) ? titulo : '');
+  else if (lay === 'destaque') dentro = texto + ((s.titulo || editar) ? titulo : '');
+  else dentro = titulo + texto;
+  return `<div class="apr-slide t-${APR_TEMAS.some(t => t[0] === tema) ? tema : 'claro'} l-${lay}"><div class="s-faixa"></div>${dentro}</div>`;
+}
+// Diminui a letra até o texto caber no espaço do slide
+function aprAjustarTexto(slideEl){
+  if (!slideEl) return;
+  slideEl.querySelectorAll('.apr-auto').forEach(el => {
+    el.style.fontSize = ''; el.style.overflow = 'hidden';
+    let tam = parseFloat(getComputedStyle(el).fontSize), voltas = 0;
+    while (el.scrollHeight > el.clientHeight + 1 && tam > 13 && voltas++ < 40) { tam *= 0.94; el.style.fontSize = tam + 'px'; }
+  });
+}
+function aprEncaixar(palcoIn, folga){
+  const area = palcoIn.parentElement; if (!area) return;
+  const s = Math.min(area.clientWidth / 1280, area.clientHeight / 720) * (folga || 1);
+  palcoIn.style.transformOrigin = '50% 50%'; palcoIn.style.transform = 'translate(-50%, -50%) scale(' + s + ')';
+}
+async function aprLerDeck(id){ return await idbGetArquivo(aprChave('slide_' + id)); }
+async function aprGravarDeck(deck){
+  const ind = await aprCarregar(); deck.atualizado = new Date().toISOString();
+  await idbSetArquivo(aprChave('slide_' + deck.id), deck);
+  const resumo = { id: deck.id, titulo: deck.titulo, tema: deck.tema, n: deck.slides.length, atualizado: deck.atualizado, capa: { layout: deck.slides[0].layout, titulo: deck.slides[0].titulo, texto: deck.slides[0].texto } };
+  const i = ind.slides.findIndex(x => x.id === deck.id);
+  if (i >= 0) ind.slides[i] = resumo; else ind.slides.push(resumo);
+  await aprGravarIndice();
+}
+async function aprNovoDeck(){
+  const deck = { id: aprId(), titulo: 'Nova apresentação', tema: 'bordo', slides: [{ layout: 'capa', titulo: '', texto: '' }, { layout: 'texto', titulo: '', texto: '' }] };
+  await aprGravarDeck(deck); aprEditarDeck(deck);
+}
+async function aprAbrirDeck(id){
+  const deck = await aprLerDeck(id);
+  if (!deck) { showToast('Não encontrei essa apresentação neste aparelho.', 'error'); return; }
+  aprEditarDeck(deck);
+}
+async function aprDuplicarDeck(id){
+  const deck = await aprLerDeck(id); if (!deck) return;
+  const copia = JSON.parse(JSON.stringify(deck)); copia.id = aprId(); copia.titulo = (deck.titulo || 'Apresentação') + ' (cópia)';
+  await aprGravarDeck(copia); aprRender();
+}
+function aprEditarDeck(deck){
+  APR.ed = { deck, i: 0 };
+  const tela = aprCriarTela('aprTelaSlides');
+  tela.innerHTML = `
+    <div class="apr-barra">
+      <button class="apr-bt" onclick="aprEdFechar()" title="Salvar e voltar">${aprSvg(APR_IC.voltar)}<span class="txt">Voltar</span></button>
+      <input class="apr-titulo" id="aprEdTitulo" value="${esc(deck.titulo || '')}" placeholder="Nome da apresentação" oninput="APR.ed.deck.titulo = this.value; aprEdSujo()">
+      <span class="apr-espaco"></span>
+      <select id="aprEdTema" title="Cores da apresentação" onchange="aprEdTema(this.value)">${APR_TEMAS.map(t => `<option value="${t[0]}" ${t[0] === deck.tema ? 'selected' : ''}>Tema ${t[1]}</option>`).join('')}</select>
+      <button class="apr-bt forte" onclick="aprEdApresentar()">${aprSvg(APR_IC.tocar)}<span>Apresentar</span></button>
+    </div>
+    <div class="apr-ed-corpo">
+      <div class="apr-ed-lista" id="aprEdLista"></div>
+      <div class="apr-ed-centro">
+        <div class="apr-ed-opcoes">
+          <span class="rot">Slide</span>
+          <button class="apr-bt" onclick="aprEdNovo()">+ Novo</button><button class="apr-bt" onclick="aprEdDuplicar()">Duplicar</button>
+          <button class="apr-bt" onclick="aprEdMover(-1)" title="Mover para antes">↑</button><button class="apr-bt" onclick="aprEdMover(1)" title="Mover para depois">↓</button>
+          <button class="apr-bt" onclick="aprEdExcluir()">Excluir</button>
+          <span class="apr-sep"></span><span class="rot">Modelo</span>
+          <select id="aprEdLayout" onchange="aprEdLayout(this.value)" style="width:auto;margin:0;padding:5px 8px;font-size:12px">${APR_LAYOUTS.map(l => `<option value="${l[0]}">${l[1]}</option>`).join('')}</select>
+          <button class="apr-bt" id="aprEdBtImg" onclick="aprEdImagem()">Escolher imagem</button><button class="apr-bt" id="aprEdBtSemImg" onclick="aprEdSemImagem()">Tirar imagem</button>
+        </div>
+        <div class="apr-palco" id="aprEdPalco"><div class="apr-palco-in" id="aprEdSlide"></div></div>
+      </div>
+    </div>`;
+  tela.classList.add('aberta');
+  const palco = document.getElementById('aprEdSlide');
+  palco.addEventListener('input', ev => {
+    const el = ev.target.closest('[data-campo]'); if (!el) return;
+    APR.ed.deck.slides[APR.ed.i][el.dataset.campo] = el.innerText.replace(/ /g, ' ').replace(/\n$/, '');
+    aprAjustarTexto(palco.firstElementChild); aprEdSujo(); clearTimeout(APR.ed.tMini); APR.ed.tMini = setTimeout(() => aprEdMini(APR.ed.i), 350);
+  });
+  palco.addEventListener('paste', ev => {   // cola só o texto, sem formatação de fora
+    const el = ev.target.closest('[data-campo]'); if (!el) return;
+    ev.preventDefault(); document.execCommand('insertText', false, (ev.clipboardData || window.clipboardData).getData('text/plain'));
+  });
+  if (!APR.edRedim) { APR.edRedim = true; window.addEventListener('resize', () => { const p = document.getElementById('aprEdSlide'); if (p && document.getElementById('aprTelaSlides').classList.contains('aberta')) aprEncaixar(p, 0.92); }); }
+  aprEdTudo();
+}
+function aprEdSujo(){ clearTimeout(APR.ed.tSalvar); APR.ed.tSalvar = setTimeout(() => aprGravarDeck(APR.ed.deck), 900); }
+function aprEdTudo(){
+  const { deck } = APR.ed; APR.ed.i = Math.max(0, Math.min(APR.ed.i, deck.slides.length - 1));
+  const lista = document.getElementById('aprEdLista');
+  lista.innerHTML = deck.slides.map((s, i) => `<div class="apr-ed-mini ${i === APR.ed.i ? 'sel' : ''}" data-i="${i}" onclick="aprEdIr(${i})"><span class="n">${i + 1}</span><div class="apr-mini-slide">${aprSlideHtml(s, deck.tema, false)}</div></div>`).join('');
+  lista.querySelectorAll('.apr-mini-slide').forEach(m => { m.style.transform = 'scale(' + (m.parentElement.clientWidth / 1280) + ')'; aprAjustarTexto(m.firstElementChild); });
+  const sel = lista.querySelector('.sel'); if (sel && sel.scrollIntoView) sel.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  aprEdSlide();
+}
+function aprEdMini(i){
+  const m = document.querySelector('#aprEdLista .apr-ed-mini[data-i="' + i + '"] .apr-mini-slide'); if (!m) return;
+  m.innerHTML = aprSlideHtml(APR.ed.deck.slides[i], APR.ed.deck.tema, false); aprAjustarTexto(m.firstElementChild);
+}
+function aprEdSlide(){
+  const { deck, i } = APR.ed; const s = deck.slides[i]; const palco = document.getElementById('aprEdSlide');
+  palco.innerHTML = aprSlideHtml(s, deck.tema, true); aprEncaixar(palco, 0.92); aprAjustarTexto(palco.firstElementChild);
+  document.getElementById('aprEdLayout').value = s.layout || 'texto';
+  const usaImg = s.layout === 'imgdir' || s.layout === 'imagem';
+  document.getElementById('aprEdBtImg').style.display = usaImg ? '' : 'none';
+  document.getElementById('aprEdBtSemImg').style.display = usaImg && s.img ? '' : 'none';
+}
+function aprEdIr(i){ APR.ed.i = i; document.querySelectorAll('#aprEdLista .apr-ed-mini').forEach(m => m.classList.toggle('sel', Number(m.dataset.i) === i)); aprEdSlide(); }
+function aprEdNovo(){ APR.ed.deck.slides.splice(APR.ed.i + 1, 0, { layout: 'texto', titulo: '', texto: '' }); APR.ed.i++; aprEdSujo(); aprEdTudo(); }
+function aprEdDuplicar(){ APR.ed.deck.slides.splice(APR.ed.i + 1, 0, JSON.parse(JSON.stringify(APR.ed.deck.slides[APR.ed.i]))); APR.ed.i++; aprEdSujo(); aprEdTudo(); }
+function aprEdMover(d){
+  const s = APR.ed.deck.slides, i = APR.ed.i, j = i + d; if (j < 0 || j >= s.length) return;
+  [s[i], s[j]] = [s[j], s[i]]; APR.ed.i = j; aprEdSujo(); aprEdTudo();
+}
+function aprEdExcluir(){
+  const s = APR.ed.deck.slides; if (s.length <= 1) { showToast('A apresentação precisa ter pelo menos um slide.'); return; }
+  const atual = s[APR.ed.i]; if ((atual.titulo || atual.texto || atual.img) && !confirm('Excluir este slide?')) return;
+  s.splice(APR.ed.i, 1); aprEdSujo(); aprEdTudo();
+}
+function aprEdLayout(l){ APR.ed.deck.slides[APR.ed.i].layout = l; aprEdSujo(); aprEdMini(APR.ed.i); aprEdSlide(); }
+function aprEdTema(t){ APR.ed.deck.tema = t; aprEdSujo(); aprEdTudo(); }
+function aprEdImagem(){
+  aprPedirArquivo('image/*', false, async fs => {
+    try { APR.ed.deck.slides[APR.ed.i].img = await aprReduzirImagem(fs[0], 1600, false); aprEdSujo(); aprEdMini(APR.ed.i); aprEdSlide(); }
+    catch(e){ showToast(e.message || 'Não foi possível usar essa imagem.', 'error'); }
+  });
+}
+function aprEdSemImagem(){ delete APR.ed.deck.slides[APR.ed.i].img; aprEdSujo(); aprEdMini(APR.ed.i); aprEdSlide(); }
+async function aprEdFechar(){
+  clearTimeout(APR.ed.tSalvar); await aprGravarDeck(APR.ed.deck);
+  document.getElementById('aprTelaSlides').classList.remove('aberta'); document.getElementById('aprTelaSlides').innerHTML = ''; APR.ed = null; aprRender();
+}
+async function aprEdApresentar(){ clearTimeout(APR.ed.tSalvar); await aprGravarDeck(APR.ed.deck); aprMostrarDeck(APR.ed.deck, APR.ed.i); }
+async function aprApresentarDeck(id){ const deck = await aprLerDeck(id); if (deck) aprMostrarDeck(deck, 0); }
+function aprMostrarDeck(deck, inicio){
+  aprMostrar({ total: deck.slides.length, inicio: inicio || 0, desenhar: (i, area) => {
+    area.innerHTML = '<div class="apr-palco-in">' + aprSlideHtml(deck.slides[i], deck.tema, false) + '</div>';
+    aprEncaixar(area.firstElementChild, 1); aprAjustarTexto(area.firstElementChild.firstElementChild);
+  } });
+}
+
+// ====================== APRESENTAÇÃO EM TELA CHEIA (slides e PDF) ======================
+function aprMostrar(op){
+  const tela = aprCriarTela('aprTelaShow', 'apr-show');
+  tela.innerHTML = `<div class="apr-show-area" id="aprShowArea"></div>
+    <div class="apr-show-ctrl" id="aprShowCtrl">
+      <button onclick="aprShowIr(-1)" title="Anterior">‹</button><span id="aprShowN"></span><button onclick="aprShowIr(1)" title="Próximo">›</button>
+      <button onclick="aprTelaCheia(document.getElementById('aprTelaShow'))" title="Tela cheia">⛶</button><button onclick="aprShowSair()" title="Sair (Esc)">✕</button>
+    </div>`;
+  tela.classList.add('aberta');
+  APR.show = { op, i: Math.max(0, Math.min(op.inicio || 0, op.total - 1)), vez: 0 };
+  const area = document.getElementById('aprShowArea');
+  const quisCheia = aprEmTelaCheia() ? false : aprTelaCheia(tela);
+  APR.show.entrouCheia = quisCheia;
+  let x0 = null, y0 = null;
+  area.addEventListener('pointerdown', ev => { x0 = ev.clientX; y0 = ev.clientY; });
+  area.addEventListener('pointerup', ev => {
+    if (x0 === null) return; const dx = ev.clientX - x0, dy = ev.clientY - y0; x0 = null;
+    if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy)) aprShowIr(dx < 0 ? 1 : -1);          // arrastou para o lado
+    else if (Math.abs(dx) < 8 && Math.abs(dy) < 8) aprShowIr(ev.clientX < area.clientWidth * 0.3 ? -1 : 1);   // toque: esquerda volta, resto avança
+  });
+  tela.addEventListener('pointermove', aprShowAcordar);
+  aprMarcaNaTela(tela, APR.indice && APR.indice.marca && APR.indice.marca.apresentar);
+  aprShowDesenhar(); aprShowAcordar();
+}
+function aprShowAcordar(){
+  const c = document.getElementById('aprShowCtrl'); if (!c) return;
+  c.classList.remove('some'); clearTimeout(APR.tCtrl); APR.tCtrl = setTimeout(() => c.classList.add('some'), 2600);
+}
+async function aprShowDesenhar(){
+  const sh = APR.show; if (!sh) return; const vez = ++sh.vez;
+  const area = document.getElementById('aprShowArea'); document.getElementById('aprShowN').textContent = (sh.i + 1) + ' / ' + sh.op.total;
+  try { await sh.op.desenhar(sh.i, area, () => !APR.show || APR.show.vez !== vez); } catch(e){ console.warn('[Apresentações]', e); }
+}
+function aprShowIr(d){
+  const sh = APR.show; if (!sh) return;
+  const j = Math.max(0, Math.min(sh.op.total - 1, sh.i + d)); if (j === sh.i) { aprShowAcordar(); return; }
+  sh.i = j; aprShowDesenhar();
+}
+function aprShowSair(){
+  const sh = APR.show; if (!sh) return; APR.show = null;
+  if (aprEmTelaCheia()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  const tela = document.getElementById('aprTelaShow'); tela.classList.remove('aberta'); tela.innerHTML = '';
+  if (sh.op.aoSair) sh.op.aoSair();
+}
+window.addEventListener('keydown', ev => {
+  if (!APR.show) return;
+  const t = { ArrowRight: 1, ArrowDown: 1, PageDown: 1, ' ': 1, Enter: 1, ArrowLeft: -1, ArrowUp: -1, PageUp: -1, Backspace: -1 }[ev.key];
+  if (t) { ev.preventDefault(); ev.stopPropagation(); aprShowIr(t); }
+  else if (ev.key === 'Home') { ev.preventDefault(); aprShowIr(-9999); }
+  else if (ev.key === 'End') { ev.preventDefault(); aprShowIr(9999); }
+  else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); aprShowSair(); }
+}, true);
+['fullscreenchange', 'webkitfullscreenchange'].forEach(nome => document.addEventListener(nome, () => {
+  if (APR.show) { if (!aprEmTelaCheia() && APR.show.entrouCheia) aprShowSair(); else setTimeout(aprShowDesenhar, 120); }   // Esc do navegador sai da tela cheia: fecha a apresentação
+  if (APR.nota) { aprNotaBotoes(); setTimeout(aprNotaRedimensionar, 120); }
+}));
+window.addEventListener('resize', () => { if (APR.show) { clearTimeout(APR.tRedim); APR.tRedim = setTimeout(aprShowDesenhar, 150); } });
+
+// ====================== PDFs ======================
+const APR_PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+function aprCarregarPdfJs(){
+  if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+  if (APR.pdfjs) return APR.pdfjs;
+  APR.pdfjs = new Promise((ok, erro) => {
+    const s = document.createElement('script'); s.src = APR_PDFJS + 'pdf.min.js';
+    s.onload = () => { if (!window.pdfjsLib) { APR.pdfjs = null; return erro(new Error('leitor de PDF não carregou')); } window.pdfjsLib.GlobalWorkerOptions.workerSrc = APR_PDFJS + 'pdf.worker.min.js'; ok(window.pdfjsLib); };
+    s.onerror = () => { APR.pdfjs = null; s.remove(); erro(new Error('sem internet para carregar o leitor de PDF')); };
+    document.head.appendChild(s);
+  });
+  return APR.pdfjs;
+}
+function aprEnviarPdf(){
+  aprPedirArquivo('application/pdf,.pdf', true, async arquivos => {
+    const ind = await aprCarregar(); let entrou = 0;
+    for (const f of arquivos) {
+      if (!/pdf$/i.test(f.type) && !/\.pdf$/i.test(f.name)) { showToast('"' + f.name + '" não é PDF. No PowerPoint, use Arquivo > Salvar como > PDF.', 'error'); continue; }
+      if (f.size > 80 * 1048576) { showToast('"' + f.name + '" tem mais de 80 MB. Salve o PDF em qualidade menor.', 'error'); continue; }
+      const id = aprId(); const ok = await idbSetArquivo(aprChave('pdf_' + id), f);
+      if (!ok) { showToast('Não consegui guardar "' + f.name + '" neste aparelho (pode ser falta de espaço).', 'error'); continue; }
+      ind.pdfs.push({ id, nome: f.name.replace(/\.pdf$/i, ''), tamanho: f.size, criado: new Date().toISOString(), paginas: 0, mini: '' }); entrou++;
+    }
+    if (!entrou) return;
+    await aprGravarIndice(); APR.sub = 'pdfs'; aprRender(); showToast(entrou + ' PDF(s) guardado(s) neste aparelho.');
+    aprPdfMiniaturas();
+  });
+}
+// Conta as páginas e faz a miniatura da capa (precisa do leitor de PDF; se estiver sem internet, fica para depois)
+async function aprPdfMiniaturas(){
+  const ind = await aprCarregar(); const faltam = ind.pdfs.filter(p => !p.paginas); if (!faltam.length) return;
+  let lib; try { lib = await aprCarregarPdfJs(); } catch(e){ return; }
+  for (const p of faltam) {
+    try {
+      const blob = await idbGetArquivo(aprChave('pdf_' + p.id)); if (!blob) continue;
+      const doc = await lib.getDocument({ data: await blob.arrayBuffer() }).promise; p.paginas = doc.numPages;
+      const pg = await doc.getPage(1); const v0 = pg.getViewport({ scale: 1 }); const v = pg.getViewport({ scale: 360 / v0.width });
+      const c = document.createElement('canvas'); c.width = Math.round(v.width); c.height = Math.round(v.height);
+      await pg.render({ canvasContext: c.getContext('2d'), viewport: v }).promise; p.mini = c.toDataURL('image/jpeg', 0.7); doc.destroy();
+    } catch(e){ console.warn('[Apresentações] miniatura do PDF', e); }
+  }
+  await aprGravarIndice(); if (APR.sub === 'pdfs') aprRender();
+}
+async function aprBaixarPdf(id){
+  const ind = await aprCarregar(); const p = ind.pdfs.find(x => x.id === id); const blob = await idbGetArquivo(aprChave('pdf_' + id)); if (!p || !blob) return;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = p.nome + '.pdf'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+}
+async function aprApresentarPdf(id){
+  const ind = await aprCarregar(); const p = ind.pdfs.find(x => x.id === id); const blob = await idbGetArquivo(aprChave('pdf_' + id));
+  if (!p || !blob) { showToast('Não encontrei esse PDF neste aparelho.', 'error'); return; }
+  let doc = null;
+  aprMostrar({ total: Math.max(1, p.paginas || 1), aoSair: () => { if (doc) doc.destroy(); }, desenhar: async (i, area, cancelado) => {
+    if (!doc) {
+      area.innerHTML = '<div class="apr-show-msg">Abrindo o PDF...</div>';
+      try { const lib = await aprCarregarPdfJs(); doc = await lib.getDocument({ data: await blob.arrayBuffer() }).promise; }
+      catch(e){
+        const url = URL.createObjectURL(blob);
+        area.innerHTML = '<div class="apr-show-msg">Não consegui abrir o leitor de PDF. Na primeira vez ele precisa de internet; depois funciona sem.<br><br><a href="' + url + '" target="_blank" rel="noopener" style="color:#93c5fd">Abrir o PDF em outra aba</a></div>';
+        return;
+      }
+      if (!APR.show) { doc.destroy(); doc = null; return; }
+      APR.show.op.total = doc.numPages; document.getElementById('aprShowN').textContent = (APR.show.i + 1) + ' / ' + doc.numPages;
+      if (p.paginas !== doc.numPages) { p.paginas = doc.numPages; aprGravarIndice(); }
+    }
+    const pg = await doc.getPage(i + 1); if (cancelado()) return;
+    const v0 = pg.getViewport({ scale: 1 }); const esc0 = Math.min(area.clientWidth / v0.width, area.clientHeight / v0.height);
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5); const v = pg.getViewport({ scale: esc0 * dpr });
+    const c = document.createElement('canvas'); c.width = Math.round(v.width); c.height = Math.round(v.height);
+    c.style.width = Math.round(v0.width * esc0) + 'px'; c.style.height = Math.round(v0.height * esc0) + 'px';
+    await pg.render({ canvasContext: c.getContext('2d'), viewport: v }).promise; if (cancelado()) return;
+    area.innerHTML = ''; area.appendChild(c);
+  } });
+}
+
+// ====================== NOTAS À MÃO ======================
+const APR_FOLHA = { pe: [1240, 1754], deitada: [1754, 1240] };
+// cor do papel, cor da pauta, papel escuro?
+const APR_PAPEIS = { branco: ['#ffffff', '#c3d2e4', false, 'Branco'], creme: ['#fbf4e2', '#dcc9a0', false, 'Creme'], cinza: ['#eceff3', '#c2cad6', false, 'Cinza'], azul: ['#eaf3fb', '#b3cde6', false, 'Azul claro'], escuro: ['#1f2630', '#3d4a5c', true, 'Escuro'], preto: ['#0b0d10', '#2a323d', true, 'Preto'] };
+const APR_PAUTAS = [['liso', 'Sem linhas'], ['linhas', 'Linhas'], ['largas', 'Linhas largas'], ['quadriculado', 'Quadriculado'], ['fino', 'Quadriculado fino'], ['pontilhado', 'Bolinhas']];
+// alfa: transparência · varia: quanto a largura muda com pressão/velocidade · mult: largura em relação ao tamanho escolhido
+const APR_CANETAS = {
+  caneta:   { nome: 'Caneta',      alfa: 1,    varia: 0,    mult: 1,   cor: '#111827', esp: 4 },
+  tinteiro: { nome: 'Tinteiro',    alfa: 1,    varia: 0.78, mult: 1.7, cor: '#1d4ed8', esp: 5 },
+  lapis:    { nome: 'Lápis',       alfa: 0.6,  varia: 0,    mult: 0.8, cor: '#374151', esp: 4 },
+  marca:    { nome: 'Marca-texto', alfa: 0.45, varia: 0,    mult: 4.5, cor: '#facc15', esp: 6, reto: true, multiplica: true },   // multiplica: o que está escrito por baixo continua escuro
+  pincel:   { nome: 'Pincel',      alfa: 0.92, varia: 1,    mult: 3.2, cor: '#dc2626', esp: 6 },
+  borracha: { nome: 'Borracha',    alfa: 1,    varia: 0,    mult: 5,   cor: '#000000', esp: 8, apaga: true }
+};
+const APR_CORES = ['#111827', '#6b7280', '#1d4ed8', '#0ea5e9', '#15803d', '#dc2626', '#8a1538', '#ea580c', '#facc15', '#7c3aed', '#db2777', '#ffffff'];
+
+function aprDesenharTraco(ctx, t){
+  const k = APR_CANETAS[t.f] || APR_CANETAS.caneta, p = t.p, n = p.length / 3;
+  if (n < 1) return;
+  ctx.save();
+  ctx.globalCompositeOperation = k.apaga ? 'destination-out' : k.multiplica ? 'multiply' : 'source-over';
+  ctx.globalAlpha = k.apaga ? 1 : k.alfa;
+  ctx.strokeStyle = ctx.fillStyle = k.apaga ? '#000' : t.c;
+  ctx.lineCap = k.reto ? 'butt' : 'round'; ctx.lineJoin = 'round';
+  if (n === 1) {
+    ctx.beginPath(); ctx.arc(p[0], p[1], Math.max(0.5, t.l / 2 * (k.varia ? 0.5 + 0.5 * p[2] : 1)), 0, 6.2832); ctx.fill();
+  } else if (!k.varia) {
+    ctx.lineWidth = t.l; ctx.beginPath(); ctx.moveTo(p[0], p[1]);
+    for (let i = 1; i < n - 1; i++) { const x = p[i * 3], y = p[i * 3 + 1]; ctx.quadraticCurveTo(x, y, (x + p[i * 3 + 3]) / 2, (y + p[i * 3 + 4]) / 2); }
+    ctx.lineTo(p[(n - 1) * 3], p[(n - 1) * 3 + 1]); ctx.stroke();
+  } else {
+    let ax = p[0], ay = p[1];   // largura muda ao longo do traço: um trecho curto por vez
+    for (let i = 1; i < n; i++) {
+      const x = p[i * 3], y = p[i * 3 + 1], fim = i === n - 1;
+      const mx = fim ? x : (x + p[i * 3 + 3]) / 2, my = fim ? y : (y + p[i * 3 + 4]) / 2;
+      ctx.lineWidth = Math.max(0.6, t.l * ((1 - k.varia) + k.varia * (p[i * 3 - 1] + p[i * 3 + 2]) / 2));
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo(x, y, mx, my); ctx.stroke();
+      ax = mx; ay = my;
+    }
+  }
+  ctx.restore();
+}
+// Desenha a pauta (linhas, quadriculado, bolinhas) na folha. `minimo` = espessura mínima em unidades da folha (para a linha não sumir com zoom pequeno)
+function aprDesenharPauta(ctx, pauta, w, h, cor, minimo){
+  if (!pauta || pauta === 'liso') return;
+  ctx.save(); ctx.strokeStyle = ctx.fillStyle = cor; ctx.lineWidth = Math.max(1.6, minimo || 0);
+  const linhasH = (passo, topo) => { ctx.beginPath(); for (let y = topo; y < h - 20; y += passo) { ctx.moveTo(0, y); ctx.lineTo(w, y); } ctx.stroke(); };
+  if (pauta === 'linhas') linhasH(58, 130);
+  else if (pauta === 'largas') linhasH(88, 150);
+  else if (pauta === 'quadriculado' || pauta === 'fino') {
+    const passo = pauta === 'fino' ? 31 : 62; if (pauta === 'fino') ctx.globalAlpha = 0.7;
+    ctx.beginPath();
+    for (let y = passo; y < h; y += passo) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+    for (let x = passo; x < w; x += passo) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+    ctx.stroke();
+  } else if (pauta === 'pontilhado') {
+    const r = Math.max(2.6, (minimo || 0) * 1.1);
+    for (let y = 50; y < h; y += 50) for (let x = 50; x < w; x += 50) { ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill(); }
+  }
+  ctx.restore();
+}
+// Uma página inteira num canvas (miniatura da lista e "baixar como imagem")
+async function aprPaginaEmCanvas(doc, i, largura, comMarca){
+  const [w, h] = APR_FOLHA[doc.folha] || APR_FOLHA.pe, f = largura / w, papel = APR_PAPEIS[doc.papel] || APR_PAPEIS.branco;
+  const c = document.createElement('canvas'); c.width = Math.round(w * f); c.height = Math.round(h * f);
+  const x = c.getContext('2d'); x.fillStyle = papel[0]; x.fillRect(0, 0, c.width, c.height);
+  x.setTransform(f, 0, 0, f, 0, 0); aprDesenharPauta(x, doc.pauta, w, h, papel[1], 1 / f);
+  const tinta = document.createElement('canvas'); tinta.width = c.width; tinta.height = c.height;
+  const xt = tinta.getContext('2d'); xt.setTransform(f, 0, 0, f, 0, 0);
+  ((doc.paginas[i] || {}).t || []).forEach(t => aprDesenharTraco(xt, t));
+  x.setTransform(1, 0, 0, 1, 0, 0); x.drawImage(tinta, 0, 0);
+  if (comMarca) await aprMarcaNoCanvas(x, c.width, c.height, f * 1.35, papel[2]);
+  return c;
+}
+
+async function aprLerNota(id){ return await idbGetArquivo(aprChave('nota_' + id)); }
+async function aprGravarNota(doc){
+  const ind = await aprCarregar(); doc.atualizado = new Date().toISOString();
+  await idbSetArquivo(aprChave('nota_' + doc.id), doc);
+  let mini = ''; try { mini = (await aprPaginaEmCanvas(doc, 0, 300, false)).toDataURL('image/jpeg', 0.72); } catch(e){}
+  const resumo = { id: doc.id, titulo: doc.titulo, paginas: doc.paginas.length, atualizado: doc.atualizado, mini };
+  const i = ind.notas.findIndex(x => x.id === doc.id);
+  if (i >= 0) ind.notas[i] = resumo; else ind.notas.push(resumo);
+  await aprGravarIndice();
+}
+async function aprNovaNota(){
+  const ind = await aprCarregar(); const ultima = ind.ultimaFolha || {};
+  const doc = { id: aprId(), titulo: 'Nota de ' + new Date().toLocaleDateString('pt-BR'), papel: ultima.papel || 'branco', pauta: ultima.pauta || 'linhas', folha: ultima.folha || 'pe', paginas: [{ t: [] }] };
+  await aprGravarNota(doc); aprEditarNota(doc);
+}
+async function aprAbrirNota(id){
+  const doc = await aprLerNota(id);
+  if (!doc) { showToast('Não encontrei essa nota neste aparelho.', 'error'); return; }
+  aprEditarNota(doc);
+}
+async function aprDuplicarNota(id){
+  const doc = await aprLerNota(id); if (!doc) return;
+  const copia = JSON.parse(JSON.stringify(doc)); copia.id = aprId(); copia.titulo = (doc.titulo || 'Nota') + ' (cópia)';
+  await aprGravarNota(copia); aprRender();
+}
+
+function aprEditarNota(doc){
+  aprCarregarFontes();
+  const ind = APR.indice;
+  const est = {}; Object.keys(APR_CANETAS).forEach(k => { est[k] = Object.assign({ c: APR_CANETAS[k].cor, e: APR_CANETAS[k].esp }, (ind.canetas || {})[k] || {}); });
+  const N = APR.nota = { doc, pag: 0, s: 1, ox: 0, oy: 0, ferr: (ind.canetas && ind.canetas.atual) || 'caneta', est, hist: [], refaz: [], toques: new Map(), modo: null,
+    dedoMove: ind.dedoMove === true, dedoEscolhido: ind.dedoMove !== null && ind.dedoMove !== undefined, sujo: false };
+  if (!APR_CANETAS[N.ferr] && N.ferr !== 'mao') N.ferr = 'caneta';
+  const tela = aprCriarTela('aprTelaNota');
+  tela.innerHTML = `
+    <div class="apr-barra">
+      <button class="apr-bt" onclick="aprNotaFechar()" title="Salvar e voltar">${aprSvg(APR_IC.voltar)}<span class="txt">Voltar</span></button>
+      <input class="apr-titulo" id="aprNotaTitulo" value="${esc(doc.titulo || '')}" placeholder="Nome da nota" oninput="APR.nota.doc.titulo = this.value; aprNotaSujo()">
+      <span class="apr-espaco"></span>
+      <button class="apr-bt" id="aprNtDesf" onclick="aprNotaDesfazer()" title="Desfazer (Ctrl+Z)">${aprSvg(APR_IC.desfazer)}</button>
+      <button class="apr-bt" id="aprNtRef" onclick="aprNotaRefazer()" title="Refazer (Ctrl+Y)">${aprSvg(APR_IC.refazer)}</button>
+      <span class="apr-sep"></span>
+      <button class="apr-bt" onclick="aprNotaPagina(-1)" title="Página anterior">${aprSvg(APR_IC.voltar)}</button>
+      <span id="aprNtPag" style="font-size:12.5px;font-weight:700;min-width:38px;text-align:center"></span>
+      <button class="apr-bt" onclick="aprNotaPagina(1)" title="Próxima página">${aprSvg(APR_IC.frente)}</button>
+      <button class="apr-bt" onclick="aprNotaNovaPagina()" title="Nova página depois desta">${aprSvg(APR_IC.mais)}<span class="txt">Página</span></button>
+      <span class="apr-sep"></span>
+      <button class="apr-bt" onclick="aprNotaZoomBotao(1 / 1.25)" title="Diminuir o zoom">${aprSvg(APR_IC.menos)}</button>
+      <button class="apr-bt apr-zoom" id="aprNtZoom" onclick="aprNotaAjustar()" title="Clique para ajustar a folha à largura da tela">100%</button>
+      <button class="apr-bt" onclick="aprNotaZoomBotao(1.25)" title="Aumentar o zoom">${aprSvg(APR_IC.mais)}</button>
+      <span class="apr-sep"></span>
+      <button class="apr-bt" id="aprNtDedo" onclick="aprNotaDedo()"></button>
+      <button class="apr-bt" id="aprNtFolha" onclick="aprNotaMenu()" title="Papel, linhas, páginas, imagem">${aprSvg(APR_IC.folha)}<span class="txt">Folha</span></button>
+      <button class="apr-bt" id="aprNtCheia" onclick="aprTelaCheia(document.getElementById('aprTelaNota'))" title="Tela cheia">${aprSvg(APR_IC.cheia)}<span class="txt">Tela cheia</span></button>
+    </div>
+    <div class="apr-nota-ferr" id="aprNtFerr"></div>
+    <div class="apr-nota-area" id="aprNtArea">
+      <canvas id="aprNtFundo"></canvas><canvas id="aprNtTinta"></canvas><canvas id="aprNtVivo"></canvas>
+      <div class="apr-menu" id="aprNtMenu"></div>
+    </div>`;
+  tela.classList.add('aberta');
+  const area = document.getElementById('aprNtArea');
+  area.addEventListener('pointerdown', aprNotaAperta);
+  area.addEventListener('pointermove', aprNotaMove);
+  area.addEventListener('pointerup', aprNotaSolta);
+  area.addEventListener('pointercancel', aprNotaSolta);
+  area.addEventListener('wheel', aprNotaRoda, { passive: false });
+  area.addEventListener('contextmenu', ev => ev.preventDefault());
+  if (window.ResizeObserver) { N.obs = new ResizeObserver(() => aprNotaRedimensionar()); N.obs.observe(area); }
+  aprNotaFerramentas(); aprNotaBotoes(); aprMarcaNaTela(area, true);
+  aprNotaRedimensionar(true);
+}
+function aprNotaPag(){ const N = APR.nota; return N.doc.paginas[N.pag]; }
+function aprNotaFolha(){ return APR_FOLHA[APR.nota.doc.folha] || APR_FOLHA.pe; }
+function aprNotaSujo(){
+  const N = APR.nota; if (!N) return; N.sujo = true;
+  clearTimeout(N.tSalvar); N.tSalvar = setTimeout(aprNotaSalvar, 1500);
+}
+async function aprNotaSalvar(){
+  const N = APR.nota; if (!N || !N.sujo) return; N.sujo = false; clearTimeout(N.tSalvar);
+  await aprGravarNota(N.doc);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && APR.nota) aprNotaSalvar(); });
+window.addEventListener('pagehide', () => { if (APR.nota) aprNotaSalvar(); });
+async function aprNotaFechar(){
+  const N = APR.nota; if (!N) return;
+  if (aprEmTelaCheia()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  N.sujo = true; await aprNotaSalvar();
+  APR.indice.canetas = Object.assign({}, N.est, { atual: N.ferr }); APR.indice.dedoMove = N.dedoEscolhido ? N.dedoMove : null;
+  APR.indice.ultimaFolha = { papel: N.doc.papel, pauta: N.doc.pauta, folha: N.doc.folha }; await aprGravarIndice();
+  if (N.obs) N.obs.disconnect();
+  APR.nota = null; const tela = document.getElementById('aprTelaNota'); tela.classList.remove('aberta'); tela.innerHTML = ''; aprRender();
+}
+
+// ---- barras ----
+function aprNotaFerramentas(){
+  const N = APR.nota, cx = document.getElementById('aprNtFerr'); if (!cx) return;
+  const atual = APR_CANETAS[N.ferr] ? N.ferr : null, e = atual ? N.est[atual] : null;
+  const escuro = (APR_PAPEIS[N.doc.papel] || [])[2];
+  cx.innerHTML = Object.keys(APR_CANETAS).map(k => `<button class="apr-caneta ${N.ferr === k ? 'ativo' : ''}" onclick="aprNotaFerr('${k}')" title="${APR_CANETAS[k].nome}">${aprSvg(APR_IC[k])}<span>${APR_CANETAS[k].nome}</span>${k === 'borracha' ? '' : `<span class="cor" style="background:${N.est[k].c};${N.est[k].c === '#ffffff' ? 'box-shadow:0 0 0 1px #cbd5e1' : ''}"></span>`}</button>`).join('') +
+    `<button class="apr-caneta ${N.ferr === 'mao' ? 'ativo' : ''}" onclick="aprNotaFerr('mao')" title="Mover a folha (ou segure a barra de espaço)">${aprSvg(APR_IC.mao)}<span>Mover</span></button>` +
+    (atual ? `<span class="apr-sep"></span>` +
+      (atual === 'borracha' ? '' : `<div class="apr-cores">${APR_CORES.map(c => `<button class="apr-cor ${e.c === c ? 'ativo' : ''}" style="background:${c}" onclick="aprNotaCor('${c}')" title="Cor"></button>`).join('')}
+        <input type="color" class="apr-cor-livre" value="${/^#[0-9a-f]{6}$/i.test(e.c) ? e.c : '#111827'}" oninput="aprNotaCor(this.value, true)" title="Escolher outra cor"></div><span class="apr-sep"></span>`) +
+      `<label class="apr-esp">${atual === 'borracha' ? 'Tamanho' : 'Espessura'}<input type="range" min="1" max="20" step="1" value="${e.e}" oninput="aprNotaEsp(this.value)"><span class="bol"><i id="aprNtBol"></i></span><span id="aprNtEspN" style="min-width:18px">${e.e}</span></label>` : '');
+  aprNotaBolinha();
+  document.getElementById('aprNtArea').classList.toggle('mao', N.ferr === 'mao');
+  if (escuro && atual && atual !== 'borracha' && e.c === '#111827' && !N.avisouEscuro) { N.avisouEscuro = true; showToast('Papel escuro: escolha uma cor clara para a caneta aparecer.'); }
+}
+function aprNotaBolinha(){
+  const N = APR.nota, b = document.getElementById('aprNtBol'); if (!b || !APR_CANETAS[N.ferr]) return;
+  const e = N.est[N.ferr], k = APR_CANETAS[N.ferr], d = Math.max(2, Math.min(28, e.e * k.mult * 0.55));
+  b.style.width = b.style.height = d + 'px'; b.style.background = k.apaga ? '#94a3b8' : e.c; b.style.opacity = k.apaga ? 1 : k.alfa;
+  b.style.boxShadow = e.c === '#ffffff' && !k.apaga ? '0 0 0 1px #cbd5e1' : 'none';
+  const n = document.getElementById('aprNtEspN'); if (n) n.textContent = e.e;
+}
+function aprNotaFerr(f){ APR.nota.ferr = f; aprNotaFerramentas(); }
+function aprNotaCor(c, livre){ const N = APR.nota; if (!APR_CANETAS[N.ferr]) return; N.est[N.ferr].c = c; if (livre) { aprNotaBolinha(); document.querySelectorAll('#aprNtFerr .apr-cor').forEach(b => b.classList.remove('ativo')); const m = document.querySelector('#aprNtFerr .apr-caneta.ativo .cor'); if (m) m.style.background = c; } else aprNotaFerramentas(); }
+function aprNotaEsp(v){ const N = APR.nota; if (!APR_CANETAS[N.ferr]) return; N.est[N.ferr].e = Number(v); aprNotaBolinha(); }
+function aprNotaBotoes(){
+  const N = APR.nota; if (!N || !document.getElementById('aprNtPag')) return;
+  document.getElementById('aprNtPag').textContent = (N.pag + 1) + ' / ' + N.doc.paginas.length;
+  document.getElementById('aprNtDesf').disabled = !N.hist.length; document.getElementById('aprNtRef').disabled = !N.refaz.length;
+  document.getElementById('aprNtZoom').textContent = Math.round(N.s / (N.sBase || 1) * 100) + '%';
+  const d = document.getElementById('aprNtDedo');
+  d.innerHTML = aprSvg(APR_IC.dedo) + '<span class="txt">' + (N.dedoMove ? 'Dedo move' : 'Dedo escreve') + '</span>';
+  d.title = N.dedoMove ? 'Agora o dedo move a folha e só a caneta escreve. Clique para o dedo escrever.' : 'Agora o dedo escreve. Clique para o dedo só mover a folha (bom para quem usa caneta).';
+  d.classList.toggle('ativo', N.dedoMove);
+  const c = document.getElementById('aprNtCheia'); c.classList.toggle('ativo', aprEmTelaCheia());
+  c.innerHTML = aprSvg(aprEmTelaCheia() ? APR_IC.sair : APR_IC.cheia) + '<span class="txt">' + (aprEmTelaCheia() ? 'Sair da tela cheia' : 'Tela cheia') + '</span>';
+}
+function aprNotaDedo(){ const N = APR.nota; N.dedoMove = !N.dedoMove; N.dedoEscolhido = true; aprNotaBotoes(); }
+
+// ---- desenho na tela ----
+function aprNotaRedimensionar(primeira){
+  const N = APR.nota, area = document.getElementById('aprNtArea'); if (!N || !area) return;
+  const w = area.clientWidth, h = area.clientHeight; if (!w || !h) return;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const mudou = N.aw !== w || N.ah !== h || N.dpr !== dpr;
+  N.aw = w; N.ah = h; N.dpr = dpr;
+  ['aprNtFundo', 'aprNtTinta', 'aprNtVivo'].forEach(id => { const c = document.getElementById(id); if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); } });
+  const [fw] = aprNotaFolha(); const base = (w - 28) / fw; const tinhaBase = N.sBase;
+  N.sBase = base;
+  if (primeira === true || !tinhaBase) { N.s = base; N.ox = 14; N.oy = 14; }
+  if (primeira === true || !tinhaBase || mudou) aprNotaLimitar();
+  aprNotaTudo();
+}
+function aprNotaLimitar(){
+  const N = APR.nota, [fw, fh] = aprNotaFolha();
+  N.s = Math.max(N.sBase * 0.25, Math.min(N.sBase * 8, N.s));
+  const lw = fw * N.s, lh = fh * N.s;
+  N.ox = lw <= N.aw - 28 ? (N.aw - lw) / 2 : Math.max(N.aw - lw - 60, Math.min(60, N.ox));
+  N.oy = lh <= N.ah - 28 ? (N.ah - lh) / 2 : Math.max(N.ah - lh - 60, Math.min(60, N.oy));
+}
+function aprNotaCtx(id){
+  const N = APR.nota, c = document.getElementById(id), x = c.getContext('2d');
+  x.setTransform(1, 0, 0, 1, 0, 0); return [x, c];
+}
+function aprNotaNaFolha(x){ const N = APR.nota; x.setTransform(N.dpr * N.s, 0, 0, N.dpr * N.s, N.dpr * N.ox, N.dpr * N.oy); const [fw, fh] = aprNotaFolha(); x.beginPath(); x.rect(0, 0, fw, fh); x.clip(); }
+function aprNotaFundo(){
+  const N = APR.nota, [x, c] = aprNotaCtx('aprNtFundo'), [fw, fh] = aprNotaFolha(), papel = APR_PAPEIS[N.doc.papel] || APR_PAPEIS.branco;
+  x.fillStyle = papel[2] ? '#0f1318' : '#d9dee5'; x.fillRect(0, 0, c.width, c.height);
+  x.setTransform(N.dpr * N.s, 0, 0, N.dpr * N.s, N.dpr * N.ox, N.dpr * N.oy);
+  x.save(); x.shadowColor = 'rgba(15,23,42,.28)'; x.shadowBlur = 18 * N.dpr; x.shadowOffsetY = 4 * N.dpr; x.fillStyle = papel[0]; x.fillRect(0, 0, fw, fh); x.restore();
+  x.save(); x.beginPath(); x.rect(0, 0, fw, fh); x.clip(); aprDesenharPauta(x, N.doc.pauta, fw, fh, papel[1], 1 / N.s); x.restore();
+}
+function aprNotaTinta(){
+  const N = APR.nota, [x, c] = aprNotaCtx('aprNtTinta'); x.clearRect(0, 0, c.width, c.height);
+  x.save(); aprNotaNaFolha(x); (aprNotaPag().t || []).forEach(t => aprDesenharTraco(x, t)); x.restore();
+}
+function aprNotaVivo(){
+  const N = APR.nota, [x, c] = aprNotaCtx('aprNtVivo'); x.clearRect(0, 0, c.width, c.height);
+  if (N.traco && !APR_CANETAS[N.traco.f].apaga) { x.save(); aprNotaNaFolha(x); aprDesenharTraco(x, N.traco); x.restore(); }
+}
+function aprNotaTudo(){ aprNotaFundo(); aprNotaTinta(); aprNotaVivo(); aprNotaBotoes(); }
+function aprNotaVista(){
+  const N = APR.nota; if (N.quadro) return;
+  N.quadro = requestAnimationFrame(() => { N.quadro = 0; if (APR.nota === N) { aprNotaFundo(); aprNotaTinta(); aprNotaVivo(); document.getElementById('aprNtZoom').textContent = Math.round(N.s / N.sBase * 100) + '%'; } });
+}
+function aprNotaZoomEm(fator, cx, cy){
+  const N = APR.nota, antes = N.s;
+  N.s = Math.max(N.sBase * 0.25, Math.min(N.sBase * 8, N.s * fator));
+  N.ox = cx - (cx - N.ox) * (N.s / antes); N.oy = cy - (cy - N.oy) * (N.s / antes);
+  aprNotaLimitar(); aprNotaVista();
+}
+function aprNotaZoomBotao(f){ const N = APR.nota; aprNotaZoomEm(f, N.aw / 2, N.ah / 2); }
+function aprNotaAjustar(){ const N = APR.nota; N.s = N.sBase; N.ox = 14; N.oy = 14; aprNotaLimitar(); aprNotaVista(); }
+function aprNotaRoda(ev){
+  const N = APR.nota; if (!N || ev.target.closest('.apr-menu')) return;
+  ev.preventDefault();
+  const r = ev.currentTarget.getBoundingClientRect();
+  if (ev.ctrlKey || ev.metaKey) aprNotaZoomEm(Math.exp(-ev.deltaY * 0.0022), ev.clientX - r.left, ev.clientY - r.top);
+  else { const k = ev.deltaMode === 1 ? 32 : 1; N.ox -= (ev.shiftKey ? ev.deltaY : ev.deltaX) * k; N.oy -= (ev.shiftKey ? 0 : ev.deltaY) * k; aprNotaLimitar(); aprNotaVista(); }
+}
+
+// ---- caneta, dedo e mouse ----
+function aprNotaPonto(ev, r){ const N = APR.nota; return [Math.round(((ev.clientX - r.left - N.ox) / N.s) * 10) / 10, Math.round(((ev.clientY - r.top - N.oy) / N.s) * 10) / 10]; }
+function aprNotaAperta(ev){
+  const N = APR.nota; if (!N || ev.target.closest('.apr-menu')) return;
+  const menu = document.getElementById('aprNtMenu'); if (menu.classList.contains('aberto')) { menu.classList.remove('aberto'); return; }
+  const area = ev.currentTarget, r = area.getBoundingClientRect();
+  if (ev.pointerType === 'touch') {
+    N.toques.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+    if (N.toques.size === 2) {          // dois dedos: zoom e mover (cancela o traço que tivesse começado)
+      if (N.modo === 'traco') { const apagava = APR_CANETAS[N.traco.f].apaga; N.traco = null; if (apagava) aprNotaTinta(); aprNotaVivo(); }
+      const [a, b] = [...N.toques.values()];
+      N.modo = 'pinca'; N.pinca = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2 - r.left, my: (a.y + b.y) / 2 - r.top, s: N.s, ox: N.ox, oy: N.oy };
+      return;
+    }
+    if (N.toques.size > 2 || N.esperaSoltar) return;
+  }
+  if (ev.pointerType === 'pen' && !N.viuCaneta) {
+    N.viuCaneta = true;
+    if (!N.dedoEscolhido && !N.dedoMove) { N.dedoMove = true; aprNotaBotoes(); showToast('Caneta detectada: agora o dedo move a folha e a caneta escreve. Dá para trocar no botão "Dedo".'); }
+  }
+  const mover = N.ferr === 'mao' || N.espaco || (ev.pointerType === 'touch' && N.dedoMove) || (ev.pointerType === 'mouse' && ev.button === 1);
+  try { area.setPointerCapture(ev.pointerId); } catch(e){}
+  if (mover) { N.modo = 'mover'; N.idAtivo = ev.pointerId; N.ant = { x: ev.clientX, y: ev.clientY }; area.style.cursor = 'grabbing'; return; }
+  if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+  const borrachaDaCaneta = ev.pointerType === 'pen' && (ev.button === 5 || (ev.buttons & 32));
+  const f = borrachaDaCaneta ? 'borracha' : N.ferr, k = APR_CANETAS[f], e = N.est[f], [x, y] = aprNotaPonto(ev, r);
+  const pr = ev.pointerType === 'pen' && ev.pressure > 0 ? ev.pressure : 0.55;
+  N.traco = { f, c: e.c, l: Math.round(e.e * k.mult * 10) / 10, p: [x, y, Math.round(pr * 100) / 100] };
+  N.modo = 'traco'; N.idAtivo = ev.pointerId; N.tAnt = ev.timeStamp; N.prAnt = pr; N.xAnt = ev.clientX; N.yAnt = ev.clientY;
+  if (k.apaga) { const [xt] = aprNotaCtx('aprNtTinta'); xt.save(); aprNotaNaFolha(xt); aprDesenharTraco(xt, N.traco); xt.restore(); } else aprNotaVivo();
+}
+function aprNotaMove(ev){
+  const N = APR.nota; if (!N) return;
+  const area = ev.currentTarget, r = area.getBoundingClientRect();
+  if (ev.pointerType === 'touch' && N.toques.has(ev.pointerId)) N.toques.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+  if (N.modo === 'pinca') {
+    if (N.toques.size < 2) return;
+    const [a, b] = [...N.toques.values()], p = N.pinca, d = Math.hypot(a.x - b.x, a.y - b.y) || 1, mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
+    N.s = Math.max(N.sBase * 0.25, Math.min(N.sBase * 8, p.s * d / p.d));
+    N.ox = mx - (p.mx - p.ox) * (N.s / p.s); N.oy = my - (p.my - p.oy) * (N.s / p.s);
+    aprNotaLimitar(); aprNotaVista(); return;
+  }
+  if (ev.pointerId !== N.idAtivo) return;
+  if (N.modo === 'mover') { N.ox += ev.clientX - N.ant.x; N.oy += ev.clientY - N.ant.y; N.ant = { x: ev.clientX, y: ev.clientY }; aprNotaLimitar(); aprNotaVista(); return; }
+  if (N.modo !== 'traco') return;
+  const t = N.traco, k = APR_CANETAS[t.f], lista = (ev.getCoalescedEvents && ev.getCoalescedEvents().length) ? ev.getCoalescedEvents() : [ev];
+  const inicio = t.p.length / 3;
+  for (const e2 of lista) {
+    const dist = Math.hypot(e2.clientX - N.xAnt, e2.clientY - N.yAnt); if (dist < 0.9) continue;
+    let pr;
+    if (e2.pointerType === 'pen' && e2.pressure > 0) pr = e2.pressure;
+    else { const dt = Math.max(1, e2.timeStamp - N.tAnt); pr = Math.max(0.12, Math.min(1, 1.08 - (dist / dt) / 2.4)); pr = N.prAnt * 0.72 + pr * 0.28; }   // sem pressão: traço rápido fica mais fino
+    N.prAnt = pr; N.tAnt = e2.timeStamp; N.xAnt = e2.clientX; N.yAnt = e2.clientY;
+    const [x, y] = aprNotaPonto(e2, r); t.p.push(x, y, Math.round(pr * 100) / 100);
+  }
+  const n = t.p.length / 3; if (n === inicio) return;
+  if (k.apaga) {      // borracha age direto na tinta, trecho a trecho
+    const [xt] = aprNotaCtx('aprNtTinta'); xt.save(); aprNotaNaFolha(xt);
+    xt.globalCompositeOperation = 'destination-out'; xt.lineCap = 'round'; xt.lineJoin = 'round'; xt.lineWidth = t.l; xt.beginPath();
+    xt.moveTo(t.p[(inicio - 1) * 3], t.p[(inicio - 1) * 3 + 1]); for (let i = inicio; i < n; i++) xt.lineTo(t.p[i * 3], t.p[i * 3 + 1]); xt.stroke(); xt.restore();
+  } else if (!N.quadroVivo) N.quadroVivo = requestAnimationFrame(() => { N.quadroVivo = 0; if (APR.nota === N) aprNotaVivo(); });
+}
+function aprNotaSolta(ev){
+  const N = APR.nota; if (!N) return;
+  const area = ev.currentTarget;
+  if (ev.pointerType === 'touch') {
+    N.toques.delete(ev.pointerId);
+    if (N.modo === 'pinca') { if (N.toques.size < 2) { N.modo = null; N.esperaSoltar = N.toques.size > 0; } return; }
+    if (N.toques.size === 0) N.esperaSoltar = false;
+  }
+  if (ev.pointerId !== N.idAtivo) return;
+  N.idAtivo = null;
+  if (N.modo === 'mover') { N.modo = null; area.style.cursor = ''; return; }
+  if (N.modo !== 'traco') return;
+  N.modo = null; const t = N.traco; N.traco = null;
+  if (!t) return;
+  if (ev.type === 'pointercancel' && t.p.length <= 3) { aprNotaVivo(); return; }
+  aprNotaPag().t.push(t); N.hist.push({ a: 'traco' }); N.refaz = [];
+  if (!APR_CANETAS[t.f].apaga) { const [xt] = aprNotaCtx('aprNtTinta'); xt.save(); aprNotaNaFolha(xt); aprDesenharTraco(xt, t); xt.restore(); }
+  aprNotaVivo(); aprNotaBotoes(); aprNotaSujo();
+}
+window.addEventListener('keydown', ev => {
+  const N = APR.nota; if (!N || APR.show) return;
+  if (document.getElementById('modal') && document.getElementById('modal').classList.contains('show')) return;
+  const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test((ev.target && ev.target.tagName) || '');
+  const ctrl = ev.ctrlKey || ev.metaKey, tecla = (ev.key || '').toLowerCase();
+  if (ctrl && tecla === 'z' && !digitando) { ev.preventDefault(); ev.stopPropagation(); if (ev.shiftKey) aprNotaRefazer(); else aprNotaDesfazer(); }
+  else if (ctrl && tecla === 'y' && !digitando) { ev.preventDefault(); ev.stopPropagation(); aprNotaRefazer(); }
+  else if (ev.key === ' ' && !digitando) { ev.preventDefault(); if (!N.espaco) { N.espaco = true; document.getElementById('aprNtArea').classList.add('mao'); } }
+}, true);
+window.addEventListener('keyup', ev => { const N = APR.nota; if (N && ev.key === ' ' && N.espaco) { ev.preventDefault(); N.espaco = false; document.getElementById('aprNtArea').classList.toggle('mao', N.ferr === 'mao'); } }, true);
+
+// ---- desfazer, páginas, folha ----
+function aprNotaDesfazer(){
+  const N = APR.nota, a = N.hist.pop(); if (!a) return; const pg = aprNotaPag();
+  if (a.a === 'traco') a.traco = pg.t.pop(); else if (a.a === 'limpar') { pg.t = a.antes; }
+  N.refaz.push(a); aprNotaTinta(); aprNotaBotoes(); aprNotaSujo();
+}
+function aprNotaRefazer(){
+  const N = APR.nota, a = N.refaz.pop(); if (!a) return; const pg = aprNotaPag();
+  if (a.a === 'traco') pg.t.push(a.traco); else if (a.a === 'limpar') { a.antes = pg.t; pg.t = []; }
+  N.hist.push(a); aprNotaTinta(); aprNotaBotoes(); aprNotaSujo();
+}
+function aprNotaLimparPagina(){
+  const N = APR.nota, pg = aprNotaPag(); if (!pg.t.length) return;
+  N.hist.push({ a: 'limpar', antes: pg.t }); N.refaz = []; pg.t = [];
+  aprNotaTinta(); aprNotaBotoes(); aprNotaSujo(); aprNotaMenu(false); showToast('Página limpa. Use Desfazer se foi sem querer.');
+}
+function aprNotaIrPagina(i){ const N = APR.nota; N.pag = Math.max(0, Math.min(N.doc.paginas.length - 1, i)); N.hist = []; N.refaz = []; aprNotaTudo(); }
+function aprNotaPagina(d){ const N = APR.nota; if (N.pag + d < 0 || N.pag + d >= N.doc.paginas.length) return; aprNotaIrPagina(N.pag + d); }
+function aprNotaNovaPagina(){ const N = APR.nota; N.doc.paginas.splice(N.pag + 1, 0, { t: [] }); aprNotaSujo(); aprNotaIrPagina(N.pag + 1); aprNotaAjustar(); }
+function aprNotaExcluirPagina(){
+  const N = APR.nota;
+  if (N.doc.paginas.length <= 1) { showToast('A nota precisa ter pelo menos uma página. Use "Limpar esta página".'); return; }
+  if (aprNotaPag().t.length && !confirm('Excluir esta página com tudo o que está escrito nela?')) return;
+  N.doc.paginas.splice(N.pag, 1); aprNotaSujo(); aprNotaMenu(false); aprNotaIrPagina(Math.min(N.pag, N.doc.paginas.length - 1));
+}
+function aprNotaMenu(abrir){
+  const N = APR.nota, m = document.getElementById('aprNtMenu'); if (!m) return;
+  if (abrir === false || (abrir === undefined && m.classList.contains('aberto'))) { m.classList.remove('aberto'); return; }
+  const papel = APR_PAPEIS[N.doc.papel] || APR_PAPEIS.branco;
+  const previa = p => ({ liso: '', linhas: `background-image:linear-gradient(${papel[1]} 1.5px, transparent 1.5px);background-size:100% 9px;background-position:0 5px`, largas: `background-image:linear-gradient(${papel[1]} 1.5px, transparent 1.5px);background-size:100% 14px;background-position:0 8px`,
+    quadriculado: `background-image:linear-gradient(${papel[1]} 1.2px, transparent 1.2px),linear-gradient(90deg, ${papel[1]} 1.2px, transparent 1.2px);background-size:11px 11px`, fino: `background-image:linear-gradient(${papel[1]} 1px, transparent 1px),linear-gradient(90deg, ${papel[1]} 1px, transparent 1px);background-size:6px 6px`,
+    pontilhado: `background-image:radial-gradient(${papel[1]} 1.4px, transparent 1.6px);background-size:10px 10px` }[p]);
+  m.innerHTML = `
+    <h4>Linhas da folha</h4>
+    <div class="op">${APR_PAUTAS.map(p => `<button class="${N.doc.pauta === p[0] ? 'ativo' : ''}" onclick="aprNotaFolhaMudar('pauta','${p[0]}')"><i style="background-color:${papel[0]};${previa(p[0])}"></i><span>${p[1]}</span></button>`).join('')}</div>
+    <h4>Cor do papel</h4>
+    <div class="op">${Object.keys(APR_PAPEIS).map(k => `<button class="${N.doc.papel === k ? 'ativo' : ''}" onclick="aprNotaFolhaMudar('papel','${k}')"><i style="background:${APR_PAPEIS[k][0]}"></i><span>${APR_PAPEIS[k][3]}</span></button>`).join('')}</div>
+    <h4>Formato</h4>
+    <div class="op" style="grid-template-columns:repeat(2,1fr)"><button class="${N.doc.folha !== 'deitada' ? 'ativo' : ''}" onclick="aprNotaFolhaMudar('folha','pe')"><span style="padding:8px 2px">Folha em pé</span></button><button class="${N.doc.folha === 'deitada' ? 'ativo' : ''}" onclick="aprNotaFolhaMudar('folha','deitada')"><span style="padding:8px 2px">Folha deitada</span></button></div>
+    <h4>Esta página</h4>
+    <div class="linha">
+      <button class="apr-bt" onclick="aprNotaBaixar()">Baixar como imagem</button>
+      <button class="apr-bt" onclick="aprNotaLimparPagina()">Limpar esta página</button>
+      <button class="apr-bt" onclick="aprNotaExcluirPagina()">Excluir esta página</button>
+      <button class="apr-bt" onclick="aprNotaMenu(false); aprAbrirMarca()">Marca d'água...</button>
+    </div>`;
+  m.classList.add('aberto');
+}
+function aprNotaFolhaMudar(campo, valor){
+  const N = APR.nota; N.doc[campo] = valor; aprNotaSujo();
+  if (campo === 'folha') { N.sBase = 0; aprNotaRedimensionar(true); } else aprNotaTudo();
+  if (campo === 'papel') { aprMarcaNaTela(document.getElementById('aprNtArea'), true); aprNotaFerramentas(); }
+  aprNotaMenu(true);
+}
+async function aprNotaBaixar(){
+  const N = APR.nota; aprNotaMenu(false);
+  const c = await aprPaginaEmCanvas(N.doc, N.pag, (aprNotaFolha()[0]) * 1.5, true);
+  c.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = (N.doc.titulo || 'nota').replace(/[\\/:*?"<>|]+/g, ' ').trim() + (N.doc.paginas.length > 1 ? ' - pagina ' + (N.pag + 1) : '') + '.png'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); }, 'image/png');
+}
+
+// ====================== MARCA D'ÁGUA ======================
+function aprFormatarCnpj(v){
+  const d = String(v || '').replace(/\D/g, '');
+  if (d.length === 14) return d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+  if (d.length === 11) return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  return String(v || '').trim();
+}
+function aprMarcaHtml(m, escuro){
+  if (!m || m.modo === 'nenhuma') return '';
+  if (m.modo === 'imagem') return APR.marcaImg ? `<img src="${aprUrlImagem(APR.marcaImg)}" alt="" style="width:${Math.round(m.tamanho * 7)}px">` : '';
+  const dados = [m.cnpj ? `<span>CNPJ</span>${esc(aprFormatarCnpj(m.cnpj))}` : '', m.matricula ? `<span>Matrícula</span>${esc(m.matricula)}` : ''].filter(Boolean).join('<i>·</i>');
+  if (!m.nome && !dados) return '';
+  return `<div class="apr-cartao e-${esc(m.estilo || 'classico')} ${escuro ? 'claro' : ''}" style="font-size:${m.tamanho}px">
+    <div class="c-nome">${esc(m.nome || '')}</div>${m.extra ? `<div class="c-extra">${esc(m.extra)}</div>` : ''}${dados ? `<div class="c-fio"></div><div class="c-dados">${dados}</div>` : ''}</div>`;
+}
+// Coloca (ou tira) a marca fixa sobre uma tela: ela não acompanha o zoom nem o movimento da folha
+function aprMarcaNaTela(cx, mostrar){
+  if (!cx) return; let el = cx.querySelector(':scope > .apr-marca');
+  const m = APR.indice && APR.indice.marca; const escuro = APR.nota && cx.id === 'aprNtArea' ? (APR_PAPEIS[APR.nota.doc.papel] || [])[2] : cx.id === 'aprTelaShow';
+  const html = mostrar && m ? aprMarcaHtml(m, escuro) : '';
+  if (!html) { if (el) el.remove(); return; }
+  aprCarregarFontes();
+  if (!el) { el = document.createElement('div'); cx.appendChild(el); }
+  el.className = 'apr-marca p-' + (m.posicao || 'id'); el.style.opacity = (m.opacidade || 60) / 100; el.innerHTML = html;
+}
+// A mesma marca desenhada dentro da imagem baixada
+async function aprMarcaNoCanvas(x, W, H, fator, escuro){
+  const m = APR.indice && APR.indice.marca; if (!m || m.modo === 'nenhuma') return;
+  const pos = m.posicao || 'id', margem = 26 * fator;
+  x.save(); x.globalAlpha = (m.opacidade || 60) / 100;
+  const ancora = (w, h) => [pos === 'ce' ? (W - w) / 2 : (pos === 'ie' || pos === 'se') ? margem : W - margem - w, pos === 'ce' ? (H - h) / 2 : (pos === 'se' || pos === 'sd') ? margem : H - margem - h];
+  if (m.modo === 'imagem') {
+    if (APR.marcaImg) { const img = await new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = APR.marcaImg; });
+      if (img) { const w = m.tamanho * 7 * fator, h = w * img.naturalHeight / img.naturalWidth, [ax, ay] = ancora(w, h); x.drawImage(img, ax, ay, w, h); } }
+    x.restore(); return;
+  }
+  const t = m.tamanho * fator, est = m.estilo || 'classico';
+  const fNome = est === 'moderno' ? `700 ${t * 0.78}px "Space Grotesk", Inter, sans-serif` : est === 'assinatura' ? `400 ${t * 1.5}px "Great Vibes", "Brush Script MT", cursive` : `700 ${t}px "Playfair Display", Georgia, serif`;
+  const fExtra = est === 'classico' ? `italic 500 ${t * 0.42}px "Playfair Display", Georgia, serif` : `600 ${t * (est === 'moderno' ? 0.34 : 0.42)}px Inter, sans-serif`;
+  const fDados = `500 ${t * 0.4}px Inter, system-ui, sans-serif`;
+  try { if (document.fonts && document.fonts.load) await Promise.all([document.fonts.load(fNome, m.nome || 'A'), document.fonts.load(fDados, 'A'), document.fonts.load(fExtra, 'A')]); } catch(e){}
+  const nome = est === 'moderno' ? (m.nome || '').toUpperCase() : (m.nome || ''), extra = est === 'moderno' ? (m.extra || '').toUpperCase() : (m.extra || '');
+  const dados = [m.cnpj ? 'CNPJ ' + aprFormatarCnpj(m.cnpj) : '', m.matricula ? 'MATRÍCULA ' + m.matricula : ''].filter(Boolean).join('   ·   ');
+  if ('letterSpacing' in x) x.letterSpacing = est === 'moderno' ? (t * 0.06) + 'px' : '0px';
+  x.font = fNome; const wNome = x.measureText(nome).width; if ('letterSpacing' in x) x.letterSpacing = '0px';
+  x.font = fExtra; const wExtra = extra ? x.measureText(extra).width : 0; x.font = fDados; const wDados = dados ? x.measureText(dados).width : 0;
+  const hNome = (est === 'assinatura' ? t * 1.5 : est === 'moderno' ? t * 0.78 : t) * 1.2, hExtra = extra ? t * 0.42 * 1.45 : 0, hDados = dados ? t * 0.4 * 1.5 + t * 0.62 : 0;
+  const w = Math.max(wNome, wExtra, wDados), h = hNome + hExtra + hDados, [ax, ay] = ancora(w, h);
+  const alinha = pos === 'ce' ? 'center' : (pos === 'ie' || pos === 'se') ? 'left' : 'right', xt = alinha === 'center' ? ax + w / 2 : alinha === 'left' ? ax : ax + w;
+  x.fillStyle = x.strokeStyle = escuro ? '#f8fafc' : '#1e293b'; x.textAlign = alinha; x.textBaseline = 'alphabetic';
+  let y = ay + hNome * 0.8; if ('letterSpacing' in x) x.letterSpacing = est === 'moderno' ? (t * 0.06) + 'px' : '0px';
+  x.font = fNome; x.fillText(nome, xt, y); if ('letterSpacing' in x) x.letterSpacing = '0px';
+  if (extra) { y += hExtra; x.font = fExtra; x.globalAlpha *= 0.85; x.fillText(extra, xt, y); x.globalAlpha /= 0.85; }
+  if (dados) { y += t * 0.36; x.save(); x.globalAlpha *= 0.45; x.lineWidth = Math.max(1, fator); x.beginPath(); x.moveTo(ax, y); x.lineTo(ax + w, y); x.stroke(); x.restore(); y += t * 0.62; x.font = fDados; x.fillText(dados, xt, y); }
+  x.restore();
+}
+async function aprAbrirMarca(){
+  const ind = await aprCarregar(), m = ind.marca; aprCarregarFontes();
+  APR.marcaEd = Object.assign({}, m);
+  const op = (lista, atual) => lista.map(o => `<option value="${o[0]}" ${o[0] === atual ? 'selected' : ''}>${o[1]}</option>`).join('');
+  openModal(`
+    <div class="between"><h2 style="margin:0">Marca d'água</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <p class="muted" style="font-size:13px;margin:6px 0 10px">Fica fixa num canto da tela enquanto você escreve nas notas e sai junto na imagem baixada. Não se mexe com o zoom.</p>
+    <div class="field"><label>O que mostrar</label>
+      <select id="aprMcModo" onchange="aprMarcaCampo('modo', this.value)">${op([['nenhuma', 'Sem marca d\'água'], ['cartao', 'Meus dados em letras elegantes (nome, CNPJ, matrícula)'], ['imagem', 'Uma imagem minha (logo ou cartão pronto)']], m.modo)}</select></div>
+    <div id="aprMcCartao">
+      <div class="grid2">
+        <div class="field"><label>Nome</label><input id="aprMcNome" value="${esc(m.nome || '')}" oninput="aprMarcaCampo('nome', this.value)"></div>
+        <div class="field"><label>Linha abaixo do nome (opcional)</label><input id="aprMcExtra" value="${esc(m.extra || '')}" placeholder="ex: Consultor Financeiro" oninput="aprMarcaCampo('extra', this.value)"></div>
+        <div class="field"><label>CNPJ</label><input id="aprMcCnpj" value="${esc(m.cnpj || '')}" inputmode="numeric" placeholder="só os números" oninput="aprMarcaCampo('cnpj', this.value)"></div>
+        <div class="field"><label>Matrícula</label><input id="aprMcMat" value="${esc(m.matricula || '')}" oninput="aprMarcaCampo('matricula', this.value)"></div>
+      </div>
+      <div class="field"><label>Estilo das letras</label><select onchange="aprMarcaCampo('estilo', this.value)">${op([['classico', 'Clássico (letra com serifa, tipo cartão de visita)'], ['moderno', 'Moderno (maiúsculas espaçadas)'], ['assinatura', 'Assinatura (letra cursiva)']], m.estilo)}</select></div>
+    </div>
+    <div id="aprMcImagem">
+      <div class="row" style="margin-bottom:8px"><button class="btn" onclick="aprMarcaEscolherImagem()">Escolher imagem</button><small class="muted">PNG com fundo transparente fica melhor.</small></div>
+    </div>
+    <div id="aprMcAjustes">
+      <div class="grid2">
+        <div class="field"><label>Posição na tela</label><select onchange="aprMarcaCampo('posicao', this.value)">${op([['id', 'Embaixo, à direita'], ['ie', 'Embaixo, à esquerda'], ['sd', 'Em cima, à direita'], ['se', 'Em cima, à esquerda'], ['ce', 'No centro']], m.posicao)}</select></div>
+        <div class="field"><label>Tamanho</label><input type="range" min="14" max="70" value="${m.tamanho}" oninput="aprMarcaCampo('tamanho', Number(this.value))" style="padding:0"></div>
+        <div class="field"><label>Transparência (mais à esquerda = mais apagada)</label><input type="range" min="8" max="100" value="${m.opacidade}" oninput="aprMarcaCampo('opacidade', Number(this.value))" style="padding:0"></div>
+        <div class="field"><label style="display:flex;gap:8px;align-items:center;font-weight:600;margin-top:18px"><input type="checkbox" style="width:auto;margin:0" ${m.apresentar ? 'checked' : ''} onchange="aprMarcaCampo('apresentar', this.checked)"> Mostrar também ao apresentar slides e PDFs</label></div>
+      </div>
+      <div class="apr-marca-previa" id="aprMcPrevia"></div><small class="muted">Prévia.</small>
+    </div>
+    <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="aprMarcaSalvar()">Salvar</button></div>`);
+  aprMarcaPrevia();
+}
+function aprMarcaCampo(campo, valor){ APR.marcaEd[campo] = valor; aprMarcaPrevia(); }
+function aprMarcaPrevia(){
+  const m = APR.marcaEd; if (!m || !document.getElementById('aprMcPrevia')) return;
+  document.getElementById('aprMcCartao').style.display = m.modo === 'cartao' ? '' : 'none';
+  document.getElementById('aprMcImagem').style.display = m.modo === 'imagem' ? '' : 'none';
+  document.getElementById('aprMcAjustes').style.display = m.modo === 'nenhuma' ? 'none' : '';
+  const p = document.getElementById('aprMcPrevia'); const html = aprMarcaHtml(m, false);
+  p.innerHTML = html ? `<div class="apr-marca p-${m.posicao}" style="opacity:${m.opacidade / 100}">${html}</div>` : `<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:12.5px">${m.modo === 'imagem' ? 'Escolha uma imagem' : 'Preencha os dados'}</div>`;
+}
+function aprMarcaEscolherImagem(){
+  aprPedirArquivo('image/*', false, async fs => {
+    try { APR.marcaImgNova = await aprReduzirImagem(fs[0], 900, true); APR.marcaImgAntes = APR.marcaImg; APR.marcaImg = APR.marcaImgNova; aprMarcaPrevia(); }
+    catch(e){ showToast(e.message || 'Não foi possível usar essa imagem.', 'error'); }
+  });
+}
+async function aprMarcaSalvar(){
+  const ind = await aprCarregar(); ind.marca = Object.assign({}, APR_MARCA_PADRAO, APR.marcaEd);
+  if (APR.marcaImgNova) { await idbSetArquivo(aprChave('marca_img'), APR.marcaImgNova); APR.marcaImgNova = null; }
+  await aprGravarIndice(); closeModal(); showToast('Marca d\'água salva.');
+  if (APR.nota) aprMarcaNaTela(document.getElementById('aprNtArea'), true);
+}
+
+// ====================== CÓPIA DE SEGURANÇA DA ABA ======================
+function aprAbrirCopia(){
+  openModal(`
+    <div class="between"><h2 style="margin:0">Cópia de segurança</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <p style="font-size:13.5px;line-height:1.5;margin:8px 0 12px">Os slides, PDFs e notas ficam guardados <b>só neste aparelho</b>. Eles não entram no Backup normal do CRM nem na nuvem, para não deixar o CRM pesado. Para levar para outro aparelho, ou se proteger caso o navegador seja limpo, baixe uma cópia aqui de vez em quando.</p>
+    <label style="display:flex;gap:8px;align-items:center;font-size:13px;margin-bottom:12px"><input type="checkbox" id="aprCpPdf" style="width:auto;margin:0"> Incluir os PDFs (o arquivo fica bem maior)</label>
+    <div class="row"><button class="btn primary" onclick="aprBaixarCopia()">Baixar cópia</button><button class="btn" onclick="aprRestaurarCopia()">Trazer de uma cópia</button></div>
+    <small class="muted" style="display:block;margin-top:10px">"Trazer de uma cópia" acrescenta o que estiver no arquivo, sem apagar o que já existe aqui.</small>`);
+}
+async function aprBaixarCopia(){
+  const ind = await aprCarregar(), comPdf = document.getElementById('aprCpPdf') && document.getElementById('aprCpPdf').checked;
+  const pacote = { tipo: 'elo-apresentacoes', versao: 1, criado: new Date().toISOString(), marca: ind.marca, marcaImg: APR.marcaImg || '', slides: [], notas: [], pdfs: [] };
+  for (const d of ind.slides) { const x = await aprLerDeck(d.id); if (x) pacote.slides.push(x); }
+  for (const d of ind.notas) { const x = await aprLerNota(d.id); if (x) pacote.notas.push(x); }
+  if (comPdf) for (const d of ind.pdfs) { const b = await idbGetArquivo(aprChave('pdf_' + d.id)); if (b) pacote.pdfs.push({ id: d.id, nome: d.nome, dados: await aprLerComoDataUrl(b) }); }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(pacote)], { type: 'application/json' }));
+  a.download = 'apresentacoes_e_notas_' + new Date().toISOString().slice(0, 10) + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  showToast('Cópia baixada: ' + pacote.slides.length + ' apresentação(ões), ' + pacote.notas.length + ' nota(s)' + (comPdf ? ', ' + pacote.pdfs.length + ' PDF(s)' : '') + '.');
+}
+function aprRestaurarCopia(){
+  aprPedirArquivo('application/json,.json', false, async fs => {
+    let pacote; try { pacote = JSON.parse(await fs[0].text()); } catch(e){ pacote = null; }
+    if (!pacote || pacote.tipo !== 'elo-apresentacoes') { showToast('Esse arquivo não é uma cópia da aba Apresentações.', 'error'); return; }
+    const ind = await aprCarregar(); let n = 0;
+    for (const d of pacote.slides || []) { if (!d || !Array.isArray(d.slides) || !d.slides.length) continue; if (ind.slides.some(x => x.id === d.id)) d.id = aprId(); await aprGravarDeck(d); n++; }
+    for (const d of pacote.notas || []) { if (!d || !Array.isArray(d.paginas) || !d.paginas.length) continue; if (ind.notas.some(x => x.id === d.id)) d.id = aprId(); await aprGravarNota(d); n++; }
+    for (const p of pacote.pdfs || []) { try { const blob = await (await fetch(p.dados)).blob(); const id = aprId(); if (await idbSetArquivo(aprChave('pdf_' + id), blob)) { ind.pdfs.push({ id, nome: p.nome || 'PDF', tamanho: blob.size, criado: new Date().toISOString(), paginas: 0, mini: '' }); n++; } } catch(e){} }
+    if (pacote.marca && ind.marca.modo === 'nenhuma') { ind.marca = Object.assign({}, APR_MARCA_PADRAO, pacote.marca); if (pacote.marcaImg) { APR.marcaImg = pacote.marcaImg; await idbSetArquivo(aprChave('marca_img'), pacote.marcaImg); } }
+    await aprGravarIndice(); closeModal(); aprRender(); aprPdfMiniaturas(); showToast(n + ' item(ns) trazido(s) da cópia.');
+  });
+}
+
+// ---------- liga a aba ao CRM ----------
+(function(){
+  const mostrarOriginal = show;
+  show = function(id, btn){ mostrarOriginal(id, btn); if (id === 'apresentacoes') { aprRender(); aprPdfMiniaturas(); } };
+})();
 </script>
 </body>
 </html>
