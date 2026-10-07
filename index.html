@@ -4838,6 +4838,28 @@ function hierAdotarSemLider(){
   if (n && typeof setItemSeguro === 'function') setItemSeguro(KEY_USERS, JSON.stringify(usersList));
 }
 
+// ---------- CADASTRO JÁ COM MAIS DE UMA LOJA ----------
+// De Gestor para cima a pessoa pode atuar em várias lojas. No cadastro novo, além da loja principal, dá para marcar as outras:
+// ela entra em todas com o mesmo cargo e o mesmo líder (cargo ou líder diferente por loja se acerta depois, em "Editar").
+function hierLojasExtrasHtml(prefixo){
+  return `<div class="field" id="${prefixo}ExtrasCampo" style="display:none"><label>Outras lojas em que também atua (opcional)</label>
+      <div id="${prefixo}Extras" style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 10px;border:1px solid var(--line);border-radius:10px"></div>
+      <small class="muted" style="display:block;margin-top:4px">De Gestor para cima a pessoa pode atuar em mais de uma loja. Aqui ela entra em todas com o mesmo cargo e o mesmo líder; para cargo ou líder diferente em alguma loja, use "Editar" depois.</small></div>`;
+}
+function hierLojasExtrasAtualizar(prefixo){
+  const campo = document.getElementById(prefixo + 'ExtrasCampo'), caixa = document.getElementById(prefixo + 'Extras'); if (!campo || !caixa) return;
+  const cargo = (document.getElementById(prefixo + 'Cargo') || {}).value || '', principal = (document.getElementById(prefixo + 'Loja') || {}).value || '';
+  const outras = hierLojas().filter(l => l.id !== principal).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+  const pode = hierNivel(cargo) < HIER_NIVEL_CONSULTOR && !!principal && outras.length > 0;
+  campo.style.display = pode ? '' : 'none';
+  const marcadas = new Set([...caixa.querySelectorAll('input:checked')].map(i => i.value));
+  caixa.innerHTML = outras.map(l => `<label style="display:inline-flex;align-items:center;gap:6px;font-weight:400;font-size:13px;margin:0;cursor:pointer"><input type="checkbox" value="${l.id}" ${marcadas.has(l.id) ? 'checked' : ''} style="width:auto;margin:0"> ${esc(l.nome)}</label>`).join('');
+}
+function hierLojasExtrasLer(prefixo){
+  const campo = document.getElementById(prefixo + 'ExtrasCampo'); if (!campo || campo.style.display === 'none') return [];
+  return [...document.querySelectorAll('#' + prefixo + 'Extras input:checked')].map(i => i.value);
+}
+
 // ---------- MATRÍCULA: em qual matrícula a venda saiu ----------
 // Quem chega na Ademicon fica "em prévia": as vendas saem na matrícula de um autorizado que está acima.
 // Depois de autorizada, a pessoa tem matrícula própria. O que isso muda no CRM:
@@ -8741,7 +8763,7 @@ function openNewUserModal(){
     <div class="field"><label>Senha de Acesso</label><input type="password" id="nuPass" value="123456"></div>
     <div class="field"><label>Data de Nascimento</label><input type="date" id="nuNasc"></div>
     <div class="field"><label>Cargo / Função</label>
-      <select id="nuCargo">${ROLES.filter(r => hierNivel(r) > hierMelhorNivel(currentUser)).map(r=>`<option value="${r}" ${r==='Consultor'?'selected':''}>${r}</option>`).join('')}</select>
+      <select id="nuCargo" onchange="hierLojasExtrasAtualizar('nu')">${ROLES.filter(r => hierNivel(r) > hierMelhorNivel(currentUser)).map(r=>`<option value="${r}" ${r==='Consultor'?'selected':''}>${r}</option>`).join('')}</select>
       <small class="muted" style="display:block;margin-top:4px"><b>Consultor</b> = em prévia: as vendas saem na matrícula de um autorizado acima. <b>Consultor autorizado</b> (ou cargo de liderança) = matrícula própria.</small>
     </div>
     <div class="field"><label>Nº da matrícula (se já tiver)</label><input id="nuMatricula" value="" placeholder="Opcional"></div>
@@ -8751,10 +8773,11 @@ function openNewUserModal(){
       </select>
       <small class="muted">A pessoa entra na equipe de quem você escolher aqui (você ou alguém abaixo de você).</small>
     </div>
-    <div class="field"><label>🏬 Loja onde vai trabalhar</label><select id="nuLoja">${hierOpcoesLoja(hierLojaPrincipal(currentUser))}</select>
-      <small class="muted">Se a pessoa atuar em mais de uma loja, com outro cargo ou outro líder, acrescente depois em "Editar".</small></div>
+    <div class="field"><label>🏬 Loja onde vai trabalhar (principal)</label><select id="nuLoja" onchange="hierLojasExtrasAtualizar('nu')">${hierOpcoesLoja(hierLojaPrincipal(currentUser))}</select></div>
+    ${hierLojasExtrasHtml('nu')}
     <button class="btn primary" id="btnSaveUserModal" onclick="saveNewUser()">Cadastrar no CRM</button>
   `);
+  hierLojasExtrasAtualizar('nu');
 }
 
 function saveNewUser(){
@@ -8773,7 +8796,11 @@ function saveNewUser(){
     const lojaNovo = document.getElementById('nuLoja')?.value || '';
     const cargoLider = hierCargoNaLoja(lider, lojaNovo);
     if (lider.id !== HIER_DONO && hierNivel(cargoLider) >= hierNivel(cargo)) return alert(`Nessa loja, ${lider.nome} é ${cargoLider}: o líder precisa ter cargo acima de ${cargo}.`);
+    // nas outras lojas marcadas o líder também precisa estar acima
+    const lojaRuim = hierLojasExtrasLer('nu').find(l => lider.id !== HIER_DONO && hierNivel(hierCargoNaLoja(lider, l)) >= hierNivel(cargo));
+    if (lojaRuim) return alert(`Na loja ${hierLojaNome(lojaRuim)}, ${lider.nome} é ${hierCargoNaLoja(lider, lojaRuim)}: o líder precisa ter cargo acima de ${cargo}. Desmarque essa loja e acerte depois em "Editar".`);
   }
+  const lojasExtrasNovo = MODO_HIERARQUIA ? hierLojasExtrasLer('nu') : [];
 
   limparValidacaoForm();
   let valido = true;
@@ -8800,7 +8827,7 @@ function saveNewUser(){
     canViewAllAgenda: isGest
   });
 
-  if (MODO_HIERARQUIA) { const novo = usersList[usersList.length - 1]; hierGravarVinculos(novo, [{ loja: novo.loja || '', liderId: novo.superiorId, cargo: novo.cargo }]); }
+  if (MODO_HIERARQUIA) { const novo = usersList[usersList.length - 1]; hierGravarVinculos(novo, [{ loja: novo.loja || '', liderId: novo.superiorId, cargo: novo.cargo }].concat(lojasExtrasNovo.map(l => ({ loja: l, liderId: novo.superiorId, cargo: novo.cargo })))); }
   save(); closeModal();
   alert(`Membro ${nome} cadastrado com sucesso!`);
 }
