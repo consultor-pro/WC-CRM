@@ -3687,43 +3687,43 @@ function canCurrentUserManageMembers(){
 
 function canCurrentUserViewGeneralDashboard(){
   if(!currentUser) return false;
-  if (MODO_HIERARQUIA && !hierDonoVeTudo()) return false;
+  if (MODO_HIERARQUIA) return hierDonoVeTudo();
   return currentUser.canViewGeneralDashboard === true || isManagerRole(currentUser.cargo);
 }
 
 function canCurrentUserViewMapaCotas(){
   if(!currentUser) return false;
-  if (MODO_HIERARQUIA && !hierDonoVeTudo()) return false;
+  if (MODO_HIERARQUIA) return hierDonoVeTudo();
   return currentUser.canViewMapaCotas === true || isManagerRole(currentUser.cargo);
 }
 
 function canCurrentUserViewTeamComissoes(){
   if(!currentUser) return false;
-  if (MODO_HIERARQUIA && !hierDonoVeTudo()) return false;
+  if (MODO_HIERARQUIA) return hierDonoVeTudo();
   return currentUser.canViewTeamComissoes === true || isManagerRole(currentUser.cargo);
 }
 
 function canCurrentUserViewGlobalSemaforo(){
   if(!currentUser) return false;
-  if (MODO_HIERARQUIA && !hierDonoVeTudo()) return false;
+  if (MODO_HIERARQUIA) return hierDonoVeTudo();
   return currentUser.canViewGlobalSemaforo === true || isManagerRole(currentUser.cargo);
 }
 
 function canCurrentUserViewAllBirthdays(){
   if(!currentUser) return false;
-  if (MODO_HIERARQUIA && !hierDonoVeTudo()) return false;
+  if (MODO_HIERARQUIA) return hierDonoVeTudo();
   return currentUser.canViewAllBirthdays === true || isManagerRole(currentUser.cargo);
 }
 
 function canCurrentUserViewAllLeads(){
   if(!currentUser) return false;
-  if (MODO_HIERARQUIA && !hierDonoVeTudo()) return false;
+  if (MODO_HIERARQUIA) return hierDonoVeTudo();
   return currentUser.canViewAllLeads === true || isManagerRole(currentUser.cargo);
 }
 
 function canCurrentUserViewAllAgenda(){
   if(!currentUser) return false;
-  if (MODO_HIERARQUIA && !hierDonoVeTudo()) return false;
+  if (MODO_HIERARQUIA) return hierDonoVeTudo();
   return currentUser.canViewAllAgenda === true || isManagerRole(currentUser.cargo);
 }
 
@@ -3834,6 +3834,7 @@ function hierCargoNaLoja(u, loja){
 }
 // Nível mais alto que a pessoa tem em qualquer loja (usado para ordenar e para saber se ela lidera)
 function hierMelhorNivel(u){
+  if (HIER_DONO && u && u.id === HIER_DONO) return -1;   // o dono do CRM pessoal lidera todos
   const niveis = hierVinculos(u).map(v => hierNivel(v.cargo));
   return niveis.length ? Math.min(...niveis) : hierNivel(u && u.cargo);
 }
@@ -4694,7 +4695,7 @@ function hierDefinirMinhaLoja(v){
 // e que NAQUELA LOJA tenha cargo acima do cargo que ela terá ali.
 function hierLideresPossiveis(u, loja, cargo){
   const abaixoDela = hierAbaixoDe(u.id);
-  return equipeVisivelAtiva().filter(o => o.id !== u.id && !abaixoDela.has(o.id) && hierNivel(hierCargoNaLoja(o, loja)) < hierNivel(cargo))
+  return equipeVisivelAtiva().filter(o => o.id !== u.id && !abaixoDela.has(o.id) && (o.id === HIER_DONO || hierNivel(hierCargoNaLoja(o, loja)) < hierNivel(cargo)))
     .sort((a, b) => hierNivel(hierCargoNaLoja(a, loja)) - hierNivel(hierCargoNaLoja(b, loja)) || (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
 }
 // Cargos que eu posso dar: só os que ficam abaixo do meu cargo mais alto
@@ -8033,10 +8034,14 @@ function infoMidiaHtml(post, compacto){
   return `<div class="doc-box-preview"><div style="font-size:26px">${meta.icon}</div><div style="flex:1;overflow:hidden"><b style="font-size:12.5px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(post.fileName || 'Arquivo')}</b></div></div>`;
 }
 
+function hierOrganizaInformacoes(){
+  if (!currentUser) return false;
+  return isManagerRole(currentUser.cargo) || hierLideraAlgo(currentUser) || hierDonoVeTudo() || !hierTemLider(currentUser.id);
+}
 function renderInformacoes(){
   const container = document.getElementById('infoPostsContainer');
   if(!container) return;
-  const isGestor = currentUser && isManagerRole(currentUser.cargo);
+  const isGestor = hierOrganizaInformacoes();
 
   container.innerHTML = (infoPosts || []).map(post => {
     const temArquivo = !!(post.fileUrl || fileSrc(post));
@@ -8061,7 +8066,7 @@ function abrirPublicacaoInfo(id){
   if (window.__infoArrastou) { window.__infoArrastou = false; return; }
   const post = (infoPosts || []).find(p => p.id === id);
   if (!post) return;
-  const isGestor = currentUser && isManagerRole(currentUser.cargo);
+  const isGestor = hierOrganizaInformacoes();
   const meta = getFileTypeMeta(post.fileName, post.fileType || '');
   const urlArquivo = fileSrc(post);
   openModal(`
@@ -8423,9 +8428,12 @@ function renderUsers(){
     let acoes;
     if (podeGerenciar && abaixoDeMim) {
       acoes = `<button class="tc-btn" onclick="hierEditarMembro('${u.id}')">Editar</button><button class="tc-btn" onclick="openPermissionsModal('${u.id}')">Meta e senha</button>` +
+        (hierDonoVeTudo() ? `<button class="tc-btn" title="Gera um arquivo só com os leads, as vendas e a agenda dessa pessoa" onclick="abrirExportarDados('${u.id}','individual')">Exportar</button>` + (subordinates.length ? `<button class="tc-btn" title="Gera um arquivo com essa pessoa e toda a equipe abaixo dela" onclick="abrirExportarDados('${u.id}','equipe')">Exportar equipe</button>` : '') : '') +
         (inativo ? `<button class="tc-btn" onclick="hierReativarUsuario('${u.id}')">Reativar</button>` : `<button class="tc-btn perigo" onclick="hierDesativarUsuario('${u.id}')">Desativar</button>`);
     } else if (u.id === currentUser.id) {
-      acoes = `<button class="tc-btn" onclick="show('configuracoes', document.querySelector('.nav button[onclick*=configuracoes]'))">Meus dados</button>`;
+      acoes = `<button class="tc-btn" onclick="show('configuracoes', document.querySelector('.nav button[onclick*=configuracoes]'))">Meus dados</button>` +
+        `<button class="tc-btn" title="Gera um arquivo só com os seus leads, vendas e agenda, para abrir em outro CRM" onclick="abrirExportarDados('${u.id}','individual')">Exportar</button>` +
+        (hierDonoVeTudo() && subordinates.length ? `<button class="tc-btn" title="Gera um arquivo com você e toda a equipe" onclick="abrirExportarDados('${u.id}','equipe')">Exportar equipe</button>` : '');
     } else {
       acoes = '<span class="tc-sub">Acesso restrito</span>';
     }
@@ -8535,7 +8543,7 @@ function openPermissionsModal(userId){
   if(!u) return;
   if (MODO_HIERARQUIA && !hierEstaAcima(currentUser.id, u.id)) return alert('Só quem está acima desta pessoa pode alterar o cadastro dela.');
   const abaixoDele = getSubordinateUserIds(u.id);
-  const lideresPossiveis = equipeVisivelAtiva().filter(o => !abaixoDele.includes(o.id) && hierNivel(o.cargo) < hierNivel(u.cargo));
+  const lideresPossiveis = equipeVisivelAtiva().filter(o => !abaixoDele.includes(o.id) && (o.id === HIER_DONO || hierNivel(o.cargo) < hierNivel(u.cargo)));
 
   openModal(`
     <div class="between"><h2>Meta e senha: ${esc(u.nome)}</h2><button class="btn" onclick="closeModal()">✕</button></div>
@@ -8700,7 +8708,7 @@ function openPromoteModal(userId){
   const u = usersList.find(x=>x.id===userId);
   if(!u) return;
   if (MODO_HIERARQUIA && !hierEstaAcima(currentUser.id, u.id)) return alert('Só quem está acima desta pessoa pode alterar o cargo dela.');
-  const cargosPossiveis = ROLES.filter(r => hierNivel(r) > hierNivel(currentUser.cargo));
+  const cargosPossiveis = ROLES.filter(r => hierNivel(r) > hierMelhorNivel(currentUser));
   openModal(`
     <div class="between"><h2>Alterar Cargo</h2><button class="btn" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Membro</label><input value="${esc(u.nome)}" disabled></div>
@@ -8764,7 +8772,7 @@ function saveNewUser(){
     if (!lider || !(lider.id === currentUser.id || hierEstaAcima(currentUser.id, lider.id))) return alert('Escolha como líder você mesmo ou alguém da sua equipe.');
     const lojaNovo = document.getElementById('nuLoja')?.value || '';
     const cargoLider = hierCargoNaLoja(lider, lojaNovo);
-    if (hierNivel(cargoLider) >= hierNivel(cargo)) return alert(`Nessa loja, ${lider.nome} é ${cargoLider}: o líder precisa ter cargo acima de ${cargo}.`);
+    if (lider.id !== HIER_DONO && hierNivel(cargoLider) >= hierNivel(cargo)) return alert(`Nessa loja, ${lider.nome} é ${cargoLider}: o líder precisa ter cargo acima de ${cargo}.`);
   }
 
   limparValidacaoForm();
@@ -8828,7 +8836,7 @@ function openLead(id=null){
       <div>
         <div class="field"><label>Responsável</label>
           <select id="fResp">
-            ${usersList.filter(u => MODO_HIERARQUIA ? u.id === currentUser.id : (canCurrentUserViewAllLeads() || mySubordinateNames.includes(u.nome))).map(u=>`<option ${(l.responsavel||currentUser?.nome)===u.nome?'selected':''}>${esc(u.nome)}</option>`).join('')}
+            ${usersList.filter(u => MODO_HIERARQUIA ? (hierDonoVeTudo() || u.id === currentUser.id || u.nome === l.responsavel) : (canCurrentUserViewAllLeads() || mySubordinateNames.includes(u.nome))).map(u=>`<option ${(l.responsavel||currentUser?.nome)===u.nome?'selected':''}>${esc(u.nome)}</option>`).join('')}
           </select>
         </div>
         <div class="field"><label>Origem do Lead</label>
@@ -9189,7 +9197,7 @@ function renderLeads(){
     const corScore = l.scoreCategory === 'Quente' ? '#dc2626' : (l.scoreCategory === 'Frio' ? '#3b82f6' : '#d97706');
     const tagsLinha = (l.tags && l.tags.length) ? ' ' + l.tags.map(t=>`<span class="tc-tag">${esc(t)}</span>`).join(' ') : '';
     return `<tr>
-      <td><b class="tc-link" title="Abrir cadastro do cliente" onclick="openLead('${l.id}')">${esc(l.nome)}</b><span class="tc-sub"> · ${esc(l.cidade||'-')}${(l.origem==='Indicação' && l.indicador) ? ` · ind. ${esc(l.indicador)}` : ''}</span>${tagsLinha}</td>
+      <td><b class="tc-link" title="Abrir cadastro do cliente" onclick="openLead('${l.id}')">${esc(l.nome)}</b><span class="tc-sub"> · ${esc(l.cidade||'-')}${(l.origem==='Indicação' && l.indicador) ? ` · ind. ${esc(l.indicador)}` : ''}${(l.responsavel && currentUser && l.responsavel !== currentUser.nome) ? ` · 👤 ${esc(l.responsavel)}` : ''}</span>${tagsLinha}</td>
       <td>${esc(l.tel||'-')}${linkWhatsAppTel(l.tel)}</td>
       <td>${l.nasc ? new Date(l.nasc+'T00:00:00').toLocaleDateString('pt-BR') : '<span class="tc-sub">-</span>'}</td>
       <td>${esc(l.origem||'Indicação')}</td>
@@ -9430,7 +9438,7 @@ let importPlanilhaState = null;
 
 function abrirImportarPlanilha(){
   const podeVerTodos = canCurrentUserViewAllLeads();
-  const nomesDisponiveis = MODO_HIERARQUIA ? [currentUser?.nome] : (podeVerTodos ? usersList.map(u => u.nome) : getSubordinateUserNames(currentUser?.id));
+  const nomesDisponiveis = (MODO_HIERARQUIA && !hierDonoVeTudo()) ? [currentUser?.nome] : (podeVerTodos ? usersList.map(u => u.nome) : getSubordinateUserNames(currentUser?.id));
   const consultoresOptions = usersList
     .filter(u => nomesDisponiveis.includes(u.nome))
     .map(u => `<option value="${esc(u.nome)}" ${u.nome===currentUser?.nome?'selected':''}>${esc(u.nome)}</option>`)
@@ -11444,8 +11452,8 @@ function renderDashboard(){
         <td>${hierFoto(u, 24)}<b>${esc(u.nome)}</b></td>
         <td>${MODO_HIERARQUIA ? esc(hierCargosTexto(u)) : `<span class="badge b-purple">${esc(u.cargo)}</span>`}</td>
         <td>${MODO_HIERARQUIA ? (esc(hierNomesLideres(u)) || '<span class="muted">Topo</span>') : (sup ? `<span class="badge b-blue">👑 ${esc(sup.nome)}</span>` : '<span class="badge b-gray">Topo</span>')}</td>
-        <td>${MODO_HIERARQUIA && u.id !== currentUser.id ? '<span class="muted" title="Leads são particulares de cada pessoa">🔒</span>' : `<b>${uLeads}</b>`}</td>
-        <td>${MODO_HIERARQUIA && u.id !== currentUser.id ? '<span class="muted" title="A agenda é particular de cada pessoa">🔒</span>' : `<b>${uMeets}</b>`}</td>
+        <td>${MODO_HIERARQUIA && !hierDonoVeTudo() && u.id !== currentUser.id ? '<span class="muted" title="Leads são particulares de cada pessoa">🔒</span>' : `<b>${uLeads}</b>`}</td>
+        <td>${MODO_HIERARQUIA && !hierDonoVeTudo() && u.id !== currentUser.id ? '<span class="muted" title="A agenda é particular de cada pessoa">🔒</span>' : `<b>${uMeets}</b>`}</td>
         <td><span class="badge ${uSales.length>0?'b-green':'b-gray'}">${uSales.length}</span></td>
         <td style="color:var(--green);font-weight:bold">${Number(uSalesSum).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
       </tr>`;
@@ -11564,7 +11572,7 @@ function openMeeting(leadNomePreSelecionado){
     <div class="between"><h2>${leadNomePreSelecionado ? '📅 Lembrete na Agenda' : 'Agendar Reunião'}</h2><button class="btn" onclick="closeModal()">✕</button></div>
     <div class="field"><label>Lead</label><select id="mLead">${accessible.map(l=>`<option value="${esc(l.nome)}" ${leadNomePreSelecionado===l.nome?'selected':''}>${esc(l.nome)}</option>`).join('')}</select></div>
     <div class="field"><label>Responsável</label>
-      <select id="mResp">${usersList.filter(u => MODO_HIERARQUIA ? u.id === currentUser.id : (canSeeAllAgenda || subNames.includes(u.nome))).map(u=>`<option ${(currentUser?.nome===u.nome)?'selected':''}>${esc(u.nome)} (${esc(u.cargo)})</option>`).join('')}</select>
+      <select id="mResp">${usersList.filter(u => (MODO_HIERARQUIA && !hierDonoVeTudo()) ? u.id === currentUser.id : (canSeeAllAgenda || subNames.includes(u.nome))).map(u=>`<option ${(currentUser?.nome===u.nome)?'selected':''}>${esc(u.nome)} (${esc(u.cargo)})</option>`).join('')}</select>
     </div>
     <div class="field"><label>Data e Hora</label><input type="datetime-local" id="mDate"></div>
     <div class="field"><label>Pauta</label><input id="mObj" placeholder="Apresentação de Consórcio"></div>
