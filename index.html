@@ -2727,7 +2727,7 @@ function filterCommandPalette(term){
     userMatches = equipeVisivel()
       .filter(u => (u.nome || '').toLowerCase().includes(q))
       .slice(0, 5)
-      .map(u => ({ type: 'user', id: u.id, label: u.nome, sub: u.cargo || 'Consultor' }));
+      .map(u => ({ type: 'user', id: u.id, label: u.nome, sub: u.cargo || 'Consultor em prévia' }));
   }
 
   const items = [...navMatches, ...leadMatches, ...saleMatches, ...userMatches];
@@ -3446,9 +3446,22 @@ async function carregarDaNuvem() {
 
 const MODO_HIERARQUIA = true;
 const HIER_TESTE = false; // só a cópia de teste tem o atalho "entrar como" na tela de login
-// Do mais alto para o mais baixo. O cargo é POR LOJA: a mesma pessoa pode ser Diretor em uma loja e Gestor em outra.
-const HIER_CARGOS = ['Dono de Loja', 'Diretor', 'Sócio Operacional', 'Gerente Operacional', 'Gestor Sênior', 'Gestor pleno', 'Gestor', 'Consultor autorizado', 'Consultor'];
-const HIER_NIVEL_CONSULTOR = 7; // consultor autorizado e consultor ficam no mesmo nível
+// Do mais alto para o mais baixo. O cargo é POR LOJA: a mesma pessoa pode ser Sócio Integral em uma loja e Líder em treinamento em outra.
+const HIER_CARGOS = ['Dono de Loja', 'Sócio Integral', 'Sócio Operacional', 'Licenciado', 'Autorizado Sênior', 'Líder em treinamento', 'Consultor autorizado', 'Consultor em prévia'];
+const HIER_NIVEL_CONSULTOR = 6; // consultor autorizado e consultor em prévia ficam no mesmo nível
+// Nomes antigos dos cargos (cadastros e backups de antes da troca) e o nome que vale hoje
+const HIER_CARGOS_ANTIGOS = { 'diretor': 'Sócio Integral', 'gerente operacional': 'Licenciado', 'gestor sênior': 'Autorizado Sênior', 'gestor senior': 'Autorizado Sênior',
+  'gestor pleno': 'Líder em treinamento', 'gestor': 'Líder em treinamento', 'consultor': 'Consultor em prévia' };
+function hierCargoAtual(cargo){ const c = String(cargo || '').trim(); return HIER_CARGOS_ANTIGOS[c.toLowerCase()] || c; }
+// Troca os nomes antigos no cadastro guardado neste aparelho (no Elo online quem troca é o banco)
+function hierAtualizarCargos(){
+  if (typeof ELO_ONLINE !== 'undefined' && ELO_ONLINE) return;
+  let mudou = false;
+  const troca = o => { if (o && o.cargo) { const n = hierCargoAtual(o.cargo); if (n !== o.cargo) { o.cargo = n; mudou = true; } } };
+  (usersList || []).forEach(u => { if (!u) return; troca(u); if (Array.isArray(u.vinculos)) u.vinculos.forEach(troca); });
+  if (currentUser) { troca(currentUser); if (Array.isArray(currentUser.vinculos)) currentUser.vinculos.forEach(troca); }
+  if (mudou) { try { localStorage.setItem(KEY_USERS, JSON.stringify(usersList)); if (currentUser) localStorage.setItem(`crm_active_user_${EQUIPE_ID}`, JSON.stringify(currentUser)); } catch (e) {} }
+}
 
 const ROLES = HIER_CARGOS.slice();
 
@@ -3555,7 +3568,7 @@ let usersList = JSON.parse(localStorage.getItem(KEY_USERS)) || [
     nome: 'CRM',
     email: 'wc@crm',
     pass: '123456',
-    cargo: 'Gestor Sênior',
+    cargo: 'Autorizado Sênior',
     superiorId: null,
     nasc: '',
     tel: '',
@@ -3582,7 +3595,7 @@ if (!usersList.some(u => u.id === 'u_WC')) {
     nome: 'CRM',
     email: 'wc@crm',
     pass: '123456',
-    cargo: 'Gestor Sênior',
+    cargo: 'Autorizado Sênior',
     superiorId: null,
     nasc: '',
     tel: '',
@@ -3774,14 +3787,14 @@ function canUserAccessFollow(follow){
 // ================== MODO HIERARQUIA (cópia de teste) ==================
 // Regras:
 // - Cada pessoa tem um ou mais VÍNCULOS: em cada vínculo, uma loja, o CARGO dela naquela loja e o
-//   líder dela naquela loja. Assim a mesma pessoa pode ser Diretor em uma loja e Gestor em outra,
+//   líder dela naquela loja. Assim a mesma pessoa pode ser Sócio Integral em uma loja e Líder em treinamento em outra,
 //   ter equipes em lojas diferentes e responder a líderes diferentes.
 // - Quem está acima enxerga só as VENDAS ACEITAS de quem está abaixo, e só as da loja em que
 //   está acima (nunca leads nem agenda); ninguém enxerga quem está ao lado.
 // - Com HIER_ACEITE ligado, a venda de um liderado fica "aguardando aceite" do líder direto daquela
 //   loja e só entra nos números depois de aceita. Hoje está DESLIGADO: toda venda entra direto.
 function hierNivel(cargo){
-  const i = HIER_CARGOS.findIndex(c => c.toLowerCase() === String(cargo || '').trim().toLowerCase());
+  const atual = hierCargoAtual(cargo).toLowerCase(); const i = HIER_CARGOS.findIndex(c => c.toLowerCase() === atual);
   return i < 0 ? HIER_NIVEL_CONSULTOR : Math.min(i, HIER_NIVEL_CONSULTOR);
 }
 function hierPodeLiderar(cargo){ return hierNivel(cargo) < HIER_NIVEL_CONSULTOR; }
@@ -3807,17 +3820,17 @@ function hierLojaNome(id){ const l = hierLojas().find(x => x.id === id); return 
 // Cadastros antigos (um líder e um cargo só) viram vínculos automaticamente.
 function hierVinculos(u){
   if (!u) return [];
-  if (Array.isArray(u.vinculos)) return u.vinculos.filter(v => v && (v.loja || v.liderId)).map(v => v.cargo ? v : Object.assign({}, v, { cargo: u.cargo || 'Consultor' }));
+  if (Array.isArray(u.vinculos)) return u.vinculos.filter(v => v && (v.loja || v.liderId)).map(v => v.cargo ? v : Object.assign({}, v, { cargo: u.cargo || 'Consultor em prévia' }));
   const lojas = (Array.isArray(u.lojas) && u.lojas.length) ? u.lojas.slice() : (u.loja ? [u.loja] : ['']);
   if (u.loja && lojas[0] !== u.loja) { const i = lojas.indexOf(u.loja); if (i > 0) lojas.splice(i, 1); lojas.unshift(u.loja); }
-  return lojas.map(l => ({ loja: l || '', liderId: u.superiorId || null, cargo: u.cargo || 'Consultor' })).filter(v => v.loja || v.liderId);
+  return lojas.map(l => ({ loja: l || '', liderId: u.superiorId || null, cargo: u.cargo || 'Consultor em prévia' })).filter(v => v.loja || v.liderId);
 }
 // Grava os vínculos e mantém os campos antigos em dia (loja e líder principais)
 function hierGravarVinculos(u, vinculos){
   const vistos = new Set();
   u.vinculos = (vinculos || []).filter(v => v && (v.loja || v.liderId)).filter(v => {
     const k = (v.loja || '') + '|' + (v.liderId || ''); if (vistos.has(k)) return false; vistos.add(k); return true;
-  }).map(v => ({ loja: v.loja || '', liderId: v.liderId || null, cargo: v.cargo || u.cargo || 'Consultor' }));
+  }).map(v => ({ loja: v.loja || '', liderId: v.liderId || null, cargo: v.cargo || u.cargo || 'Consultor em prévia' }));
   if (u.vinculos.length) u.cargo = u.vinculos[0].cargo; // cargo principal (o da primeira linha)
   u.loja = (u.vinculos.find(v => v.loja) || {}).loja || '';
   u.lojas = [...new Set(u.vinculos.map(v => v.loja).filter(Boolean))];
@@ -3829,7 +3842,7 @@ function hierLojasDe(u){ return [...new Set(hierVinculos(u).map(v => v.loja).fil
 function hierCargoNaLoja(u, loja){
   if (!u) return '';
   const doLugar = hierVinculos(u).filter(v => v.loja === (loja || '') || (!v.loja && loja)).map(v => v.cargo).filter(Boolean);
-  if (!doLugar.length) return u.cargo || 'Consultor';
+  if (!doLugar.length) return u.cargo || 'Consultor em prévia';
   return doLugar.sort((a, b) => hierNivel(a) - hierNivel(b))[0];
 }
 // Nível mais alto que a pessoa tem em qualquer loja (usado para ordenar e para saber se ela lidera)
@@ -3845,7 +3858,7 @@ function hierCargosTexto(u){
   const f = (typeof hierFiltroLoja === 'function') ? hierFiltroLoja() : 'all';
   if (f !== 'all' && hierVinculos(u).some(v => v.loja === f)) return hierCargoNaLoja(u, f);
   const cargos = [...new Set(hierVinculos(u).map(v => v.cargo).filter(Boolean))].sort((a, b) => hierNivel(a) - hierNivel(b));
-  return cargos.join(' / ') || u.cargo || 'Consultor';
+  return cargos.join(' / ') || u.cargo || 'Consultor em prévia';
 }
 function hierLojaPrincipal(u){ return hierLojasDe(u)[0] || ''; }
 function hierNomesLojas(u){ return hierLojasDe(u).map(hierLojaNome).filter(Boolean).join(', '); }
@@ -3982,6 +3995,7 @@ function hierCarimbar(s, porId, legado){
 }
 function hierMarcarLegado(){
   if (!MODO_HIERARQUIA || !db) return;
+  hierAtualizarCargos();
   hierLimparCache();
   hierAdotarSemLider();
   if (!Array.isArray(db.vendasEnviadas)) db.vendasEnviadas = [];
@@ -4747,7 +4761,7 @@ function hierAddVinculo(userId){
   const livre = hierLojas().find(l => !usadas.includes(l.id));
   const loja = livre ? livre.id : '';
   const cargos = hierCargosQuePossoDar();
-  const cargo = cargos.includes(u.cargo) ? u.cargo : (cargos[cargos.length - 1] || 'Consultor');
+  const cargo = cargos.includes(u.cargo) ? u.cargo : (cargos[cargos.length - 1] || 'Consultor em prévia');
   const lideres = hierLideresPossiveis(u, loja, cargo);
   window.__hmVinc.push({ loja, cargo, liderId: lideres.some(o => o.id === currentUser.id) ? currentUser.id : ((lideres[0] || {}).id || '') });
   hierRenderVinculos(userId);
@@ -4759,7 +4773,7 @@ function hierEditarMembro(userId){
   if (!u || !hierEstaAcima(currentUser.id, u.id)) return alert('Só quem está acima desta pessoa pode alterar o cadastro dela.');
   openModal(`
     <div class="between"><h2 style="margin:0">Editar cadastro</h2><button class="btn" onclick="closeModal()">✕</button></div>
-    <p class="muted" style="font-size:13px;margin:6px 0 12px">${esc(u.cargo || 'Consultor')} · se o nome mudar, as vendas, os leads e a agenda dessa pessoa acompanham o nome novo.</p>
+    <p class="muted" style="font-size:13px;margin:6px 0 12px">${esc(u.cargo || 'Consultor em prévia')} · se o nome mudar, as vendas, os leads e a agenda dessa pessoa acompanham o nome novo.</p>
     <div class="hier-foto-linha">
       <span id="hmFotoPrev">${hierFoto(u, 56)}</span>
       <div>
@@ -4776,13 +4790,13 @@ function hierEditarMembro(userId){
 <div class="field"><label>Nº da matrícula (se já tiver)</label><input id="hmMatricula" value="${esc(u.matricula || '')}" placeholder="Opcional"></div>
     <div class="field"><label>Lojas, cargos e líderes</label>
       <div id="hmVinculos"></div>
-      <small class="muted" style="display:block;margin-top:4px"><b>Consultor</b> = em prévia: as vendas saem na matrícula de um autorizado acima. <b>Consultor autorizado</b> (ou cargo de liderança) = matrícula própria.</small>
+      <small class="muted" style="display:block;margin-top:4px"><b>Consultor em prévia</b>: as vendas saem na matrícula de um autorizado acima. <b>Consultor autorizado</b> (ou cargo de liderança) = matrícula própria.</small>
       <button class="tc-btn" style="margin-top:6px" onclick="hierAddVinculo('${u.id}')">+ Adicionar outra loja</button>
-      <small class="muted" style="display:block;margin-top:6px">Cada linha é uma loja em que a pessoa atua, o cargo dela ali e quem lidera ela ali. Ela pode ser Diretor em uma loja e Gestor em outra. O líder precisa ter, naquela loja, cargo acima do dela. Cada líder enxerga só as vendas da loja em que é líder dela.</small></div>
+      <small class="muted" style="display:block;margin-top:6px">Cada linha é uma loja em que a pessoa atua, o cargo dela ali e quem lidera ela ali. Ela pode ser Sócio Integral em uma loja e Líder em treinamento em outra. O líder precisa ter, naquela loja, cargo acima do dela. Cada líder enxerga só as vendas da loja em que é líder dela.</small></div>
     <div class="row" style="justify-content:flex-end"><button class="btn primary" onclick="hierSalvarMembro('${u.id}')">Salvar</button></div>`);
   // linhas de vínculo: eu só mexo nas que apontam para mim ou para alguém da minha equipe
   const meus = new Set(equipeVisivel().map(o => o.id));
-  window.__hmVinc = hierVinculos(u).map(v => ({ loja: v.loja || '', cargo: v.cargo || u.cargo || 'Consultor', liderId: v.liderId || '', fixo: !!v.liderId && !meus.has(v.liderId) }));
+  window.__hmVinc = hierVinculos(u).map(v => ({ loja: v.loja || '', cargo: v.cargo || u.cargo || 'Consultor em prévia', liderId: v.liderId || '', fixo: !!v.liderId && !meus.has(v.liderId) }));
   hierRenderVinculos(u.id);
 }
 function hierSalvarMembro(userId){
@@ -4798,7 +4812,7 @@ function hierSalvarMembro(userId){
   if (usersList.some(x => x.id !== u.id && (x.email || '').toLowerCase() === email)) return alert('Esse usuário/e-mail já está em uso por outra pessoa.');
   const nomeAntigo = u.nome;
   const linhas = window.__hmVinc || [];
-  const vinc = linhas.map(v => ({ loja: v.loja || '', cargo: v.cargo || 'Consultor', liderId: v.liderId || null }));
+  const vinc = linhas.map(v => ({ loja: v.loja || '', cargo: v.cargo || 'Consultor em prévia', liderId: v.liderId || null }));
   if (!vinc.some(v => v.liderId)) return alert('A pessoa precisa de pelo menos um líder.');
   const repetido = vinc.find((v, i) => vinc.findIndex(x => x.loja === v.loja && x.liderId === v.liderId) !== i);
   if (repetido) return alert('Há duas linhas iguais (mesma loja e mesmo líder). Remova uma delas.');
@@ -4842,19 +4856,19 @@ function hierAdotarSemLider(){
   let n = 0;
   (usersList || []).forEach(u => {
     if (u.id === HIER_DONO || hierVinculos(u).some(v => v.liderId && hierUsuario(v.liderId))) return;
-    hierGravarVinculos(u, [{ loja: u.loja || '', liderId: HIER_DONO, cargo: u.cargo || 'Consultor' }]); n++;
+    hierGravarVinculos(u, [{ loja: u.loja || '', liderId: HIER_DONO, cargo: u.cargo || 'Consultor em prévia' }]); n++;
   });
   try { localStorage.setItem(chave, String(Date.now())); } catch(e){}
   if (n && typeof setItemSeguro === 'function') setItemSeguro(KEY_USERS, JSON.stringify(usersList));
 }
 
 // ---------- CADASTRO JÁ COM MAIS DE UMA LOJA ----------
-// De Gestor para cima a pessoa pode atuar em várias lojas. No cadastro novo, além da loja principal, dá para marcar as outras:
+// De Líder em treinamento para cima a pessoa pode atuar em várias lojas. No cadastro novo, além da loja principal, dá para marcar as outras:
 // ela entra em todas com o mesmo cargo e o mesmo líder (cargo ou líder diferente por loja se acerta depois, em "Editar").
 function hierLojasExtrasHtml(prefixo){
   return `<div class="field" id="${prefixo}ExtrasCampo" style="display:none"><label>Outras lojas em que também atua (opcional)</label>
       <div id="${prefixo}Extras" style="display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 10px;border:1px solid var(--line);border-radius:10px"></div>
-      <small class="muted" style="display:block;margin-top:4px">De Gestor para cima a pessoa pode atuar em mais de uma loja. Aqui ela entra em todas com o mesmo cargo e o mesmo líder; para cargo ou líder diferente em alguma loja, use "Editar" depois.</small></div>`;
+      <small class="muted" style="display:block;margin-top:4px">De Líder em treinamento para cima a pessoa pode atuar em mais de uma loja. Aqui ela entra em todas com o mesmo cargo e o mesmo líder; para cargo ou líder diferente em alguma loja, use "Editar" depois.</small></div>`;
 }
 function hierLojasExtrasAtualizar(prefixo){
   const campo = document.getElementById(prefixo + 'ExtrasCampo'), caixa = document.getElementById(prefixo + 'Extras'); if (!campo || !caixa) return;
@@ -4875,12 +4889,12 @@ function hierLojasExtrasLer(prefixo){
 // Depois de autorizada, a pessoa tem matrícula própria. O que isso muda no CRM:
 //  - os recebimentos (parcelas de comissão) de uma venda aparecem só para quem vendeu e para o dono da matrícula;
 //  - quem está acima vê apenas o resumo da venda: data, cliente, grupo, cota e valor.
-// A situação vem do cargo: "Consultor" (em qualquer loja) = em prévia; "Consultor autorizado" ou cargo de liderança = matrícula própria
+// A situação vem do cargo: "Consultor em prévia" (em qualquer loja) = em prévia; "Consultor autorizado" ou cargo de liderança = matrícula própria
 function hierAutorizado(u){
   if (!u) return false;
   let cargos = hierVinculos(u).map(v => v.cargo); if (!cargos.length && u.cargo) cargos = [u.cargo];
-  const validos = cargos.map(c => String(c || '').trim().toLowerCase()).filter(Boolean);
-  return validos.length ? validos.some(c => c !== 'consultor') : true;
+  const validos = cargos.map(c => hierCargoAtual(c).toLowerCase()).filter(Boolean);
+  return validos.length ? validos.some(c => c !== 'consultor em prévia') : true;
 }
 function hierMatriculaId(s){ return s.matriculaId || hierVendedorId(s); }
 function hierMatriculaNome(s){ const u = hierUsuario(hierMatriculaId(s)); return u ? u.nome : (s.responsavel || ''); }
@@ -5243,7 +5257,7 @@ function eloCriarCodigoPara(user){
 function eloMostrarCodigo(codigo, nome, titulo){
   openModal(`
     <div class="between"><h2>🛟 ${titulo || 'Seu código de recuperação'}</h2><button class="btn" onclick="closeModal()">✕</button></div>
-    <p style="font-size:13px;color:#475569;margin:10px 0 14px">Guarde este código em lugar seguro (anote, tire print ou salve o arquivo). Ele é a única forma de recuperar a senha de <b>${esc(nome)}</b> sem ajuda do gestor. <b>Ele não aparece de novo.</b></p>
+    <p style="font-size:13px;color:#475569;margin:10px 0 14px">Guarde este código em lugar seguro (anote, tire print ou salve o arquivo). Ele é a única forma de recuperar a senha de <b>${esc(nome)}</b> sem ajuda do líder. <b>Ele não aparece de novo.</b></p>
     <div style="font-family:monospace;font-size:26px;font-weight:800;letter-spacing:3px;text-align:center;padding:18px;border:2px dashed #C8102E;border-radius:12px;background:#FFF6F7;color:#7A1124;user-select:all" id="eloCodigoExibido">${codigo}</div>
     <div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap">
       <button class="btn" onclick="navigator.clipboard && navigator.clipboard.writeText('${codigo}').then(()=>showToast('Código copiado!'))">📋 Copiar</button>
@@ -5278,7 +5292,7 @@ function eloAtualizarStatusCodigo(){
   const u = usersList.find(x => x.id === currentUser.id) || currentUser;
   el.innerHTML = u.recoveryHash
     ? `✅ Código ativo, gerado em ${new Date(u.recoveryCreatedAt).toLocaleDateString('pt-BR')}.`
-    : `⚠️ Você ainda não tem código. Se esquecer a senha, só o gestor poderá redefinir.`;
+    : `⚠️ Você ainda não tem código. Se esquecer a senha, só o líder poderá redefinir.`;
 }
 
 // Limite de tentativas: 5 erros bloqueiam por 5 minutos (por usuário)
@@ -5299,7 +5313,7 @@ function openForgotPasswordModal(){
     <div style="margin:14px 0;padding:12px;background:#FFF6F7;border-radius:10px;border:1px solid #F3D3D8">
       <p style="margin:0;font-size:12.5px;color:#4A1C24">
         Digite seu usuário e o <b>código de recuperação</b> que você gerou em Configurações (formato ABCD-EFGH-JKLM).
-        Não tem o código? Peça ao seu gestor para redefinir sua senha.
+        Não tem o código? Peça ao seu líder para redefinir sua senha.
       </p>
       ${supabaseClient ? `<p style="margin:8px 0 0;font-size:12.5px;color:#4A1C24">É o administrador e usa a nuvem? <a href="javascript:void(0)" onclick="eloNuvemEsqueci()" style="color:#C8102E;font-weight:700">Recuperar pelo e-mail da nuvem</a></p>` : ''}
     </div>
@@ -5327,7 +5341,7 @@ function verifyResetOtpAndSave(){
   const confP = (document.getElementById('forgotConfirmPass')?.value || '').trim();
 
   if (!user) return eloErroForgot('Usuário não encontrado neste aparelho.');
-  if (!user.recoveryHash) return eloErroForgot('Este usuário ainda não gerou código de recuperação. Peça ao gestor para redefinir a senha.');
+  if (!user.recoveryHash) return eloErroForgot('Este usuário ainda não gerou código de recuperação. Peça ao líder para redefinir a senha.');
 
   const b = eloBloqueio(user.id);
   if (b.ate && Date.now() < b.ate) {
@@ -5703,7 +5717,7 @@ function updateUserInterface(){
   const nameEl = document.getElementById('currentUserName');
   const roleEl = document.getElementById('currentUserRole');
   if(nameEl) nameEl.textContent = name;
-  if(roleEl) roleEl.textContent = `Cargo: ${MODO_HIERARQUIA ? hierCargosTexto(currentUser) : (currentUser.cargo || 'Consultor')}`;
+  if(roleEl) roleEl.textContent = `Cargo: ${MODO_HIERARQUIA ? hierCargosTexto(currentUser) : (currentUser.cargo || 'Consultor em prévia')}`;
   
   const avatarEl = document.getElementById('sidebarAvatar');
   const cfgAvatarEl = document.getElementById('configAvatarPreview');
@@ -8773,8 +8787,8 @@ function openNewUserModal(){
     <div class="field"><label>Senha de Acesso</label><input type="password" id="nuPass" value="123456"></div>
     <div class="field"><label>Data de Nascimento</label><input type="date" id="nuNasc"></div>
     <div class="field"><label>Cargo / Função</label>
-      <select id="nuCargo" onchange="hierLojasExtrasAtualizar('nu')">${ROLES.filter(r => hierNivel(r) > hierMelhorNivel(currentUser)).map(r=>`<option value="${r}" ${r==='Consultor'?'selected':''}>${r}</option>`).join('')}</select>
-      <small class="muted" style="display:block;margin-top:4px"><b>Consultor</b> = em prévia: as vendas saem na matrícula de um autorizado acima. <b>Consultor autorizado</b> (ou cargo de liderança) = matrícula própria.</small>
+      <select id="nuCargo" onchange="hierLojasExtrasAtualizar('nu')">${ROLES.filter(r => hierNivel(r) > hierMelhorNivel(currentUser)).map(r=>`<option value="${r}" ${r==='Consultor em prévia'?'selected':''}>${r}</option>`).join('')}</select>
+      <small class="muted" style="display:block;margin-top:4px"><b>Consultor em prévia</b>: as vendas saem na matrícula de um autorizado acima. <b>Consultor autorizado</b> (ou cargo de liderança) = matrícula própria.</small>
     </div>
     <div class="field"><label>Nº da matrícula (se já tiver)</label><input id="nuMatricula" value="" placeholder="Opcional"></div>
     <div class="field"><label>👑 Líder direto</label>
@@ -15327,7 +15341,7 @@ function salvarNovoConsultor() {
     nome: nome,
     email: email || (nome.toLowerCase().replace(/\s+/g, '') + '@crm.local'),
     pass: '123456',
-    cargo: 'Consultor',
+    cargo: 'Consultor em prévia',
     superiorId: MODO_HIERARQUIA ? currentUser.id : null, // entra direto debaixo de quem cadastrou
     loja: MODO_HIERARQUIA ? hierLojaPrincipal(currentUser) : '',
     tel: tel,
@@ -15878,7 +15892,7 @@ renderSemaforo = function() {
   const listaFiltrada = buscaSem ? listaStatus.filter(item => hierCasa(item.nome, buscaSem)) : listaStatus;
 
   tbody.innerHTML = listaFiltrada.map((item, idx) => {
-    const cargoTxt = item.userObj?.cargo || 'Consultor';
+    const cargoTxt = item.userObj?.cargo || 'Consultor em prévia';
     return `
     <tr>
       <td class="sm-pos"><b>${item.pos}º</b></td>
