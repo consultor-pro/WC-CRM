@@ -3094,17 +3094,47 @@ async function idbDelete(chave){
 // Grava no localStorage sem deixar uma falha (ex: limite de espaço estourado) derrubar
 // quem chamou. Usada em qualquer escrita crítica pro fluxo de salvar (ver save() abaixo).
 function setItemSeguro(chave, valor){
+  if (chave === KEY_DB && dbSoNoIdb()) return true;          // os dados já moram no armazenamento maior
   try {
     localStorage.setItem(chave, valor);
     return true;
   } catch(err) {
+    if (chave === KEY_DB) { dbPassarParaIdb(); return true; }
     console.error('Falha ao salvar no localStorage:', chave, err);
     avisarArmazenamentoLocalCheio();
     return false;
   }
 }
 
+// ---- dados grandes: quando não cabem no localStorage, ficam só no IndexedDB ----
+function dbSoNoIdb(){ try { return localStorage.getItem(`crm_db_idb_${EQUIPE_ID}`) === '1'; } catch (e) { return false; } }
+function dbPassarParaIdb(){
+  try { localStorage.removeItem(KEY_DB); } catch (e) {}          // tira a cópia antiga (e libera o espaço)
+  try { localStorage.setItem(`crm_db_idb_${EQUIPE_ID}`, '1'); } catch (e) {}
+  console.info('[armazenamento] os dados passaram a ficar no IndexedDB (não cabiam mais no localStorage).');
+}
+async function carregarDbDoIdb(){
+  // lê direto, sabendo a diferença entre "não tem nada guardado" e "não consegui ler"
+  const r = await Promise.race([
+    (async () => { try { const c = await abrirIndexedDB(); return await new Promise(ok => { const q = c.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(KEY_DB); q.onsuccess = () => ok({ ok: true, v: q.result }); q.onerror = () => ok({ ok: false }); }); } catch (e) { return { ok: false }; } })(),
+    new Promise(ok => setTimeout(() => ok({ ok: false }), 15000))
+  ]);
+  if (r.ok && r.v && typeof r.v === 'object') {
+    db = r.v;
+    ['leads', 'followups', 'meetings', 'sales', 'importHistory', 'indicadores', 'indices', 'backupsImportados'].forEach(k => { if (!Array.isArray(db[k])) db[k] = []; });
+    if (!db.gastos) db.gastos = {};
+  } else if (r.ok) {
+    window.__eloRefazerMeta = true;                               // não há nada guardado: o CRM online baixa tudo de novo
+  } else {
+    // não consegui ler: não grava nada por cima (para não apagar o que está guardado) e pede para abrir de novo
+    alert('Não consegui abrir os seus dados guardados neste aparelho.\n\nFeche o CRM e abra de novo. Nada foi apagado.');
+    return false;
+  }
+  window.__dbEsperandoIdb = false;
+  return true;
+}
 function persistirChave(chave, jsonSerializado, valorOriginal){
+  if (chave === KEY_DB && window.__dbEsperandoIdb) return;      // ainda carregando os dados: não grava por cima
   // a lista de usuários nunca é gravada com senha legível
   if (chave === KEY_USERS && senhasProtegerLista()) { jsonSerializado = JSON.stringify(usersList); valorOriginal = usersList; }
   // Estourou o limite do localStorage (ou outra falha de escrita)? setItemSeguro já avisa
@@ -3541,7 +3571,8 @@ const defaultPosVenda = {
   rules: 'Clientes bem acompanhados geram indicações qualificadas espontaneamente.'
 };
 
-let db = JSON.parse(localStorage.getItem(KEY_DB)) || {};
+window.__dbEsperandoIdb = dbSoNoIdb();                         // dados grandes: vêm do IndexedDB (veja carregarDbDoIdb)
+let db = (window.__dbEsperandoIdb ? null : JSON.parse(localStorage.getItem(KEY_DB))) || {};
 if (!db.leads) db.leads = [];
 if (!db.followups) db.followups = [];
 if (!db.meetings) db.meetings = [];
@@ -3683,8 +3714,28 @@ function getDirectSubordinates(userId) {
   return usersList.filter(u => u.superiorId === userId);
 }
 
+// índice da lista de pessoas (refeito sozinho quando a lista muda)
+let __idxUsers = { ref: null, n: -1, id: new Map(), nome: new Map() };
+function indiceUsuarios(){
+  const ix = __idxUsers;
+  if (ix.ref !== usersList || ix.n !== usersList.length) {
+    ix.ref = usersList; ix.n = usersList.length; ix.id = new Map(); ix.nome = new Map();
+    usersList.forEach(u => { if (!u) return; if (!ix.id.has(u.id)) ix.id.set(u.id, u); if (!ix.nome.has(u.nome)) ix.nome.set(u.nome, u); });
+  }
+  return ix;
+}
 function getSuperiorUser(superiorId) {
-  return usersList.find(u => u.id === superiorId) || null;
+  if (superiorId === undefined || superiorId === null || superiorId === '') return null;
+  const u = indiceUsuarios().id.get(superiorId);
+  if (u && u.id === superiorId) return u;                 // confere: a pessoa pode ter sido trocada na lista
+  __idxUsers.n = -1;
+  return usersList.find(x => x.id === superiorId) || null;
+}
+function usuarioPorNome(nome) {
+  const u = indiceUsuarios().nome.get(nome);
+  if (u && u.nome === nome) return u;
+  __idxUsers.n = -1;
+  return usersList.find(x => x.nome === nome);
 }
 
 // === PERMISSÕES GRANULARES ===
@@ -4624,7 +4675,8 @@ function hierVerVinculos(userId){
 }
 
 // ---------- EQUIPES GRANDES ----------
-const HIER_MAX_LINHAS = 300; // linhas mostradas de uma vez nas tabelas de equipe (o resto aparece com a busca ou o filtro de loja)
+const HIER_MAX_LINHAS = 300;
+function limiteLinhas(){ return window.__semLimiteTabelas ? Infinity : HIER_MAX_LINHAS; } // linhas mostradas de uma vez nas tabelas de equipe (o resto aparece com a busca ou o filtro de loja)
 function hierNotaLimite(total, colunas, dica){
   return total > HIER_MAX_LINHAS ? `<tr><td colspan="${colunas}" class="tc-sub" style="text-align:center;padding:10px;white-space:normal">Mostrando ${HIER_MAX_LINHAS} de ${total}. ${dica}</td></tr>` : '';
 }
@@ -6894,8 +6946,15 @@ function renderBirthdays(){
     return ((partsA[1]||0) * 100 + (partsA[2]||0)) - ((partsB[1]||0) * 100 + (partsB[2]||0));
   });
 
+  // muita gente: aparecem primeiro os próximos aniversários (a partir de hoje)
+  const __limN = list.length > limiteLinhas();
+  if (__limN && monthFilter === 'all') {
+    const hj = currentMonth * 100 + currentDay;
+    const k = list.findIndex(it => { const q = it.nasc.split('-').map(Number); return (q[1] || 0) * 100 + (q[2] || 0) >= hj; });
+    if (k > 0) list = list.slice(k).concat(list.slice(0, k));
+  }
   window.__niverLista = list;
-  const rows = list.map((item, iNiver) => {
+  const rows = list.slice(0, limiteLinhas()).map((item, iNiver) => {
     const parts = item.nasc.split('-').map(Number);
     const ano = parts[0] || today.getFullYear();
     const mes = parts[1] || 1;
@@ -6926,7 +6985,7 @@ function renderBirthdays(){
     </tr>`;
   }).join('');
 
-  tbody.innerHTML = rows || '<tr><td colspan="7" class="muted" style="text-align:center">Nenhum aniversariante encontrado.</td></tr>';
+  tbody.innerHTML = rows ? rows + (__limN ? hierNotaLimite(list.length, 7, monthFilter === 'all' ? 'Aparecem primeiro os próximos aniversários. Escolha um mês para ver todos daquele mês.' : 'Use o filtro de tipo para ver só a equipe ou só os clientes.') : '') : '<tr><td colspan="7" class="muted" style="text-align:center">Nenhum aniversariante encontrado.</td></tr>';
 }
 
 function renderMapaCotas(){
@@ -11514,13 +11573,21 @@ function renderDashboard(){
 
   if(canSeeGeneral || isLeader){
     let tc = 0, tm = 0, tvq = 0, tvv = 0;
-    let targetUsersList = canSeeGeneral ? usersList : usersList.filter(u => subIds.includes(u.id) && hierNaLoja(u));
+    const __subs = new Set(subIds);
+    let targetUsersList = canSeeGeneral ? usersList : usersList.filter(u => __subs.has(u.id) && hierNaLoja(u));
     if (filtroConsultor !== 'all') targetUsersList = targetUsersList.filter(u => u.nome === filtroConsultor);
 
+    const __nLeads = new Map(), __nMeets = new Map(), __nSales = new Map();
+    filteredLeads.forEach(l => { new Set([l.responsavel, l.createdByName]).forEach(n => __nLeads.set(n, (__nLeads.get(n) || 0) + 1)); });
+    filteredMeetings.forEach(m => __nMeets.set(m.responsavel, (__nMeets.get(m.responsavel) || 0) + 1));
+    filteredSales.forEach(s => { if (s.cancelada) return; const a = __nSales.get(s.responsavel); if (a) a.push(s); else __nSales.set(s.responsavel, [s]); });
+    // muita gente: quem mais vendeu no período aparece primeiro (os totais continuam somando todos)
+    const __vol = u => (__nSales.get(u.nome) || []).reduce((a, s) => a + Number(s.valor || 0), 0);
+    if (targetUsersList.length > limiteLinhas()) targetUsersList = targetUsersList.map(u => [u, __vol(u)]).sort((a, b) => b[1] - a[1]).map(x => x[0]);
     const rows = targetUsersList.map(u => {
-      const uLeads = filteredLeads.filter(l => l.responsavel === u.nome || l.createdByName === u.nome).length;
-      const uMeets = filteredMeetings.filter(m => m.responsavel === u.nome).length;
-      const uSales = filteredSales.filter(s => s.responsavel === u.nome && !s.cancelada);
+      const uLeads = __nLeads.get(u.nome) || 0;
+      const uMeets = __nMeets.get(u.nome) || 0;
+      const uSales = __nSales.get(u.nome) || [];
       const uSalesSum = uSales.reduce((acc, s) => acc + Number(s.valor || 0), 0);
       const sup = getSuperiorUser(u.superiorId);
 
@@ -11534,7 +11601,7 @@ function renderDashboard(){
         <td><span class="badge ${uSales.length>0?'b-green':'b-gray'}">${uSales.length}</span></td>
         <td style="color:var(--green);font-weight:bold">${Number(uSalesSum).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
       </tr>`;
-    }).join('');
+    }).filter((r, i) => i < limiteLinhas()).join('') + (limiteLinhas() < Infinity ? hierNotaLimite(targetUsersList.length, 7, 'Aparecem primeiro as pessoas que mais venderam no período. Para ver outra pessoa, escolha o nome no filtro de consultor.') : '');
 
     document.getElementById('memberPerformanceTable').innerHTML = rows || '<tr><td colspan="7"><div class="empty-state"><span class="emoji">📊</span>Sem dados para o período selecionado.</div></td></tr>';
     document.getElementById('memberPerformanceTotal').innerHTML = `
@@ -11545,7 +11612,7 @@ function renderDashboard(){
       </tr>`;
   }
 
-  document.getElementById('salesDetailTable').innerHTML = filteredSales.map(s => `
+  document.getElementById('salesDetailTable').innerHTML = filteredSales.slice(0, limiteLinhas()).map(s => `
     <tr>
       <td>${s.date ? new Date(s.date).toLocaleDateString('pt-BR') : '-'}</td>
       <td><b style="cursor:pointer;text-decoration:underline dotted" title="Abrir cadastro do cliente" onclick="abrirCadastroClientePorLead('${s.leadId||''}')">${esc(s.lead)}</b></td>
@@ -11555,7 +11622,7 @@ function renderDashboard(){
       <td style="cursor:pointer;text-decoration:underline dotted" title="Editar esta cota" onclick="abrirEdicaoCotaPorVenda('${s.id}')">Grp ${esc(s.grupo)} | Cota ${esc(s.cota)} ${s.contemplada?'[⭐]':''}</td>
       <td style="color:${s.cancelada?'var(--muted)':'var(--green)'};font-weight:bold">${Number(s.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
       <td>${s.cancelada?'<span class="badge b-cancelada">Cancelada</span>':'<span class="badge b-green">Ativa</span>'}</td>
-    </tr>`).join('') || '<tr><td colspan="8"><div class="empty-state"><span class="emoji">🏆</span>Nenhuma cota registrada no período.</div></td></tr>';
+    </tr>`).join('') + (filteredSales.length > limiteLinhas() ? hierNotaLimite(filteredSales.length, 8, 'Escolha um período menor ou um consultor para ver as outras vendas.') : '') || '<tr><td colspan="8"><div class="empty-state"><span class="emoji">🏆</span>Nenhuma cota registrada no período.</div></td></tr>';
 
   const funilLeadsBase = filteredLeads.length ? filteredLeads : baseLeads;
   const stageCounts = stages.map(s => funilLeadsBase.filter(l => (l.stage||'Prospecção') === s).length);
@@ -12459,30 +12526,28 @@ function removerBackupImportado(backupId){
   showToast('Backup desfeito — os dados dele foram removidos.');
 }
 
+// Só a aba aberta é redesenhada (antes eram todas, a cada clique e a cada salvamento: com muita gente o CRM travava).
+// As outras abas são redesenhadas na hora em que a pessoa abre (o show() sempre chama o renderAll).
+const RENDER_POR_ABA = {
+  dashboard: ['renderDashboard'], leads: ['renderLeads'], mapaCotas: ['renderMapaCotas'], comissoes: ['renderComissoes'],
+  semaforo: ['renderSemaforo'], gastos: ['renderGastos'], consultoresVendas: ['renderVendasConsultores'],
+  informacoes: ['renderInformacoes'], agenda: ['renderAgenda'], aniversarios: ['renderBirthdays'],
+  materialApoio: ['renderScripts', 'renderBDR', 'renderMeetingSteps', 'renderPosVenda'], usuarios: ['renderUsers'],
+  configuracoes: ['renderBackupsImportados'], simulador: ['calcularSimulacao', 'calcularFinanciamento'], indicesGrupo: ['renderIndicesINCC']
+};
+const RENDER_TODAS = ['renderDashboard', 'renderLeads', 'renderMapaCotas', 'renderComissoes', 'renderSemaforo', 'renderInformacoes', 'renderAgenda', 'renderBirthdays',
+  'renderScripts', 'renderBDR', 'renderMeetingSteps', 'renderPosVenda', 'renderUsers', 'renderBackupsImportados', 'calcularSimulacao', 'calcularFinanciamento', 'renderIndicesINCC'];
+function renderUma(nome){
+  try { if (typeof window[nome] === 'function') window[nome](); } catch(err) { console.error('Erro de renderização (' + nome + '):', err); }
+}
 function renderAll(){
-  try {
-    populateUserSelects();
-    renderDashboard();
-    renderLeads();
-    renderMapaCotas();
-    renderComissoes();
-    renderSemaforo();
-    renderInformacoes();
-    renderAgenda();
-    renderBirthdays();
-    renderScripts();
-    renderBDR();
-    renderMeetingSteps();
-    renderPosVenda();
-    renderUsers();
-    renderBackupsImportados();
-    calcularSimulacao();
-    calcularFinanciamento();
-    renderIndicesINCC();
-    hierAtualizarAvisos();
-  } catch(err) {
-    console.error('Erro de renderização:', err);
-  }
+  renderUma('populateUserSelects');
+  const aberta = document.querySelector('.page.active');
+  // nenhuma aba aberta ainda (começo) ou aba sem lista: desenha tudo, como antes
+  const lista = aberta ? (RENDER_POR_ABA[aberta.id] || []) : RENDER_TODAS;
+  lista.forEach(renderUma);
+  try { const g = document.getElementById('goalText'); if (g && typeof hierLeadsVisiveis === 'function') g.textContent = `${hierLeadsVisiveis().length}`; } catch(e) {}
+  renderUma('hierAtualizarAvisos');
 }
 
 // === NOVO CÓDIGO DO SIMULADOR (MÁSCARAS E CÁLCULOS) ===
@@ -14013,8 +14078,8 @@ function fmtGastoCompacto(v) {
   return v.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
 }
 
-// Inicialização segura
-initAuth();
+// Inicialização segura (com dados grandes, espera eles carregarem do armazenamento maior antes de abrir)
+if (window.__dbEsperandoIdb) carregarDbDoIdb().then(ok => { if (ok) initAuth(); }); else initAuth();
 // Move fotos/anexos antigos (se houver) pro IndexedDB e carrega os que já
 // estão lá, sem travar a tela — roda por trás, em paralelo.
 if (typeof sincronizarArquivosPesados === 'function') sincronizarArquivosPesados();
@@ -15894,7 +15959,7 @@ renderSemaforo = function() {
   const listaRanking = Object.keys(mapaConsultores).map(nome => {
     const count = mapaConsultores[nome].count;
     const vol = mapaConsultores[nome].vol;
-    const userObj = usersList.find(u => u.nome === nome);
+    const userObj = usuarioPorNome(nome);
     const superiorUser = userObj ? getSuperiorUser(userObj.superiorId) : null;
 
     let statusKey = 'red', statusText = '🔴 Vermelho', badgeClass = 'b-red', semaforoClass = 's-red', diag = 'Sem fechamentos ativos.';
@@ -15917,7 +15982,7 @@ renderSemaforo = function() {
   const buscaSem = (document.getElementById('hierBuscaSemaforo')?.value || '').trim();
   const listaFiltrada = buscaSem ? listaStatus.filter(item => hierCasa(item.nome, buscaSem)) : listaStatus;
 
-  tbody.innerHTML = listaFiltrada.map((item, idx) => {
+  tbody.innerHTML = listaFiltrada.slice(0, HIER_MAX_LINHAS).map((item, idx) => {
     const cargoTxt = item.userObj?.cargo || 'Consultor em prévia';
     return `
     <tr>
@@ -15931,7 +15996,7 @@ renderSemaforo = function() {
       <td class="sm-sec">${smLista(item.userObj, 'lojas')}</td>
     </tr>
   `;
-  }).slice(0, HIER_MAX_LINHAS).join('') + hierNotaLimite(listaFiltrada.length, 8, 'O ranking mostra os primeiros colocados; use a busca por nome ou o filtro "Ver loja" para achar as outras pessoas.') || (buscaSem ? '<tr><td colspan="8" class="tc-sub" style="text-align:center;padding:14px">Nenhum nome encontrado com essa busca.</td></tr>' : listaRanking.length > 0
+  }).join('') + hierNotaLimite(listaFiltrada.length, 8, 'O ranking mostra os primeiros colocados; use a busca por nome ou o filtro "Ver loja" para achar as outras pessoas.') || (buscaSem ? '<tr><td colspan="8" class="tc-sub" style="text-align:center;padding:14px">Nenhum nome encontrado com essa busca.</td></tr>' : listaRanking.length > 0
     ? `<tr><td colspan="8"><div class="empty-state"><span class="emoji">🚦</span>Ninguém no status selecionado neste período.<br><button class="btn" style="margin-top:10px" onclick="document.getElementById('semaforoStatusFilter').value='all';renderSemaforo();">Limpar Filtro de Status</button></div></td></tr>`
     : `<tr><td colspan="8"><div class="empty-state"><span class="emoji">👔</span>Nenhum consultor cadastrado ainda.<br><button class="btn primary" style="margin-top:10px" onclick="show('usuarios', null)">+ Cadastrar Consultor</button></div></td></tr>`);
 };
@@ -18448,6 +18513,7 @@ function bkpDataDeHoje(){ const d = new Date(); return d.getFullYear() + '-' + S
 function bkpTemDados(){ return ((db.leads || []).length + (db.sales || []).length + (db.meetings || []).length) > 0; }
 async function bkpIndice(){ const i = await idbGetArquivo('bkp_indice'); return Array.isArray(i) ? i : []; }
 async function bkpGuardar(tipo, rotulo){
+  if (window.__dbEsperandoIdb) return false;                    // dados ainda carregando: não faz cópia vazia
   try {
     const texto = JSON.stringify({ db, usersList, brand, notifications, infoPosts, googleConfig });
     const id = tipo === 'dia' ? 'bkp_dia_' + bkpDataDeHoje() : 'bkp_antes_' + Date.now();
@@ -19808,6 +19874,7 @@ function proRender(){
     let partes = null;
     try {
       sel.value = 'custom'; if (a) a.value = iso(per.ini); if (b) b.value = iso(per.ult);
+      window.__semLimiteTabelas = true;               // no relatório vão todas as linhas (na tela o Dashboard mostra as primeiras 300)
       renderDashboard();
       const txt = id => { const x = document.getElementById(id); return x ? x.innerText.trim() : ''; };
       const limpo = (el) => { if (!el) return ''; const c = el.cloneNode(true); c.querySelectorAll('input, button, select, script, .hier-busca, [onclick]').forEach(x => { if (x.tagName === 'INPUT' || x.tagName === 'BUTTON' || x.tagName === 'SELECT' || x.tagName === 'SCRIPT') x.remove(); else x.removeAttribute('onclick'); }); c.removeAttribute('id'); c.querySelectorAll('[id]').forEach(x => x.removeAttribute('id')); return c.outerHTML; };
@@ -19826,7 +19893,7 @@ function proRender(){
         detalhe: tabela('salesDetailTable')
       };
     } catch (err) { console.warn('Relatório: Dashboard', err); }
-    finally { sel.value = antes.sel; if (a) a.value = antes.a; if (b) b.value = antes.b; try { toggleCustomDateInputs(); renderDashboard(); } catch (err) {} }
+    finally { window.__semLimiteTabelas = false; sel.value = antes.sel; if (a) a.value = antes.a; if (b) b.value = antes.b; try { toggleCustomDateInputs(); renderDashboard(); } catch (err) {} }
     return partes;
   }
 
