@@ -3887,8 +3887,13 @@ function hierEstaAcima(liderId, userId, loja){
   const lojas = hierAbaixoDe(liderId).get(userId);
   return !!lojas && (!loja || lojas.has(loja) || lojas.has(''));
 }
-// Só quem está no topo (não tem líder nenhum) cria, renomeia e exclui lojas
+// Quem gere as lojas (cria, renomeia e exclui). No CRM de um aparelho só, é quem está no topo; no Elo online, só a administração.
 function hierPodeGerirLojas(){ return !!currentUser && !hierTemLider(currentUser.id); }
+// Renomear uma loja: quem gere as lojas, ou o Dono de Loja daquela loja
+function hierSouDonoDaLoja(id){ return !!currentUser && !!id && hierVinculos(currentUser).some(v => v.loja === id && String(v.cargo || '').trim().toLowerCase() === 'dono de loja'); }
+function hierPodeRenomearLoja(id){ return hierPodeGerirLojas() || hierSouDonoDaLoja(id); }
+// Trocar a própria loja principal: só onde não existe ninguém acima para definir (no Elo online, ninguém troca a própria loja)
+function hierPodeDefinirMinhaLoja(){ return hierPodeGerirLojas(); }
 
 // ---------- o que eu enxergo ----------
 // Quem eu enxergo: eu + todos abaixo de mim (nunca quem está ao lado ou acima)
@@ -4649,16 +4654,21 @@ function hierRenderLojas(){
       </div>
       <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">
         <button class="tc-btn forte" onclick="hierAbrirLoja()">+ Nova loja</button>
-        <span class="tc-sub" style="margin-left:8px">Minha loja principal:</span>
-        <select style="max-width:220px;padding:4px 8px;font-size:12.5px" onchange="hierDefinirMinhaLoja(this.value)">${hierOpcoesLoja(hierLojaPrincipal(currentUser))}</select>
+        ${hierPodeDefinirMinhaLoja() ? `<span class="tc-sub" style="margin-left:8px">Minha loja principal:</span>
+        <select style="max-width:220px;padding:4px 8px;font-size:12.5px" onchange="hierDefinirMinhaLoja(this.value)">${hierOpcoesLoja(hierLojaPrincipal(currentUser))}</select>` : ''}
       </div>
       </div>
     </div>`;
+  } else {
+    // Dono de Loja: pode renomear a(s) loja(s) dele
+    const minhas = hierLojas().filter(l => hierSouDonoDaLoja(l.id)).sort((a, b) => (a.nome || '').localeCompare(b.nome || '', 'pt-BR'));
+    if (minhas.length) html += `<div class="hier-lojas"><div class="hier-lojas-titulo"><b>${minhas.length > 1 ? 'Suas lojas' : 'Sua loja'}</b></div>
+      <div class="hier-lojas-lista">${minhas.map(l => `<span class="hier-loja-chip"><b>${esc(l.nome)}</b> <a onclick="hierAbrirLoja('${l.id}')">renomear</a></span>`).join('')}</div></div>`;
   }
   el.innerHTML = html;
 }
 function hierAbrirLoja(id){
-  if (!hierPodeGerirLojas()) return;
+  if (id ? !hierPodeRenomearLoja(id) : !hierPodeGerirLojas()) return alert(id ? 'Só a administração ou o Dono de Loja pode mudar o nome desta loja.' : 'Só a administração cria lojas.');
   const l = id ? hierLojas().find(x => x.id === id) : null;
   openModal(`
     <div class="between"><h2 style="margin:0">${l ? 'Renomear loja' : 'Nova loja'}</h2><button class="btn" onclick="closeModal()">✕</button></div>
@@ -4667,7 +4677,7 @@ function hierAbrirLoja(id){
   setTimeout(() => document.getElementById('hierLojaNomeInput')?.focus(), 50);
 }
 function hierSalvarLoja(id){
-  if (!hierPodeGerirLojas()) return;
+  if (id ? !hierPodeRenomearLoja(id) : !hierPodeGerirLojas()) return;
   const nome = (document.getElementById('hierLojaNomeInput')?.value || '').trim();
   if (!nome) return alert('Informe o nome da loja.');
   if (hierLojas().some(x => x.id !== id && (x.nome || '').toLowerCase() === nome.toLowerCase())) return alert('Já existe uma loja com esse nome.');
@@ -4684,7 +4694,7 @@ function hierExcluirLoja(id){
   save(); showToast('Loja excluída.');
 }
 function hierDefinirMinhaLoja(v){
-  if (!hierPodeGerirLojas()) return;
+  if (!hierPodeDefinirMinhaLoja()) return;
   const outras = hierLojasDe(currentUser).filter(l => l !== v);
   hierGravarVinculos(currentUser, (v ? [v] : []).concat(outras).map(l => ({ loja: l, liderId: null, cargo: hierCargoNaLoja(currentUser, l) })));
   save(); showToast('Sua loja principal foi atualizada.');
