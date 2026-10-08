@@ -19276,7 +19276,7 @@ function proRender(){
     }
     c.style.display = '';
     const cab = `<div class="pl-topo"><div><h2>🏆 Produção das lojas</h2><small class="muted">Números de todas as lojas, para saber qual está vendendo mais. Não mostra cliente, cota nem vendedor.</small></div>
-      <div class="pl-acoes">${est.fechado ? '' : `<button class="tc-btn pl-bt-filtro" onclick="painelLojasFiltros()">Filtros${filtrosAtivos() ? ' (' + filtrosAtivos() + ')' : ''}</button><button class="tc-btn" title="Buscar de novo" onclick="painelLojasAtualizar(true)">↻</button>`}
+      <div class="pl-acoes">${est.fechado ? '' : `<button class="tc-btn" title="Relatório para imprimir" onclick="relatorioAbrir()">📄 Relatório</button><button class="tc-btn pl-bt-filtro" onclick="painelLojasFiltros()">Filtros${filtrosAtivos() ? ' (' + filtrosAtivos() + ')' : ''}</button><button class="tc-btn" title="Buscar de novo" onclick="painelLojasAtualizar(true)">↻</button>`}
       <button class="tc-btn" onclick="painelLojasAbrir()">${est.fechado ? 'mostrar' : 'ocultar'}</button></div></div>`;
     if (est.fechado) { c.innerHTML = cab; return; }
     let corpo;
@@ -19674,6 +19674,8 @@ function proRender(){
 </script>
 <style id="relatorioEstilos">
 /* ===== Relatório para imprimir ===== */
+.rel-barra-dash { display: flex; justify-content: flex-end; margin: 0 0 12px; }
+@media (max-width: 700px) { .rel-barra-dash .btn { width: 100%; justify-content: center; } }
 #relatorioTela { position: fixed; inset: 0; z-index: 10050; background: #e5e7eb; display: flex; flex-direction: column; color: #111827; }
 .rel-barra { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #d1d5db; flex-wrap: wrap; }
 .rel-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -19928,10 +19930,13 @@ function proRender(){
   window.relatorioGerarPeriodo = (tipo, v) => { const per = periodo(tipo, v || {}); if (per) return gerar(per); };   // usado nos testes
 
   // botão no topo do Dashboard
+  // botão logo no alto do Dashboard (antes da lista "Para hoje"), fácil de achar no computador e no celular
   function botao(){
-    const sel = document.getElementById('dashFilterConsultor'); if (!sel || document.getElementById('relBotao')) return;
-    const b = document.createElement('button'); b.id = 'relBotao'; b.className = 'btn'; b.type = 'button'; b.textContent = '📄 Exportar relatório'; b.onclick = () => relatorioAbrir();
-    sel.parentElement.insertBefore(b, sel);
+    const pagina = document.getElementById('dashboard'); if (!pagina || document.getElementById('relBotao')) return;
+    const barra = document.createElement('div'); barra.id = 'relBarra'; barra.className = 'rel-barra-dash';
+    barra.innerHTML = '<button id="relBotao" class="btn primary" type="button">📄 Exportar relatório</button>';
+    barra.querySelector('button').onclick = () => relatorioAbrir();
+    pagina.insertAdjacentElement('afterbegin', barra);
   }
   botao(); document.addEventListener('DOMContentLoaded', botao);
 })();
