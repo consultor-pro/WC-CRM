@@ -6029,34 +6029,36 @@ function focarPrimeiroCampoInvalido(){
 function tourAlvoAba(id){ return `.sidebar .nav button[onclick*="show('${id}'"]`; }
 
 const TOUR_STEPS = [
-  { id:'welcome', title:'Bem-vindo(a) ao CRM! 👋', text:'Vamos passar rapidamente por cada aba do menu lateral, uma de cada vez, pra você já sair conhecendo pra que serve cada uma. Pode pular quando quiser.', target:null },
-  { id:'novoLead', title:'Cadastrar um Lead', text:'Antes de começar o tour do menu: este botão fica sempre à mão, em qualquer tela, pra cadastrar um novo cliente em potencial.', target:'#topbarNovoLeadBtn' },
+  { id:'welcome', title:'Bem-vindo(a) ao CRM! 👋', text:'Vamos passar pelas abas do menu lateral, na mesma ordem em que aparecem, mostrando para que serve cada uma. Pode pular quando quiser e rever depois em Configurações.', target:null },
+  { id:'novoLead', title:'➕ Novo Lead', text:'Este botão fica no topo de todas as telas: cadastra um novo cliente em potencial sem precisar ir até a aba Leads.', target:'#topbarNovoLeadBtn' },
 
-  { id:'aba-dashboard', title:'🏠 Dashboard & Vendas', text:'A tela inicial: visão geral das suas vendas, metas e indicadores do mês.', target: tourAlvoAba('dashboard') },
-  { id:'aba-leads', title:'👥 Leads & Carteira', text:'Sua carteira de clientes e leads. Cadastre, edite e acompanhe o status de cada um por aqui.', target: tourAlvoAba('leads') },
-  { id:'aba-mapaCotas', title:'🔢 Mapa de Cotas', text:'Veja as cotas disponíveis nos grupos, organizadas visualmente pra facilitar a simulação com o cliente.', target: tourAlvoAba('mapaCotas') },
-  { id:'aba-semaforo', title:'🚦 Semáforo & Ranking', text:'Acompanhe o desempenho (seu ou da equipe) em um semáforo visual, e veja o ranking de vendas.', target: tourAlvoAba('semaforo') },
-  { id:'aba-agenda', title:'📅 Agenda Comercial', text:'Marque reuniões, ligações e follow-ups com seus leads e clientes.', target: tourAlvoAba('agenda') },
-  { id:'aba-simulador', title:'📈 Simulador de Consórcio', text:'Monte simulações de consórcio pra apresentar ao cliente, com parcelas e prazos.', target: tourAlvoAba('simulador') },
-  { id:'aba-comissoes', title:'📊 Cálculo de Comissão', text:'Acompanhe suas comissões por venda, marque parcelas como recebidas e veja a previsão dos próximos meses.', target: tourAlvoAba('comissoes') },
-  { id:'aba-indicesGrupo', title:'📈 INCC e INPC', text:'Consulte os índices de reajuste anual aplicados aos créditos dos grupos (INCC para imóvel/serviço/bens móveis, INPC para veículo).', target: tourAlvoAba('indicesGrupo') },
-  { id:'aba-gastos', title:'💰 Gastos', text:'Controle suas receitas e despesas pessoais, mês a mês.', target: tourAlvoAba('gastos') },
-  { id:'aba-calculadora', title:'🧮 Calculadora', text:'Uma calculadora rápida, sempre à mão, pra contas do dia a dia.', target: tourAlvoAba('calculadora') },
-  { id:'aba-aniversarios', title:'🎂 Aniversariantes', text:'Veja quem está de aniversário entre seus clientes e leads, pra nunca perder a chance de mandar uma mensagem.', target: tourAlvoAba('aniversarios') },
-  { id:'aba-materialApoio', title:'📚 Material de Apoio', text:'Scripts de vendas, roteiros de objeção e materiais de apoio pra suas reuniões.', target: tourAlvoAba('materialApoio') },
-  { id:'aba-informacoes', title:'📢 Informações & Arquivos', text:'Avisos, comunicados e arquivos compartilhados com a equipe.', target: tourAlvoAba('informacoes') },
-  { id:'aba-usuarios', title:'🛡️ Equipe & Hierarquia', text:'Veja e gerencie os consultores da sua equipe e a estrutura hierárquica.', target: tourAlvoAba('usuarios') },
-  { id:'aba-consultoresVendas', title:'👔 Consultores & Vendas', text:'Cadastre vendas feitas por consultores externos/liderados direto por aqui, sem precisar dar acesso ao seu CRM pra cada um.', target: tourAlvoAba('consultoresVendas') },
-  { id:'aba-configuracoes', title:'⚙️ Configurações', text:'Seu perfil, integrações, backup e a opção de personalizar (ocultar) itens deste menu ficam todos aqui.', target: tourAlvoAba('configuracoes') },
+  { id:'aba-dashboard', title:'🏠 Dashboard & Vendas', text:'A tela inicial: a lista "Para hoje", a meta do mês, o funil de vendas, as cotas fechadas por segmento e a evolução das vendas. Para quem lidera, aparece também o quadro "Produção das lojas".', target: tourAlvoAba('dashboard') },
+  { id:'aba-leads', title:'👥 Leads & Carteira', text:'Sua carteira de leads e clientes: cadastre, acompanhe a etapa de cada um, importe ou exporte planilhas. Na parte "Meus Indicadores" ficam as pessoas que indicam clientes para você.', target: tourAlvoAba('leads') },
+  { id:'aba-prospeccao', title:'🔎 Prospecção', text:'Busque empresas no Google Maps (com a sua chave do Google) e monte sua lista de prospecção, com a situação e as suas anotações de cada empresa.', target: tourAlvoAba('prospeccao') },
+  { id:'aba-mapaCotas', title:'🔢 Mapa de Cotas', text:'O mapa das cotas de 1 a 10.000: mostra as cotas já vendidas em cada segmento, as contempladas e as canceladas.', target: tourAlvoAba('mapaCotas') },
+  { id:'aba-semaforo', title:'🚦 Semáforo & Ranking', text:'O desempenho do período em cores (semáforo) e o pódio com o ranking de vendas. O Dono de Loja e o Sócio Integral veem aqui também o resultado da loja inteira.', target: tourAlvoAba('semaforo') },
+  { id:'aba-agenda', title:'📅 Agenda Comercial', text:'Suas reuniões em visão de dia, semana ou mês. Dá para conectar o Google Agenda e já criar a sala do Google Meet.', target: tourAlvoAba('agenda') },
+  { id:'aba-simulador', title:'📈 Simulador de Consórcio', text:'Simulações de consórcio: cotas e lances, valor futuro, venda da carta, aplicação, financiamento e o comparativo financiamento x consórcio. Daqui saem a publicidade, a proposta e o envio pelo WhatsApp.', target: tourAlvoAba('simulador') },
+  { id:'aba-comissoes', title:'📊 Cálculo de Comissão', text:'A planilha das suas comissões, venda por venda, com as parcelas a receber mês a mês. Dá para mudar o mês e o valor de cada parcela e marcar o que já recebeu.', target: tourAlvoAba('comissoes') },
+  { id:'aba-gastos', title:'💰 Gastos', text:'Suas receitas e despesas mês a mês, como numa planilha. Dá para trazer as comissões recebidas direto para cá.', target: tourAlvoAba('gastos') },
+  { id:'aba-indicesGrupo', title:'📈 INCC e INPC', text:'O reajuste anual do crédito de cada grupo: INCC para imóvel, serviço e bens móveis; INPC para veículo. O reajuste vale só para as parcelas futuras.', target: tourAlvoAba('indicesGrupo') },
+  { id:'aba-calculadora', title:'🧮 Calculadora', text:'Uma calculadora comum e uma HP12C, sempre à mão.', target: tourAlvoAba('calculadora') },
+  { id:'aba-aniversarios', title:'🎂 Aniversariantes', text:'Os aniversários da sua equipe e dos seus clientes. Em cada um há o botão "Enviar parabéns", que monta uma imagem pronta para mandar pelo WhatsApp.', target: tourAlvoAba('aniversarios') },
+  { id:'aba-materialApoio', title:'📚 Material de Apoio', text:'Scripts de abordagem por nicho, o processo BDR, os 5 passos da venda e o pós-venda.', target: tourAlvoAba('materialApoio') },
+  { id:'aba-apresentacoes', title:'🖥️ Apresentações', text:'Monte slides, apresente PDFs e escreva notas à mão, em tela cheia, para usar nas reuniões.', target: tourAlvoAba('apresentacoes') },
+  { id:'aba-informacoes', title:'📢 Informações & Arquivos', text:'O mural de comunicados, links e arquivos que a liderança publica para a equipe.', target: tourAlvoAba('informacoes') },
+  { id:'aba-usuarios', title:'🛡️ Equipe & Hierarquia', text:'Quem está acima e abaixo de você e em quais lojas. Quem lidera cadastra e edita os membros da equipe por aqui.', target: tourAlvoAba('usuarios') },
+  { id:'aba-consultoresVendas', title:'👔 Consultores & Vendas', text:'Lance vendas de consultores que não usam o CRM: cada venda entra no Semáforo, no Dashboard e na Comissão.', target: tourAlvoAba('consultoresVendas') },
+  { id:'adm-contas', title:'🔑 Contas', text:'Só para a administração: as contas de acesso de cada pessoa, o bloqueio de quem não pagou e os códigos de acesso.', target:'#btnNavContas' },
+  { id:'aba-configuracoes', title:'⚙️ Configurações', text:'Seu perfil e foto, a senha, o Google Agenda, a cópia de segurança e o "Personalizar Menu", para esconder as abas que você não usa.', target: tourAlvoAba('configuracoes') },
 
-  { id:'mobilenav', title:'Menu no Celular', text:'No celular, os itens ficam na barra inferior. Toque em "Mais" para ver as abas que não cabem na barra.', target:'.mobile-nav' },
-  { id:'search', title:'Busca Rápida', text:'Encontre leads, vendas e consultores rapidamente, de qualquer tela. Atalho: Ctrl+K.', target:'#searchToolBtn' },
-  { id:'theme', title:'Tema Claro / Escuro', text:'Alterne entre os temas para deixar o CRM mais confortável aos seus olhos, a qualquer hora do dia.', target:'#darkModeToggleBtn' },
-  { id:'notif', title:'Notificações', text:'Fique de olho em avisos importantes, como aniversários de clientes e atualizações da equipe.', target:'.notif-btn' },
-  { id:'undo', title:'Desfazer / Refazer', text:'Errou algo em Leads ou Vendas? Use estes botões (ou Ctrl+Z / Ctrl+Y) para desfazer e refazer a última ação.', target:'#btnPrincipalUndo' },
-  { id:'end', title:'Pronto! 🎉', text:'Você já conhece todas as abas do CRM. Pode rever este tour quando quiser em Configurações → "Rever Tour de Boas-Vindas".', target:null }
-];
-let tourState = { steps: [], idx: 0 };
+  { id:'mobilenav', title:'📱 Menu no celular', text:'No celular, as abas ficam na barra de baixo. Toque em "Mais" para ver as que não cabem na barra.', target:'.mobile-nav' },
+  { id:'search', title:'🔍 Busca rápida', text:'Procura leads, vendas e pessoas de qualquer tela. Atalho: Ctrl+K.', target:'#searchToolBtn' },
+  { id:'theme', title:'🌙 Tema claro / escuro', text:'Alterna entre o tema claro e o escuro.', target:'#darkModeToggleBtn' },
+  { id:'notif', title:'🔔 Notificações', text:'Avisos importantes, como aniversários e novidades da equipe.', target:'.notif-btn' },
+  { id:'undo', title:'↩️ Desfazer / Refazer', text:'Errou algo em Leads ou Vendas? Estes botões (ou Ctrl+Z / Ctrl+Y) desfazem e refazem a última ação.', target:'#btnPrincipalUndo' },
+  { id:'end', title:'Pronto! 🎉', text:'Você já conhece todas as abas do CRM. Para rever este tour, vá em Configurações → "Rever Tour de Boas-Vindas".', target:null }
+];let tourState = { steps: [], idx: 0 };
 
 function tourChaveVisto(){
   return currentUser ? `crm_onboarding_seen_${EQUIPE_ID}_${currentUser.id}` : null;
@@ -6076,11 +6078,24 @@ function checkOnboardingTour(){
   setTimeout(tentar, 700);
 }
 
+function tourVisivel(el){
+  if (!el) return false;
+  const cs = getComputedStyle(el);
+  if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+  return el.getClientRects().length > 0 && el.getBoundingClientRect().width > 0;
+}
 function iniciarTourBoasVindas(forcado){
-  const usaveis = TOUR_STEPS.filter(s => {
-    if(!s.target) return true;
+  const usaveis = [];
+  TOUR_STEPS.forEach(s => {
+    if(!s.target) { usaveis.push(s); return; }
     const el = document.querySelector(s.target);
-    return el && el.offsetParent !== null;
+    if (tourVisivel(el)) { usaveis.push(s); return; }
+    const m = /^aba-(\w+)$/.exec(s.id);
+    if (!m || !el || el.style.display === 'none') return;                     // aba escondida em Personalizar Menu: pula
+    const naBarra = `.mobile-nav button[onclick*="show('${m[1]}'"]`;
+    if (tourVisivel(document.querySelector(naBarra))) { usaveis.push(Object.assign({}, s, { target: naBarra })); return; }
+    const mais = '.mobile-nav button[onclick*="abrirMenuMaisMobile"]';
+    if (tourVisivel(document.querySelector(mais))) usaveis.push(Object.assign({}, s, { target: mais, text: s.text + ' (No celular, fica no botão "Mais", na barra de baixo.)' }));
   });
   if(usaveis.length <= 1) return;
   tourState = { steps: usaveis, idx: 0, forcado: !!forcado };
@@ -6122,23 +6137,30 @@ function renderTourStep(){
   if(targetEl){
     const spotlight = document.createElement('div');
     spotlight.className = 'tour-spotlight';
-    const r = targetEl.getBoundingClientRect();
-    const pad = 8;
-    spotlight.style.top = (r.top - pad) + 'px';
-    spotlight.style.left = (r.left - pad) + 'px';
-    spotlight.style.width = (r.width + pad*2) + 'px';
-    spotlight.style.height = (r.height + pad*2) + 'px';
     overlay.appendChild(spotlight);
     overlay.appendChild(tooltip);
     document.body.appendChild(overlay);
-
-    let top = r.bottom + 14;
-    let left = Math.min(Math.max(r.left, 12), Math.max(12, window.innerWidth - tooltip.offsetWidth - 12));
-    const th = tooltip.offsetHeight;
-    if(top + th > window.innerHeight - 12){ top = Math.max(12, r.top - th - 14); }
-    tooltip.style.top = top + 'px';
-    tooltip.style.left = left + 'px';
-    targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    try { targetEl.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'nearest' }); } catch (e) { targetEl.scrollIntoView(); }
+    const posicionar = () => {
+      if (!document.body.contains(tooltip)) return;
+      const r = targetEl.getBoundingClientRect();
+      const pad = 8;
+      spotlight.style.top = (r.top - pad) + 'px';
+      spotlight.style.left = (r.left - pad) + 'px';
+      spotlight.style.width = (r.width + pad*2) + 'px';
+      spotlight.style.height = (r.height + pad*2) + 'px';
+      let top = r.bottom + 14;
+      let left = Math.min(Math.max(r.left, 12), Math.max(12, window.innerWidth - tooltip.offsetWidth - 12));
+      const th = tooltip.offsetHeight;
+      if(top + th > window.innerHeight - 12){ top = Math.max(12, r.top - th - 14); }
+      tooltip.style.top = top + 'px';
+      tooltip.style.left = left + 'px';
+    };
+    posicionar();
+    requestAnimationFrame(posicionar); setTimeout(posicionar, 250);
+    if (window.__tourReposicionar) { window.removeEventListener('resize', window.__tourReposicionar); document.removeEventListener('scroll', window.__tourReposicionar, true); }
+    window.__tourReposicionar = posicionar;
+    window.addEventListener('resize', posicionar); document.addEventListener('scroll', posicionar, true);
   } else {
     overlay.appendChild(tooltip);
     document.body.appendChild(overlay);
@@ -19309,6 +19331,11 @@ function proRender(){
 .pb-botoes { display: flex; gap: 8px; flex-wrap: wrap; }
 .pb-botao { white-space: nowrap; }
 @media (max-width: 700px) { .pb-grade { grid-template-columns: minmax(0, 1fr); } .pb-previa { max-width: 360px; margin: 0 auto; width: 100%; } }
+.pb-ajuste { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 8px 0 4px; }
+.pb-ajuste label { font-size: 12.5px; font-weight: 700; margin: 0; }
+.pb-ajuste input[type=range] { flex: 1 1 120px; min-width: 110px; padding: 0; }
+.pb-previa canvas { touch-action: none; cursor: grab; }
+.pb-previa canvas:active { cursor: grabbing; }
 </style>
 <script id="parabensScript">
 // ================== PARABÉNS (aba Aniversariantes) ==================
@@ -19319,7 +19346,7 @@ function proRender(){
   const W = 1080, H = 1350;
   const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   const CHAVE_TEXTO = () => `elo_parabens_texto_${typeof EQUIPE_ID !== 'undefined' ? EQUIPE_ID : 'crm'}`;
-  const est = { item: null, nome: '', data: '', texto: '', foto: null, fotoPropria: null, tel: '', tempo: null, desenhando: 0 };
+  const est = { item: null, nome: '', data: '', texto: '', foto: null, fotoCrm: null, fotoPropria: null, fotoUrl: '', tel: '', tempo: null, desenhando: 0, aj: { z: 1, cx: null, cy: null, giro: 0 }, girada: null };
 
   function nomeLoja(){
     try {
@@ -19418,6 +19445,23 @@ function proRender(){
     [[.3, .16, '#d4142e'], [.68, .14, '#e2b24a'], [.5, .1, '#e2b24a'], [.86, .45, '#d4142e'], [.12, .42, '#e2b24a']].forEach(([px, py, k]) => { c.fillStyle = k; c.beginPath(); c.arc(x + s * px, y + s * py, s * .012, 0, Math.PI * 2); c.fill(); });
   }
   function caberTexto(c, txt, max, tam, peso, fam){ let t = tam; do { c.font = `${peso} ${t}px ${fam}`; if (c.measureText(txt).width <= max) break; t -= 2; } while (t > 16); return t; }
+  // ---------- ajuste da foto: tamanho (zoom), posição (arrastar) e girar ----------
+  function fotoGirada(img){
+    const g = est.aj.giro % 360; if (!g) return img;
+    if (est.girada && est.girada.img === img && est.girada.g === g) return est.girada.cv;
+    const cv = document.createElement('canvas'), deitada = g === 90 || g === 270;
+    cv.width = deitada ? img.height : img.width; cv.height = deitada ? img.width : img.height;
+    const x = cv.getContext('2d'); x.translate(cv.width / 2, cv.height / 2); x.rotate(g * Math.PI / 180); x.drawImage(img, -img.width / 2, -img.height / 2);
+    est.girada = { img, g, cv }; return cv;
+  }
+  function recorte(f){
+    const iw = f.width, ih = f.height, base = Math.min(iw, ih), lado = base / Math.max(1, est.aj.z || 1);
+    const cx0 = iw / 2, cy0 = (ih > iw ? (ih - base) * .3 : (ih - base) / 2) + base / 2;        // foto em pé: mais perto do alto (rosto)
+    let cx = est.aj.cx == null ? cx0 : est.aj.cx, cy = est.aj.cy == null ? cy0 : est.aj.cy;
+    cx = Math.min(iw - lado / 2, Math.max(lado / 2, cx)); cy = Math.min(ih - lado / 2, Math.max(lado / 2, cy));
+    if (est.aj.cx != null) { est.aj.cx = cx; est.aj.cy = cy; }
+    return { sx: cx - lado / 2, sy: cy - lado / 2, lado, cx, cy };
+  }
   function porta(c, img){
     const cx = 540, cy = 425, w = 640, h = 730;
     // folha de trás
@@ -19429,9 +19473,9 @@ function proRender(){
     const s = 556, px = -s / 2, py = -h / 2 + 40;
     c.fillStyle = '#8f0a1e'; c.fillRect(px - 12, py - 12, s + 24, s + 24);               // moldura vermelha
     c.fillStyle = '#ffffff'; c.fillRect(px - 4, py - 4, s + 8, s + 8);
-    if (img) {                                                                           // foto (preenche o quadrado)
-      const lado = Math.min(img.width, img.height), sx = (img.width - lado) / 2, sy = (img.height - lado) / 2;
-      c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(img, sx, sy, lado, lado, px, py, s, s);
+    if (img) {                                                                           // foto (preenche o quadrado, com o tamanho e a posição escolhidos)
+      const f = fotoGirada(img), q = recorte(f);
+      c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(f, q.sx, q.sy, q.lado, q.lado, px, py, s, s);
     } else presente(c, px, py, s);
     c.fillStyle = '#3d0a12'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
     const nome = est.nome || '';
@@ -19513,17 +19557,17 @@ function proRender(){
   }
 
   // ---------- janela ----------
-  function redesenhar(){
+  function redesenhar(ms){
     clearTimeout(est.tempo);
-    est.tempo = setTimeout(async () => { const cv = document.getElementById('parabensCanvas'); if (!cv) return; const n = ++est.desenhando; const tmp = document.createElement('canvas'); await desenhar(tmp); if (n !== est.desenhando) return; cv.width = W; cv.height = H; cv.getContext('2d').drawImage(tmp, 0, 0); }, 120);
+    est.tempo = setTimeout(async () => { const cv = document.getElementById('parabensCanvas'); if (!cv) return; const n = ++est.desenhando; const tmp = document.createElement('canvas'); await desenhar(tmp); if (n !== est.desenhando) return; cv.width = W; cv.height = H; cv.getContext('2d').drawImage(tmp, 0, 0); }, ms == null ? 120 : ms);
   }
   window.niverParabens = async function(i){
     const item = (window.__niverLista || [])[i]; if (!item) return;
-    est.item = item; est.fotoPropria = null;
+    est.item = item; soltarFoto();
     const membro = item.tipo === 'Equipe' && typeof hierUsuarioPorNome === 'function' ? hierUsuarioPorNome(item.nome) : null;
     est.nome = item.nome || ''; est.data = dataPorExtenso(item.nasc); est.tel = item.tel || (membro && membro.tel) || '';
     est.texto = textoGuardado() || textoPadrao();
-    est.foto = membro && typeof avatarSrc === 'function' ? await carregarImagem(avatarSrc(membro)) : null;
+    est.fotoCrm = membro && typeof avatarSrc === 'function' ? await carregarImagem(avatarSrc(membro)) : null; est.foto = est.fotoCrm;
     openModal(`<div class="between"><h2 style="margin:0">🎉 Enviar parabéns</h2><button class="btn" onclick="closeModal()">✕</button></div>
       <div class="pb-grade">
         <div class="pb-previa"><canvas id="parabensCanvas" width="${W}" height="${H}"></canvas></div>
@@ -19533,13 +19577,67 @@ function proRender(){
           <div class="field"><label>Mensagem</label><textarea id="pbTexto" rows="8" oninput="niverParabensCampo('texto', this.value)">${esc(est.texto)}</textarea>
             <small class="muted">Palavras entre **asteriscos duplos** saem em negrito. O texto que você deixar aqui fica como padrão para os próximos parabéns.</small>
             <button class="tc-btn" style="margin-top:6px" onclick="niverParabensPadrao()">Voltar ao texto original</button></div>
-          ${membro ? `<small class="muted" style="display:block;margin-bottom:8px">${est.foto ? 'Foto do cadastro de ' + esc(membro.nome) + '.' : esc(membro.nome) + ' ainda não tem foto no CRM: vai o presente no lugar.'}</small>` : '<small class="muted" style="display:block;margin-bottom:8px">Cliente: vai a imagem do presente no lugar da foto.</small>'}
+          <div class="field"><label>Foto do meio</label>
+            <div class="pb-botoes"><button class="btn" onclick="document.getElementById('pbFotoArquivo').click()">🖼️ Escolher outra foto</button><button class="btn" id="pbFotoVoltar" style="display:none" onclick="niverParabensFotoPadrao()">Voltar à foto padrão</button></div>
+            <input type="file" id="pbFotoArquivo" accept="image/*" style="display:none" onchange="niverParabensFoto(this)">
+            <div class="pb-ajuste" id="pbAjuste">
+              <label for="pbZoom">Tamanho</label><input type="range" id="pbZoom" min="1" max="4" step="0.01" value="1" oninput="niverParabensZoom(this.value)">
+              <button class="tc-btn" onclick="niverParabensZoom(Math.max(1, est_z() - .1), true)" title="Diminuir">−</button><button class="tc-btn" onclick="niverParabensZoom(Math.min(4, est_z() + .1), true)" title="Aumentar">+</button>
+              <button class="tc-btn" onclick="niverParabensGirar()" title="Girar a foto">↻ Girar</button><button class="tc-btn" onclick="niverParabensCentralizar()">Centralizar</button>
+              <small class="muted" style="flex-basis:100%">Arraste a foto na prévia para escolher o que aparece no quadrado. Use o Tamanho para aproximar ou afastar.</small>
+            </div>
+            <small class="muted" id="pbFotoInfo" style="display:block;margin-top:4px">${membro ? (est.foto ? 'Agora: a foto do cadastro de ' + esc(membro.nome) + '.' : esc(membro.nome) + ' ainda não tem foto no CRM: vai o presente no lugar.') : 'Agora: a imagem do presente (cliente).'} A foto escolhida aqui vai na qualidade original e não fica guardada no CRM.</small></div>
           <div class="pb-botoes"><button class="btn" onclick="niverParabensBaixar()">📥 Baixar imagem</button><button class="btn green" onclick="niverParabensEnviar()">📲 Enviar pelo WhatsApp</button></div>
           <small class="muted" id="pbStatus" style="display:block;margin-top:6px"></small>
         </div>
       </div>`);
+    est.aj = { z: 1, cx: null, cy: null, giro: 0 }; est.girada = null; mostrarAjuste(); ligarArrasto(); redesenhar();
+  };
+  // foto só deste momento: usada na montagem e descartada (não vai para o cadastro, nem para o banco)
+  function soltarFoto(){ if (est.fotoUrl) { try { URL.revokeObjectURL(est.fotoUrl); } catch (e) {} } est.fotoUrl = ''; est.fotoPropria = null; }
+  window.niverParabensFoto = async function(inp){
+    const f = inp && inp.files && inp.files[0]; if (inp) inp.value = '';
+    if (!f) return;
+    if (!/^image\//.test(f.type || '')) return alert('Escolha um arquivo de imagem (foto).');
+    soltarFoto(); est.fotoUrl = URL.createObjectURL(f);
+    const img = await carregarImagem(est.fotoUrl);
+    if (!img) { soltarFoto(); return alert('Não foi possível abrir essa foto. Tente outra (JPG ou PNG).'); }
+    est.fotoPropria = img; est.foto = img; zerarAjuste();
+    const info = document.getElementById('pbFotoInfo'); if (info) info.textContent = `Agora: a foto escolhida (${img.width} x ${img.height}). Ela não fica guardada no CRM.`;
+    const volta = document.getElementById('pbFotoVoltar'); if (volta) volta.style.display = '';
     redesenhar();
   };
+  window.niverParabensFotoPadrao = function(){
+    soltarFoto(); est.foto = est.fotoCrm; zerarAjuste();
+    const info = document.getElementById('pbFotoInfo'); if (info) info.textContent = est.foto ? 'Agora: a foto do cadastro.' : 'Agora: a imagem do presente.';
+    const volta = document.getElementById('pbFotoVoltar'); if (volta) volta.style.display = 'none';
+    redesenhar();
+  };
+  function zerarAjuste(){ est.aj = { z: 1, cx: null, cy: null, giro: 0 }; est.girada = null; const z = document.getElementById('pbZoom'); if (z) z.value = 1; mostrarAjuste(); }
+  function mostrarAjuste(){ const a = document.getElementById('pbAjuste'); if (a) a.style.display = est.foto ? '' : 'none'; }
+  window.est_z = () => est.aj.z || 1;
+  function fixarCentro(){ if (est.aj.cx == null && est.foto) { const q = recorte(fotoGirada(est.foto)); est.aj.cx = q.cx; est.aj.cy = q.cy; } }
+  window.niverParabensZoom = function(v, botao){
+    if (!est.foto) return; fixarCentro(); est.aj.z = Math.min(4, Math.max(1, Number(v) || 1));
+    if (botao) { const z = document.getElementById('pbZoom'); if (z) z.value = est.aj.z; }
+    redesenhar(30);
+  };
+  window.niverParabensGirar = function(){ if (!est.foto) return; est.aj.giro = (est.aj.giro + 90) % 360; est.aj.cx = est.aj.cy = null; redesenhar(30); };
+  window.niverParabensCentralizar = function(){ if (!est.foto) return; const g = est.aj.giro; zerarAjuste(); est.aj.giro = g; redesenhar(30); };
+  // arrastar a foto na prévia (mouse ou dedo); rodinha do mouse aproxima e afasta
+  function ligarArrasto(){
+    const cv = document.getElementById('parabensCanvas'); if (!cv) return;
+    let ini = null;
+    cv.addEventListener('pointerdown', ev => { if (!est.foto) return; fixarCentro(); ini = { x: ev.clientX, y: ev.clientY, cx: est.aj.cx, cy: est.aj.cy }; try { cv.setPointerCapture(ev.pointerId); } catch (e) {} });
+    cv.addEventListener('pointermove', ev => {
+      if (!ini || !est.foto) return;
+      const r = cv.getBoundingClientRect(), f = fotoGirada(est.foto), lado = Math.min(f.width, f.height) / (est.aj.z || 1);
+      const k = (W / r.width) * (lado / 556);                                              // tela -> pontos da foto
+      est.aj.cx = ini.cx - (ev.clientX - ini.x) * k; est.aj.cy = ini.cy - (ev.clientY - ini.y) * k; redesenhar(16);
+    });
+    const fim = () => { ini = null; }; cv.addEventListener('pointerup', fim); cv.addEventListener('pointercancel', fim);
+    cv.addEventListener('wheel', ev => { if (!est.foto) return; ev.preventDefault(); niverParabensZoom((est.aj.z || 1) * (ev.deltaY < 0 ? 1.08 : 1 / 1.08), true); }, { passive: false });
+  }
   window.niverParabensCampo = function(campo, valor){
     est[campo] = valor;
     if (campo === 'texto') { try { if (valor.trim() && valor !== textoPadrao()) localStorage.setItem(CHAVE_TEXTO(), valor); else localStorage.removeItem(CHAVE_TEXTO()); } catch (e) {} }
@@ -19569,7 +19667,7 @@ function proRender(){
     if (s) s.textContent = `A imagem foi baixada (${nome}). O WhatsApp abriu${num ? ' na conversa com ' + est.nome.split(' ')[0] : ''}: é só anexar a imagem.`;
   };
   window.niverParabensDesenhar = desenhar;          // usado nos testes
-  window.niverParabensEstado = () => ({ nome: est.nome, data: est.data, texto: est.texto, temFoto: !!est.foto, tel: est.tel });
+  window.niverParabensEstado = () => ({ nome: est.nome, data: est.data, texto: est.texto, temFoto: !!est.foto, fotoPropria: est.fotoPropria ? [est.fotoPropria.width, est.fotoPropria.height] : null, tel: est.tel });
 })();
 </script>
 </body>
