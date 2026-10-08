@@ -6032,7 +6032,7 @@ const TOUR_STEPS = [
   { id:'welcome', title:'Bem-vindo(a) ao CRM! 👋', text:'Vamos passar pelas abas do menu lateral, na mesma ordem em que aparecem, mostrando para que serve cada uma. Pode pular quando quiser e rever depois em Configurações.', target:null },
   { id:'novoLead', title:'➕ Novo Lead', text:'Este botão fica no topo de todas as telas: cadastra um novo cliente em potencial sem precisar ir até a aba Leads.', target:'#topbarNovoLeadBtn' },
 
-  { id:'aba-dashboard', title:'🏠 Dashboard & Vendas', text:'A tela inicial: a lista "Para hoje", a meta do mês, o funil de vendas, as cotas fechadas por segmento e a evolução das vendas. Para quem lidera, aparece também o quadro "Produção das lojas".', target: tourAlvoAba('dashboard') },
+  { id:'aba-dashboard', title:'🏠 Dashboard & Vendas', text:'A tela inicial: a lista "Para hoje", a meta do mês, o funil de vendas, as cotas fechadas por segmento e a evolução das vendas. Para quem lidera, aparece também o quadro "Produção das lojas". O botão "Exportar relatório" monta um relatório para imprimir.', target: tourAlvoAba('dashboard') },
   { id:'aba-leads', title:'👥 Leads & Carteira', text:'Sua carteira de leads e clientes: cadastre, acompanhe a etapa de cada um, importe ou exporte planilhas. Na parte "Meus Indicadores" ficam as pessoas que indicam clientes para você.', target: tourAlvoAba('leads') },
   { id:'aba-prospeccao', title:'🔎 Prospecção', text:'Busque empresas no Google Maps (com a sua chave do Google) e monte sua lista de prospecção, com a situação e as suas anotações de cada empresa.', target: tourAlvoAba('prospeccao') },
   { id:'aba-mapaCotas', title:'🔢 Mapa de Cotas', text:'O mapa das cotas de 1 a 10.000: mostra as cotas já vendidas em cada segmento, as contempladas e as canceladas.', target: tourAlvoAba('mapaCotas') },
@@ -6057,6 +6057,7 @@ const TOUR_STEPS = [
   { id:'theme', title:'🌙 Tema claro / escuro', text:'Alterna entre o tema claro e o escuro.', target:'#darkModeToggleBtn' },
   { id:'notif', title:'🔔 Notificações', text:'Avisos importantes, como aniversários e novidades da equipe.', target:'.notif-btn' },
   { id:'undo', title:'↩️ Desfazer / Refazer', text:'Errou algo em Leads ou Vendas? Estes botões (ou Ctrl+Z / Ctrl+Y) desfazem e refazem a última ação.', target:'#btnPrincipalUndo' },
+  { id:'assist', title:'💬 Dúvidas', text:'Ficou com alguma dúvida? Toque aqui e pergunte do seu jeito: o assistente explica cada aba e função, passo a passo, e o que fazer quando algo dá errado.', target:'#assistBtn' },
   { id:'end', title:'Pronto! 🎉', text:'Você já conhece todas as abas do CRM. Para rever este tour, vá em Configurações → "Rever Tour de Boas-Vindas".', target:null }
 ];let tourState = { steps: [], idx: 0 };
 
@@ -19307,6 +19308,7 @@ function proRender(){
     desenhar(); if (!est.fechado) buscar(false);
   };
   window.painelLojasAtualizar = function(forcar){ if (!podeVer()) { desenhar(); return; } desenhar(); if (!est.fechado) buscar(!!forcar); };
+  window.painelLojasPodeVer = podeVer;
   window.painelLojasEstado = () => ({ podeVer: podeVer(), carregando: est.carregando, erro: est.erro, temDados: !!est.dados, ano: est.ano });
 
   // o gráfico de linha acompanha a largura da tela
@@ -19668,6 +19670,766 @@ function proRender(){
   };
   window.niverParabensDesenhar = desenhar;          // usado nos testes
   window.niverParabensEstado = () => ({ nome: est.nome, data: est.data, texto: est.texto, temFoto: !!est.foto, fotoPropria: est.fotoPropria ? [est.fotoPropria.width, est.fotoPropria.height] : null, tel: est.tel });
+})();
+</script>
+<style id="relatorioEstilos">
+/* ===== Relatório para imprimir ===== */
+#relatorioTela { position: fixed; inset: 0; z-index: 10050; background: #e5e7eb; display: flex; flex-direction: column; color: #111827; }
+.rel-barra { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #d1d5db; flex-wrap: wrap; }
+.rel-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.rel-papel { flex: 1; overflow: auto; padding: 18px 12px 40px; }
+.rel-folha { background: #fff; width: 210mm; max-width: 100%; min-height: 297mm; margin: 0 auto; padding: 14mm 12mm; box-shadow: 0 4px 24px rgba(0, 0, 0, .18); box-sizing: border-box; font-size: 11.5px; color: #111827; }
+.rel-carregando { color: #6b7280; font-size: 14px; }
+.rel-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; border-bottom: 3px solid #C8102E; padding-bottom: 8px; margin-bottom: 12px; }
+.rel-cab h1 { font-size: 19px; margin: 0 0 4px; color: #111827; }
+.rel-cab p { margin: 0; color: #6b7280; font-size: 11px; }
+.rel-periodo { text-align: right; font-size: 11px; color: #6b7280; white-space: nowrap; }
+.rel-periodo b { color: #C8102E; font-size: 13px; }
+.rel-sec { margin-bottom: 14px; }
+.rel-sec h2 { font-size: 14.5px; color: #C8102E; margin: 0 0 8px; padding-bottom: 3px; border-bottom: 1px solid #f1d5da; }
+.rel-sec h3 { font-size: 12.5px; margin: 10px 0 5px; color: #111827; }
+.rel-sec h3 small { color: #6b7280; font-weight: 500; }
+.rel-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.rel-kpis div { border: 1px solid #e5e7eb; border-radius: 6px; padding: 6px 8px; }
+.rel-kpis span { display: block; font-size: 9.5px; color: #6b7280; text-transform: uppercase; letter-spacing: .03em; }
+.rel-kpis b { font-size: 13.5px; }
+.rel-destaques { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 6px; }
+.rel-dest { border: 1px solid #f3c6ce; background: #fff5f6; border-radius: 6px; padding: 7px 9px; }
+.rel-dest span { display: block; font-size: 10px; color: #9f1239; font-weight: 700; }
+.rel-dest b { display: block; font-size: 13.5px; }
+.rel-dest small { color: #6b7280; }
+.rel-tab { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+.rel-tab th { background: #f9fafb; color: #374151; text-align: right; font-weight: 700; padding: 4px 5px; border-bottom: 1.5px solid #d1d5db; white-space: nowrap; }
+.rel-tab td { padding: 3.5px 5px; border-bottom: 1px solid #eef0f3; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rel-tab th:nth-child(2), .rel-tab td:nth-child(2), .rel-tab .rel-nome { text-align: left; white-space: normal; }
+.rel-tab th:first-child, .rel-tab td:first-child { text-align: left; width: 24px; }
+.rel-larga { font-size: 9.6px; }
+.rel-larga td, .rel-larga th { padding: 3px 3px; }
+.rel-podio td { font-weight: 700; }
+.rel-vazio { text-align: center !important; color: #9ca3af; }
+.rel-loja { break-inside: avoid; page-break-inside: avoid; }
+.rel-aviso { background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 8px 10px; }
+.rel-meta { margin: 8px 0 0; font-weight: 600; }
+.rel-bloco { break-inside: avoid; page-break-inside: avoid; margin-top: 8px; }
+.rel-copia { font-size: 10.5px; }
+.rel-copia table { width: 100%; border-collapse: collapse; font-size: 10px; }
+.rel-copia th, .rel-copia td { padding: 3px 5px !important; border-bottom: 1px solid #eef0f3; }
+.rel-copia svg { max-width: 100%; height: auto; }
+.rel-copia *:not(.badge) { color: #111827 !important; }
+.rel-copia * { box-shadow: none !important; }
+.rel-copia .badge { border: 1px solid #d1d5db; }
+.rel-quebra { break-before: page; page-break-before: always; }
+.rel-rodape { margin-top: 12px; padding-top: 6px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 9.5px; }
+@media screen and (max-width: 820px) { .rel-folha { padding: 16px 12px; min-height: 0; } .rel-kpis { grid-template-columns: 1fr 1fr; } .rel-destaques { grid-template-columns: 1fr; } .rel-tab-wrap { overflow-x: auto; } .rel-sec { overflow-x: auto; } }
+@media print {
+  @page { size: A4; margin: 10mm; }
+  body.rel-aberto > *:not(#relatorioTela) { display: none !important; }
+  body.rel-aberto { background: #fff !important; }
+  #relatorioTela { position: static; background: #fff; display: block; }
+  .rel-barra { display: none !important; }
+  .rel-papel { padding: 0; overflow: visible; }
+  .rel-folha { box-shadow: none; width: auto; min-height: 0; padding: 0; margin: 0; }
+  .rel-sec { overflow: visible !important; }
+  .rel-tab tr { break-inside: avoid; page-break-inside: avoid; }
+  .rel-tab thead { display: table-header-group; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+<script id="relatorioScript">
+// ================== RELATÓRIO PARA IMPRIMIR (Dashboard) ==================
+// Diário, semanal, mensal, anual ou personalizado, em folhas A4:
+//  - lojas: produção de cada uma, ranking das lojas, ranking dos membros de cada loja e ranking geral de vendedores
+//    (quem é de Líder em treinamento para cima e a administração; no Elo online os números vêm do banco);
+//  - o seu Dashboard no mesmo período (indicadores, meta, funil, segmentos, ranking e desempenho da equipe).
+(function(){
+  const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+  const SEGS_PRINCIPAIS = ['Imóvel', 'Veículo', 'Serviço'];
+  const p2 = n => String(n).padStart(2, '0');
+  const iso = d => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  const br = d => `${p2(d.getDate())}/${p2(d.getMonth() + 1)}/${d.getFullYear()}`;
+  const moeda = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const pct = x => x == null ? '—' : (x * 100).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+  const e = s => (typeof esc === 'function' ? esc(s) : String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])));
+
+  // ---------- período ----------
+  function periodo(tipo, v){
+    const hoje = new Date(); let ini, fim, nome;
+    if (tipo === 'dia') { const d = v.dia ? new Date(v.dia + 'T12:00:00') : hoje; ini = new Date(d.getFullYear(), d.getMonth(), d.getDate()); fim = new Date(ini); fim.setDate(fim.getDate() + 1); nome = `Relatório diário — ${br(ini)}`; }
+    else if (tipo === 'semana') { const d = v.dia ? new Date(v.dia + 'T12:00:00') : hoje; ini = new Date(d.getFullYear(), d.getMonth(), d.getDate() - ((d.getDay() + 6) % 7)); fim = new Date(ini); fim.setDate(fim.getDate() + 7); const ult = new Date(fim); ult.setDate(ult.getDate() - 1); nome = `Relatório semanal — ${br(ini)} a ${br(ult)}`; }
+    else if (tipo === 'mes') { const [a, m] = (v.mes || `${hoje.getFullYear()}-${p2(hoje.getMonth() + 1)}`).split('-').map(Number); ini = new Date(a, m - 1, 1); fim = new Date(a, m, 1); nome = `Relatório mensal — ${MESES[m - 1]} de ${a}`; }
+    else if (tipo === 'ano') { const a = +v.ano || hoje.getFullYear(); ini = new Date(a, 0, 1); fim = new Date(a + 1, 0, 1); nome = `Relatório anual — ${a}`; }
+    else { if (!v.de || !v.ate) return null; ini = new Date(v.de + 'T00:00:00'); fim = new Date(v.ate + 'T00:00:00'); fim.setDate(fim.getDate() + 1); if (fim <= ini) return null; const ult = new Date(fim); ult.setDate(ult.getDate() - 1); nome = `Relatório — ${br(ini)} a ${br(ult)}`; }
+    const ult = new Date(fim); ult.setDate(ult.getDate() - 1);
+    return { tipo, ini, fim, ult, nome };
+  }
+
+  // ---------- números das lojas ----------
+  function podeLojas(){ try { return typeof window.painelLojasPodeVer === 'function' && window.painelLojasPodeVer(); } catch (err) { return false; } }
+  function fonteLocal(de, ate){
+    const grupos = {};
+    (db.sales || []).forEach(s => {
+      if (!s || s.particular === true) return;
+      const d = new Date(s.date || 0); if (isNaN(d) || d < de || d >= ate) return;
+      const l = (typeof hierLojaDaVenda === 'function' ? hierLojaDaVenda(s) : (s.loja || '')) || '';
+      const vend = typeof hierUsuarioPorNome === 'function' ? hierUsuarioPorNome(s.responsavel) : null;
+      const r = { l, ln: (l && typeof hierLojaNome === 'function' && hierLojaNome(l)) || 'Sem loja definida', vd: vend ? vend.id : '', n: (vend && vend.nome) || s.responsavel || 'Sem vendedor', s: s.segmento || 'Imóvel', c: !!s.cancelada };
+      const k = [r.l, r.vd || r.n, r.s, r.c].join('|'); const x = grupos[k] || (grupos[k] = Object.assign(r, { q: 0, v: 0 })); x.q++; x.v += Number(s.valor) || 0;
+    });
+    return Promise.resolve({ linhas: Object.values(grupos) });
+  }
+  function montarLojas(linhas){
+    const lojas = new Map(), vend = new Map();
+    try { (typeof hierLojas === 'function' ? hierLojas() : []).forEach(l => { if (l && l.id) lojas.set(l.id, { id: l.id, nome: l.nome || 'Loja', ativa: 0, canc: 0, qtd: 0, seg: {}, membros: new Map() }); }); } catch (err) {}
+    linhas.forEach(r => {
+      const lid = r.l || '-', v = Number(r.v) || 0, q = Number(r.q) || 0;
+      if (!lojas.has(lid)) lojas.set(lid, { id: lid, nome: r.ln || 'Sem loja definida', ativa: 0, canc: 0, qtd: 0, seg: {}, membros: new Map() });
+      const L = lojas.get(lid), chave = r.vd || ('nome:' + r.n);
+      const m = L.membros.get(chave) || { nome: r.n, ativa: 0, canc: 0, qtd: 0 }; L.membros.set(chave, m);
+      const g = vend.get(chave) || { nome: r.n, ativa: 0, canc: 0, qtd: 0, lojas: new Map() }; vend.set(chave, g);
+      if (r.c) { L.canc += v; m.canc += v; g.canc += v; }
+      else { L.ativa += v; L.qtd += q; L.seg[r.s] = (L.seg[r.s] || 0) + v; m.ativa += v; m.qtd += q; g.ativa += v; g.qtd += q; g.lojas.set(L.nome, (g.lojas.get(L.nome) || 0) + v); }
+    });
+    const ordem = (a, b) => b.ativa - a.ativa || b.qtd - a.qtd || a.nome.localeCompare(b.nome, 'pt-BR');
+    const listaLojas = [...lojas.values()].filter(L => L.id !== '-' || L.ativa || L.canc).sort(ordem);
+    listaLojas.forEach(L => { L.ranking = [...L.membros.values()].filter(m => m.ativa || m.canc).sort(ordem); });
+    const vendedores = [...vend.values()].filter(g => g.ativa || g.canc).sort(ordem);
+    vendedores.forEach(g => { g.loja = [...g.lojas.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]).join(', ') || '—'; });
+    const tot = listaLojas.reduce((t, L) => ({ ativa: t.ativa + L.ativa, canc: t.canc + L.canc, qtd: t.qtd + L.qtd }), { ativa: 0, canc: 0, qtd: 0 });
+    return { lojas: listaLojas, vendedores, tot };
+  }
+
+  // ---------- o Dashboard da pessoa no mesmo período ----------
+  function copiarDashboard(per){
+    const sel = document.getElementById('dashPeriodFilter'), a = document.getElementById('dashStartDate'), b = document.getElementById('dashEndDate');
+    if (!sel || typeof renderDashboard !== 'function') return null;
+    const antes = { sel: sel.value, a: a ? a.value : '', b: b ? b.value : '' };
+    let partes = null;
+    try {
+      sel.value = 'custom'; if (a) a.value = iso(per.ini); if (b) b.value = iso(per.ult);
+      renderDashboard();
+      const txt = id => { const x = document.getElementById(id); return x ? x.innerText.trim() : ''; };
+      const limpo = (el) => { if (!el) return ''; const c = el.cloneNode(true); c.querySelectorAll('input, button, select, script, .hier-busca, [onclick]').forEach(x => { if (x.tagName === 'INPUT' || x.tagName === 'BUTTON' || x.tagName === 'SELECT' || x.tagName === 'SCRIPT') x.remove(); else x.removeAttribute('onclick'); }); c.removeAttribute('id'); c.querySelectorAll('[id]').forEach(x => x.removeAttribute('id')); return c.outerHTML; };
+      const tabela = id => { const tb = document.getElementById(id); const t = tb && tb.closest('table'); return t && tb.children.length ? limpo(t) : ''; };
+      const consultor = document.getElementById('dashFilterConsultor');
+      partes = {
+        consultor: consultor && consultor.value !== 'all' ? (consultor.selectedOptions[0] || {}).textContent : 'Todos',
+        kpis: [['kLeadsLabel', 'kLeads'], ['kMeetLabel', 'kMeet'], ['kVendasLabel', 'kVendasCount'], ['kVolumeLabel', 'kVendasVolume']].map(([r, v]) => [txt(r), txt(v)]).filter(x => x[0])
+          .concat([['Total vendido (geral)', txt('kVendasVolumeGeral')], ['Total cancelado', txt('kVendasVolumeCancelado')]].filter(x => x[1])),
+        meta: per.tipo === 'mes' ? txt('metaMensalTexto') : '',
+        funil: limpo(document.getElementById('pipeline')), funilTaxa: txt('dashFunilTaxaTotal'),
+        segmentos: limpo(document.getElementById('dashSegmentoBreakdown')),
+        evolucao: limpo(document.getElementById('dashVolumeChart')),
+        ranking: (document.getElementById('cardRankingConsultores') || {}).offsetParent !== null ? limpo(document.getElementById('rankingConsultoresList')) : '',
+        equipe: (document.getElementById('cardMemberPerformance') || {}).offsetParent !== null ? tabela('memberPerformanceTable') : '',
+        detalhe: tabela('salesDetailTable')
+      };
+    } catch (err) { console.warn('Relatório: Dashboard', err); }
+    finally { sel.value = antes.sel; if (a) a.value = antes.a; if (b) b.value = antes.b; try { toggleCustomDateInputs(); renderDashboard(); } catch (err) {} }
+    return partes;
+  }
+
+  // ---------- montagem do relatório ----------
+  function tabelaHtml(cab, linhas, classe){ return `<table class="rel-tab ${classe || ''}"><thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${linhas.join('') || `<tr><td colspan="${cab.length}" class="rel-vazio">Sem vendas no período.</td></tr>`}</tbody></table>`; }
+  function secaoLojas(dados, aviso){
+    if (aviso) return `<section class="rel-sec"><h2>Lojas</h2><p class="rel-aviso">${aviso}</p></section>`;
+    const { lojas, vendedores, tot } = dados, ret = (a, c) => (a + c) ? a / (a + c) : null;
+    const topL = lojas.find(L => L.ativa > 0), topV = vendedores.find(g => g.ativa > 0);
+    let h = `<section class="rel-sec"><h2>Resumo geral das lojas</h2>
+      <div class="rel-kpis">
+        <div><span>Produção total</span><b>${moeda(tot.ativa)}</b></div><div><span>Cotas vendidas</span><b>${tot.qtd.toLocaleString('pt-BR')}</b></div>
+        <div><span>Ticket médio</span><b>${moeda(tot.qtd ? tot.ativa / tot.qtd : 0)}</b></div><div><span>Cancelado</span><b>${moeda(tot.canc)}</b></div>
+        <div><span>Retenção</span><b>${pct(ret(tot.ativa, tot.canc))}</b></div><div><span>Lojas com venda</span><b>${lojas.filter(L => L.ativa > 0).length} de ${lojas.length}</b></div>
+      </div>
+      <div class="rel-destaques">
+        <div class="rel-dest"><span>🏆 Loja que mais vendeu</span><b>${topL ? e(topL.nome) : '—'}</b><small>${topL ? moeda(topL.ativa) + ' · ' + topL.qtd + ' cota(s)' : 'Sem vendas no período'}</small></div>
+        <div class="rel-dest"><span>🥇 Quem mais vendeu (todas as lojas)</span><b>${topV ? e(topV.nome) : '—'}</b><small>${topV ? moeda(topV.ativa) + ' · ' + topV.qtd + ' cota(s) · ' + e(topV.loja) : 'Sem vendas no período'}</small></div>
+      </div></section>`;
+    h += `<section class="rel-sec"><h2>Ranking das lojas</h2>${tabelaHtml(['#', 'Loja', 'Produção', '% do total', 'Cotas', 'Ticket médio', 'Imóveis', 'Veículos', 'Serviços', 'Cancelado', 'Retenção'],
+      lojas.map((L, i) => `<tr><td>${i + 1}º</td><td class="rel-nome">${e(L.nome)}</td><td>${moeda(L.ativa)}</td><td>${tot.ativa ? pct(L.ativa / tot.ativa) : '—'}</td><td>${L.qtd}</td><td>${moeda(L.qtd ? L.ativa / L.qtd : 0)}</td>${SEGS_PRINCIPAIS.map(s => `<td>${moeda(L.seg[s] || 0)}</td>`).join('')}<td>${moeda(L.canc)}</td><td>${pct(ret(L.ativa, L.canc))}</td></tr>`), 'rel-larga')}</section>`;
+    h += `<section class="rel-sec"><h2>Ranking geral de vendedores (todas as lojas)</h2>${tabelaHtml(['#', 'Vendedor', 'Loja', 'Produção', 'Cotas', 'Ticket médio', 'Cancelado'],
+      vendedores.map((g, i) => `<tr${i < 3 ? ' class="rel-podio"' : ''}><td>${i + 1}º</td><td class="rel-nome">${e(g.nome)}</td><td>${e(g.loja)}</td><td>${moeda(g.ativa)}</td><td>${g.qtd}</td><td>${moeda(g.qtd ? g.ativa / g.qtd : 0)}</td><td>${moeda(g.canc)}</td></tr>`))}</section>`;
+    h += `<section class="rel-sec"><h2>Ranking dos membros de cada loja</h2>` + lojas.map((L, i) => `<div class="rel-loja"><h3>${i + 1}º · ${e(L.nome)} <small>${moeda(L.ativa)} · ${L.qtd} cota(s)${L.canc ? ' · cancelado ' + moeda(L.canc) : ''}</small></h3>
+      ${tabelaHtml(['#', 'Membro', 'Produção', '% da loja', 'Cotas', 'Cancelado'], L.ranking.map((m, j) => `<tr${j === 0 && m.ativa > 0 ? ' class="rel-podio"' : ''}><td>${j + 1}º</td><td class="rel-nome">${e(m.nome)}</td><td>${moeda(m.ativa)}</td><td>${L.ativa ? pct(m.ativa / L.ativa) : '—'}</td><td>${m.qtd}</td><td>${moeda(m.canc)}</td></tr>`))}</div>`).join('') + `</section>`;
+    return h;
+  }
+  function secaoPessoal(p, per){
+    if (!p) return '';
+    const bloco = (tit, html, extra) => html ? `<div class="rel-bloco"><h3>${tit}${extra ? ' <small>' + e(extra) + '</small>' : ''}</h3><div class="rel-copia">${html}</div></div>` : '';
+    return `<section class="rel-sec rel-quebra"><h2>Seu Dashboard no período${p.consultor && p.consultor !== 'Todos' ? ' — ' + e(p.consultor) : ''}</h2>
+      <div class="rel-kpis">${p.kpis.map(([r, v]) => `<div><span>${e(r)}</span><b>${e(v)}</b></div>`).join('')}</div>
+      ${p.meta ? `<p class="rel-meta">🎯 Meta do mês: ${e(p.meta)}</p>` : ''}
+      ${bloco('Funil de vendas', p.funil, p.funilTaxa)}
+      ${bloco('Cotas fechadas por segmento', p.segmentos)}
+      ${bloco('Ranking de consultores', p.ranking)}
+      ${bloco('Desempenho por membro da equipe', p.equipe)}
+      ${bloco('Evolução das vendas', p.evolucao, 'últimos 6 meses até hoje')}
+      ${bloco('Cotas fechadas no período', p.detalhe)}
+    </section>`;
+  }
+  async function gerar(per){
+    const tela = abrirTela('<p class="rel-carregando">Montando o relatório…</p>');
+    let lojasHtml = '';
+    if (podeLojas()) {
+      let r; try { r = window.relatorioFonte ? await window.relatorioFonte(per.ini.toISOString(), per.fim.toISOString()) : await fonteLocal(per.ini, per.fim); } catch (err) { r = { erro: 'falha' }; }
+      if (!r || r.erro) lojasHtml = secaoLojas(null, r && r.erro === 'banco_antigo' ? 'Os números das lojas precisam do texto de instalação novo do banco (a administração cola na Supabase).' : r && r.erro === 'rede' ? 'Sem internet agora: não foi possível buscar os números das lojas.' : 'Não foi possível buscar os números das lojas agora.');
+      else lojasHtml = secaoLojas(montarLojas(r.linhas || []));
+    }
+    const pessoal = secaoPessoal(copiarDashboard(per), per);
+    const agora = new Date(), quem = currentUser ? currentUser.nome : '';
+    const nomeCrm = (document.querySelector('.brand h1, .brand-title, .sidebar .brand b, .logo-text') || {}).textContent || 'Elo CRM';
+    tela.querySelector('.rel-folha').innerHTML = `<header class="rel-cab"><div><h1>${e(per.nome)}</h1><p>${e(String(nomeCrm).trim())} · gerado por ${e(quem)} em ${br(agora)} às ${p2(agora.getHours())}:${p2(agora.getMinutes())}</p></div>
+      <div class="rel-periodo">Período<br><b>${br(per.ini)}${per.ult - per.ini > 0 ? ' a ' + br(per.ult) : ''}</b></div></header>
+      ${lojasHtml}${pessoal}
+      <footer class="rel-rodape">Produção = vendas não canceladas · Retenção = produção ÷ (produção + cancelado) · Vendas marcadas como "só minhas" não entram nos números das lojas.</footer>`;
+  }
+
+  // ---------- tela do relatório (prévia + imprimir) ----------
+  function abrirTela(conteudo){
+    fecharTela();
+    const tela = document.createElement('div'); tela.id = 'relatorioTela';
+    tela.innerHTML = `<div class="rel-barra"><b>📄 Relatório</b><div class="rel-acoes"><button class="btn primary" onclick="relatorioImprimir()">🖨️ Imprimir / Salvar PDF</button><button class="btn" onclick="relatorioFechar()">Fechar</button></div></div>
+      <div class="rel-papel"><div class="rel-folha">${conteudo}</div></div>`;
+    document.body.appendChild(tela); document.body.classList.add('rel-aberto');
+    const tema = document.documentElement.getAttribute('data-theme'); if (tema) { tela.dataset.tema = tema; document.documentElement.removeAttribute('data-theme'); }
+    return tela;
+  }
+  function fecharTela(){
+    const t = document.getElementById('relatorioTela'); if (!t) return;
+    if (t.dataset.tema) document.documentElement.setAttribute('data-theme', t.dataset.tema);
+    t.remove(); document.body.classList.remove('rel-aberto');
+  }
+  window.relatorioFechar = fecharTela;
+  window.relatorioImprimir = function(){ window.print(); };
+
+  // ---------- janela de escolha do período ----------
+  window.relatorioAbrir = function(){
+    const h = new Date(), ano = h.getFullYear();
+    openModal(`<div class="between"><h2 style="margin:0">📄 Exportar relatório</h2><button class="btn" onclick="closeModal()">✕</button></div>
+      <p class="muted" style="font-size:13px;margin:6px 0 12px">Monta um relatório em folhas A4 para imprimir ou salvar em PDF${podeLojas() ? ': produção e ranking das lojas, ranking dos membros de cada loja, ranking geral de vendedores e o seu Dashboard no período' : ', com o seu Dashboard no período'}.</p>
+      <div class="field"><label>Tipo</label><select id="relTipo" onchange="relatorioTipo(this.value)">
+        <option value="dia">Diário</option><option value="semana">Semanal</option><option value="mes" selected>Mensal</option><option value="ano">Anual</option><option value="pers">Personalizado</option></select></div>
+      <div class="field rel-campo" data-t="dia semana"><label id="relDiaRot">Dia</label><input type="date" id="relDia" value="${iso(h)}"></div>
+      <div class="field rel-campo" data-t="mes"><label>Mês</label><input type="month" id="relMes" value="${ano}-${p2(h.getMonth() + 1)}"></div>
+      <div class="field rel-campo" data-t="ano"><label>Ano</label><select id="relAno">${[0, 1, 2, 3, 4].map(i => `<option>${ano - i}</option>`).join('')}</select></div>
+      <div class="row rel-campo" data-t="pers" style="gap:8px"><div class="field" style="flex:1"><label>De</label><input type="date" id="relDe" value="${iso(new Date(ano, h.getMonth(), 1))}"></div><div class="field" style="flex:1"><label>Até</label><input type="date" id="relAte" value="${iso(h)}"></div></div>
+      <div class="row" style="justify-content:flex-end;gap:8px"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="relatorioGerar()">Gerar relatório</button></div>`);
+    relatorioTipo('mes');
+  };
+  window.relatorioTipo = function(t){
+    document.querySelectorAll('.rel-campo').forEach(c => { c.style.display = c.dataset.t.split(' ').includes(t) ? '' : 'none'; });
+    const r = document.getElementById('relDiaRot'); if (r) r.textContent = t === 'semana' ? 'Um dia da semana (de segunda a domingo)' : 'Dia';
+  };
+  window.relatorioGerar = function(){
+    const v = id => (document.getElementById(id) || {}).value || '';
+    const tipo = v('relTipo'), per = periodo(tipo, { dia: v('relDia'), mes: v('relMes'), ano: v('relAno'), de: v('relDe'), ate: v('relAte') });
+    if (!per) return alert('Confira as datas: a data final precisa ser igual ou depois da inicial.');
+    closeModal(); gerar(per);
+  };
+  window.relatorioGerarPeriodo = (tipo, v) => { const per = periodo(tipo, v || {}); if (per) return gerar(per); };   // usado nos testes
+
+  // botão no topo do Dashboard
+  function botao(){
+    const sel = document.getElementById('dashFilterConsultor'); if (!sel || document.getElementById('relBotao')) return;
+    const b = document.createElement('button'); b.id = 'relBotao'; b.className = 'btn'; b.type = 'button'; b.textContent = '📄 Exportar relatório'; b.onclick = () => relatorioAbrir();
+    sel.parentElement.insertBefore(b, sel);
+  }
+  botao(); document.addEventListener('DOMContentLoaded', botao);
+})();
+</script>
+<style id="assistenteEstilos">
+/* ===== Assistente de dúvidas ===== */
+#assistBtn { position: fixed; right: 18px; bottom: 54px; z-index: 9990; display: flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; padding: 10px 16px 10px 12px;
+  background: var(--red, #C8102E); color: #fff; font-weight: 700; font-size: 14px; box-shadow: 0 6px 20px rgba(200, 16, 46, .35); cursor: pointer; }
+#assistBtn:hover { filter: brightness(1.06); }
+#assistBtn .as-ic { font-size: 18px; line-height: 1; }
+body.as-aberto #assistBtn { display: none; }
+body.rel-aberto #assistBtn, body.tour-active #assistBtn { display: none; }
+#assistPainel { position: fixed; right: 18px; bottom: 18px; z-index: 9995; width: 390px; max-width: calc(100vw - 24px); height: min(620px, calc(100vh - 36px));
+  display: none; flex-direction: column; background: var(--card, #fff); color: inherit; border: 1px solid var(--line, #e2e8f0); border-radius: 16px; box-shadow: 0 18px 50px rgba(15, 23, 42, .28); overflow: hidden; }
+#assistPainel.aberto { display: flex; }
+.as-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 14px; background: var(--red, #C8102E); color: #fff; }
+.as-topo b { display: block; font-size: 15px; }
+.as-topo small { display: block; font-size: 11.5px; opacity: .85; }
+.as-topo-bt { display: flex; gap: 6px; }
+.as-topo-bt button { border: 0; background: rgba(255, 255, 255, .18); color: #fff; width: 32px; height: 32px; border-radius: 8px; font-size: 15px; cursor: pointer; }
+.as-msgs { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--bg, #f4f6fa); }
+.as-msg { max-width: 92%; padding: 9px 12px; border-radius: 14px; font-size: 13.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.as-msg p { margin: 0 0 6px; } .as-msg p:last-child { margin-bottom: 0; }
+.as-msg ol, .as-msg ul { margin: 4px 0 6px; padding-left: 20px; } .as-msg li { margin: 2px 0; }
+.as-eu { align-self: flex-end; background: var(--red, #C8102E); color: #fff; border-bottom-right-radius: 4px; }
+.as-ele { align-self: flex-start; background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-bottom-left-radius: 4px; }
+.as-tit { font-weight: 800; margin-bottom: 6px; color: var(--red, #C8102E); }
+.as-sub { font-size: 11.5px; color: var(--muted, #64748b); font-weight: 700; margin: 8px 0 4px; }
+.as-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.as-chips button { border: 1px solid var(--line, #e2e8f0); background: var(--bg, #f8fafc); color: inherit; border-radius: 999px; padding: 5px 10px; font-size: 12.5px; text-align: left; cursor: pointer; }
+.as-chips button:hover { border-color: var(--red, #C8102E); color: var(--red, #C8102E); }
+.as-ir { display: inline-block; margin: 8px 0 2px; border: 0; background: var(--red, #C8102E); color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.as-entrada { display: flex; gap: 6px; padding: 10px; border-top: 1px solid var(--line, #e2e8f0); background: var(--card, #fff); }
+.as-entrada input { flex: 1; min-width: 0; margin: 0; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
+.as-entrada button { border: 0; background: var(--red, #C8102E); color: #fff; border-radius: 10px; width: 44px; font-size: 16px; cursor: pointer; }
+[data-theme="dark"] .as-ele { color: #e6edf3; }
+[data-theme="dark"] .as-chips button { color: #e6edf3; }
+@media (max-width: 700px) {
+  #assistBtn { bottom: 84px; right: 12px; padding: 10px 12px; }
+  #assistBtn .as-tx { display: none; }
+  #assistPainel { right: 0; bottom: 0; width: 100vw; max-width: 100vw; height: 100dvh; border-radius: 0; border: 0; }
+  .as-entrada input { font-size: 16px; }
+}
+@media print { #assistBtn, #assistPainel { display: none !important; } }
+</style>
+<script id="assistenteScript">
+// Base de conhecimento do Assistente de dúvidas (perguntas e respostas sobre o CRM).
+// t = pergunta principal · k = outros jeitos de perguntar e palavras-chave · r = resposta
+// aba = botão "Ir para a aba" · so = só aparece para: 'on' (Elo online), 'local' (CRM de um aparelho), 'lider', 'adm'
+// Na resposta: linhas "1. " viram passo a passo, "- " viram tópicos e **texto** fica em negrito.
+const ASSIST_BASE = [
+// ===================== COMEÇO E NAVEGAÇÃO =====================
+{ id: 'oque', t: 'O que dá para fazer neste CRM?', k: 'para que serve o crm, funcoes do crm, o que o sistema faz, visao geral, abas do menu, me explica o crm',
+  r: 'O CRM organiza todo o seu trabalho de consórcio:\n- **Leads & Carteira**: seus clientes e contatos.\n- **Agenda**: reuniões e retornos.\n- **Simulador**: simulações, publicidade e proposta para o cliente.\n- **Cálculo de Comissão**: o que você tem a receber, mês a mês.\n- **Dashboard e Semáforo**: seus números e o ranking.\n- **Equipe**: sua equipe e as lojas.\nPergunte sobre qualquer aba, por exemplo "como cadastro uma venda?" ou "lancei a venda errada, e agora?".' },
+{ id: 'tour', t: 'Como rever o tour de boas-vindas?', k: 'tour, apresentacao do sistema, tutorial, guia inicial, rever explicacao das abas',
+  r: '1. Vá em **Configurações**.\n2. Toque em **🧭 Rever Tour de Boas-Vindas**.\nO tour passa por todas as abas do menu, na ordem, explicando cada uma.', aba: 'configuracoes' },
+{ id: 'menu_cel', t: 'Onde ficam as abas no celular?', k: 'menu no celular, nao acho a aba no celular, barra inferior, botao mais, celular menu',
+  r: 'No celular, as abas principais ficam na **barra de baixo** (Início, Leads, Cotas, Comissão, Agenda). As outras ficam no botão **☰ Mais**, na mesma barra.' },
+{ id: 'personalizar', t: 'Como esconder abas que eu não uso?', k: 'personalizar menu, ocultar aba, tirar aba do menu, aba sumiu, esconder item do menu, aba desapareceu',
+  r: '1. Vá em **Configurações** › **🧹 Personalizar Menu**.\n2. Desmarque as abas que você não usa.\nIsso só esconde: nenhum dado é apagado. Se uma aba sumiu do seu menu, é só marcar ela de volta ali. Dashboard, Leads e Configurações ficam sempre visíveis.', aba: 'configuracoes' },
+{ id: 'busca', t: 'Como procurar um cliente, venda ou pessoa rapidamente?', k: 'busca rapida, pesquisar, procurar cliente, achar lead, lupa, ctrl k, buscar telefone',
+  r: 'Use a **busca do topo** (a lupa 🔍), em qualquer tela. Ela procura leads, vendas (cliente, grupo e cota) e pessoas pelo nome ou telefone. No computador, o atalho é **Ctrl+K**.' },
+{ id: 'tema', t: 'Como deixar o CRM no modo escuro?', k: 'tema escuro, modo noturno, dark, claro, mudar cor da tela',
+  r: 'Toque no botão da **lua** (🌙), no topo ou no menu lateral, para alternar entre o tema claro e o escuro.' },
+{ id: 'notif', t: 'O que são as notificações (sininho)?', k: 'notificacoes, sino, avisos, alertas, central de notificacoes, limpar avisos',
+  r: 'O **🔔** do topo mostra avisos importantes, como aniversários e novidades da equipe. Dentro dele, **Limpar Histórico** apaga os avisos antigos.' },
+{ id: 'instalar', t: 'Como instalar o CRM no celular como aplicativo?', k: 'instalar app, aplicativo, tela inicial, pwa, atalho no celular, baixar o app',
+  r: 'O CRM funciona como aplicativo:\n- **Android (Chrome)**: menu ⋮ › **Instalar app** (ou "Adicionar à tela inicial").\n- **iPhone (Safari)**: botão Compartilhar › **Adicionar à Tela de Início**.\nDepois é só abrir pelo ícone, como um app.' },
+{ id: 'zoom', t: 'A tela está pequena ou grande demais, como ajustar?', k: 'zoom, letra pequena, aumentar tela, diminuir tela, fonte',
+  r: 'No celular, dá para dar zoom com dois dedos. No computador, use **Ctrl +** e **Ctrl −** (ou Ctrl + rodinha do mouse) para aumentar ou diminuir.' },
+
+// ===================== ENTRAR, SENHA E ACESSO =====================
+{ id: 'on_primeiro', so: 'on', t: 'Como faço o primeiro acesso?', k: 'primeiro acesso, criar senha, recebi um codigo, codigo de acesso, nao tenho senha, entrar pela primeira vez, ativar conta',
+  r: 'Seu líder (ou a administração) cadastra você e te passa um **código de 6 números**.\n1. Abra o link do CRM.\n2. Toque em **Primeiro acesso ou senha nova**.\n3. Digite o seu **e-mail**, o **código** e crie a sua **senha** (duas vezes).\n4. Pronto: daí em diante você entra com e-mail e senha.\nO código vale 7 dias. Se venceu, peça um novo ao seu líder.' },
+{ id: 'on_esqueci', so: 'on', t: 'Esqueci minha senha, e agora?', k: 'esqueci a senha, perdi a senha, senha errada, nao consigo entrar, trocar senha esquecida, recuperar senha',
+  r: '1. Peça ao seu **líder** (ou à administração) um **código de acesso novo**. Ele gera em Equipe › **Meta e senha** › Gerar código de acesso.\n2. Na tela de entrada, toque em **Primeiro acesso ou senha nova**.\n3. Digite seu e-mail, o código e a senha nova.\nSeus dados continuam todos lá.' },
+{ id: 'on_gerar_codigo', so: 'lider', t: 'Como gero um código de acesso para alguém da equipe?', k: 'gerar codigo, codigo para membro, liberar acesso, membro esqueceu senha, reenviar acesso, codigo venceu',
+  r: '1. Vá em **Equipe & Hierarquia**.\n2. Na linha da pessoa, toque em **Meta e senha**.\n3. Toque em **Gerar código de acesso**.\n4. Envie o código pelo botão do WhatsApp que aparece.\nA pessoa usa o código em "Primeiro acesso ou senha nova". O código vale 7 dias.', aba: 'usuarios' },
+{ id: 'trocar_senha', t: 'Como troco a minha senha?', k: 'mudar senha, trocar senha, nova senha, alterar senha',
+  r: '1. Vá em **Configurações**.\n2. No bloco de senha, digite a **nova senha** e confirme.\n3. Toque em **Atualizar Senha**.', aba: 'configuracoes' },
+{ id: 'local_esqueci', so: 'local', t: 'Esqueci minha senha (CRM deste aparelho)', k: 'esqueci a senha, codigo de recuperacao, recuperar senha, nao consigo entrar',
+  r: 'Na tela de entrada, toque em **Esqueci a senha** e use o seu **código de recuperação**. Se você não gerou o código, só quem está acima de você consegue redefinir a sua senha (em Equipe › Meta e senha).\nPara não passar por isso: em **Configurações** › **Código de Recuperação de Senha**, gere o seu código e guarde num lugar seguro.' },
+{ id: 'trocar_email', so: 'on', t: 'Como troco o e-mail com que eu entro?', k: 'mudar email, trocar email de login, email errado',
+  r: '1. Vá em **Configurações**.\n2. Troque o **E-mail** e toque em **Salvar Meus Dados**.\nDaí em diante você entra com o e-mail novo; a senha continua a mesma.', aba: 'configuracoes' },
+{ id: 'bloqueado', so: 'on', t: 'Apareceu que meu acesso está bloqueado', k: 'acesso bloqueado, conta bloqueada, nao deixa entrar, suspenso, pagamento',
+  r: 'O acesso é bloqueado pela **administração do CRM** (por exemplo, por falta de pagamento). Fale com a administração para liberar. Seus dados não são apagados enquanto o acesso estiver bloqueado.' },
+{ id: 'outro_aparelho', so: 'on', t: 'Posso usar no celular e no computador ao mesmo tempo?', k: 'outro aparelho, celular e computador, dois aparelhos, sincronizar, dados iguais, trocar de celular',
+  r: 'Pode. Entre com o **mesmo e-mail e senha** em cada aparelho: tudo o que você cadastra vai para a nuvem e aparece nos outros. No topo aparece "Sincronizado às …" quando está tudo em dia.' },
+{ id: 'sem_internet', so: 'on', t: 'Funciona sem internet?', k: 'sem internet, offline, sem sinal, sem rede',
+  r: 'Funciona. O que você fizer sem internet fica guardado no aparelho e sobe sozinho para a nuvem quando a internet voltar. Só não feche a sessão (Sair deste aparelho) enquanto estiver sem internet com coisas para enviar.' },
+{ id: 'nao_aparece', so: 'on', t: 'Cadastrei algo em outro aparelho e não apareceu aqui', k: 'nao sincronizou, nao apareceu, dados sumiram, atualizar dados, conferir tudo com a nuvem, sincronizar agora',
+  r: '1. Confira se os dois aparelhos estão com internet.\n2. Em **Configurações** › cartão do Elo CRM online, toque em **🔄 Sincronizar agora**.\n3. Se ainda faltar algo, toque em **Conferir tudo com a nuvem**: o CRM busca de novo todos os seus registros.', aba: 'configuracoes' },
+{ id: 'sair', t: 'Como saio do CRM?', k: 'sair, deslogar, logout, trocar de usuario, sair da conta',
+  r: 'Toque em **Sair**, ao lado do seu nome no menu lateral (ou em Configurações). No Elo online, se for um aparelho de outra pessoa, use **Sair deste aparelho**.' },
+
+// ===================== LEADS =====================
+{ id: 'lead_novo', t: 'Como cadastro um lead (cliente)?', k: 'novo lead, cadastrar cliente, adicionar cliente, novo contato, cadastrar lead, incluir cliente',
+  r: '1. Toque em **+ Novo Lead** (no topo, em qualquer tela).\n2. Preencha nome e **telefone/WhatsApp** (e o que mais tiver: nascimento, cidade, profissão, origem).\n3. Escolha a **etapa do funil** e o **lead score** (Quente, Morno ou Frio).\n4. Toque em **Salvar Lead**.\nO CRM não deixa cadastrar dois leads com o mesmo telefone.', aba: 'leads' },
+{ id: 'lead_duplicado', t: 'Diz que o telefone já existe, o que faço?', k: 'telefone ja cadastrado, lead duplicado, numero repetido, contato ja existe, nao deixa salvar o lead',
+  r: 'O CRM bloqueia leads com o **mesmo telefone** (mesmo escrito de outro jeito, com ou sem o 9). Procure o número na **busca do topo**: o cliente já está cadastrado. Se for de outra pessoa da equipe, combine com ela ou com o seu líder quem fica com o cliente.' },
+{ id: 'lead_editar', t: 'Como edito ou mudo a etapa de um lead?', k: 'editar lead, mudar etapa, alterar cliente, atualizar lead, mudar status do lead, funil',
+  r: '1. Em **Leads & Carteira**, toque em **Editar** na linha do lead (ou no nome dele).\n2. Mude o que precisar, como a **Etapa do Funil** (Prospecção, Agendado, Negociação, Cliente fechado, Cliente não fechado).\n3. Toque em **Salvar Lead**.', aba: 'leads' },
+{ id: 'lead_excluir', t: 'Como excluo um lead?', k: 'apagar lead, excluir cliente, remover lead, deletar contato',
+  r: 'Em **Leads & Carteira**, toque em **Excluir** na linha do lead e confirme. Se apagou o lead errado, use **Desfazer** (↺ no topo, ou Ctrl+Z) logo em seguida.', aba: 'leads' },
+{ id: 'lead_score', t: 'O que é o lead score (Quente, Morno, Frio)?', k: 'lead score, quente morno frio, temperatura do lead, classificacao do lead',
+  r: 'É a "temperatura" do cliente: **🔥 Quente** (pronto para fechar), **⚡ Morno** (interessado) e **❄️ Frio** (ainda longe). Use para priorizar contatos e filtre por ele na lista de leads.' },
+{ id: 'lead_privado', t: 'O que é lead Privado e Público?', k: 'visibilidade do lead, privado, publico, quem ve meu lead, esconder lead',
+  r: 'Os seus leads ficam **só com você** (e com o responsável pelo lead, se for outra pessoa). Nem quem está acima de você vê os seus leads. A opção Privado/Público do cadastro é só um marcador e não abre o lead para a equipe.' },
+{ id: 'lead_filtros', t: 'Como filtro a lista de leads?', k: 'filtrar leads, filtro, procurar por etapa, filtrar por origem, ordenar leads, ordem alfabetica',
+  r: 'Em **Leads & Carteira**, use os filtros acima da lista: score, etapa, origem, indicador e responsável. Dá para ordenar por **Últimos Cadastrados** ou **Ordem Alfabética**. No celular, os filtros ficam recolhidos num botão.', aba: 'leads' },
+{ id: 'lead_whats', t: 'Como chamo o cliente no WhatsApp pelo CRM?', k: 'whatsapp do cliente, mandar mensagem, chamar no zap, abrir conversa',
+  r: 'Toque no ícone **📲** ao lado do telefone do cliente (na lista de leads, na agenda ou no cadastro). Abre a conversa com ele no WhatsApp.' },
+{ id: 'lead_notas', t: 'Como anoto o que conversei com o cliente (follow-up)?', k: 'anotacao, follow up, comentario, mural de negociacao, notas do cliente, historico do cliente, retorno',
+  r: '1. Em **Leads & Carteira**, toque em **Notas** na linha do cliente.\n2. Escreva a anotação no **Mural de Negociação**.\n3. Se quiser lembrar de voltar a falar, escolha **data e hora**: o retorno aparece na sua **Agenda**.\n4. Escolha a situação (em aberto, encerrado ou só anotação) e toque em **Publicar**.', aba: 'leads' },
+{ id: 'indicadores', t: 'O que é "Meus Indicadores"?', k: 'indicadores, quem indicou, indicacao, parceiros que indicam, cadastrar indicador',
+  r: 'São as pessoas que **indicam clientes** para você. Em **Leads & Carteira** › **🤝 Meus Indicadores** você cadastra cada uma. Depois, ao cadastrar um lead com origem "Indicação", escolha **Quem indicou?**. Assim você vê quanto cada indicador trouxe.', aba: 'leads' },
+{ id: 'importar_planilha', t: 'Como importo uma planilha de clientes?', k: 'subir lista, subir contatos, importar planilha, importar excel, subir lista de clientes, importar csv, carregar contatos',
+  r: '1. Em **Leads & Carteira**, toque em **📥 Importar Planilha**.\n2. Escolha para quem vão os leads e o arquivo (.xlsx, .xls ou .csv).\n3. O CRM identifica as colunas de nome e telefone; confira e ajuste antes de importar.\nTelefones que já existem no CRM são pulados.', aba: 'leads' },
+{ id: 'exportar_leads', t: 'Como exporto meus leads para o Excel?', k: 'baixar meus leads, baixar clientes, baixar contatos, exportar leads, baixar planilha, excel da carteira, exportar selecao, relatorio de clientes',
+  r: 'Em **Leads & Carteira**:\n- **💾 Exportar Planilha Excel**: a carteira completa, com cota, parcela, valor e datas.\n- **📤 Exportar seleção**: só os contatos que você escolher (com filtros e marcação).', aba: 'leads' },
+{ id: 'nota_mao', t: 'Como faço uma nota à mão para o cliente?', k: 'nota a mao, desenhar, rabiscar, caneta, escrever a mao, anotacao desenhada',
+  r: 'No cadastro do cliente (Editar), toque em **✍️ Nota à mão**. Dá para escrever com canetas e cores, mudar o papel e salvar a nota ligada ao cliente, inclusive em PDF ou enviar pelo WhatsApp. As notas também ficam em **Apresentações** › Notas.' },
+{ id: 'transferir_lead', so: 'lider', t: 'Como passo um lead para outra pessoa da equipe?', k: 'transferir lead, mudar responsavel, passar cliente para outro, trocar dono do lead',
+  r: '1. Abra o lead (**Editar**).\n2. Troque o **Responsável** pela pessoa da equipe.\n3. Toque em **Salvar Lead**.', aba: 'leads' },
+
+// ===================== VENDAS / COTAS =====================
+{ id: 'venda_nova', t: 'Como cadastro uma venda?', k: 'lancar venda, registrar venda, cadastrar cota, fechei uma venda, nova venda, vendi, adicionar venda',
+  r: '1. Em **Leads & Carteira**, toque em **Venda** na linha do cliente (ou abra o cliente e toque em **💰 Adicionar venda**).\n2. Em **Status do Fechamento**, escolha **✅ SIM - Cota Fechada**.\n3. Preencha segmento, modalidade, **crédito**, **grupo**, **cota**, prazo e data da venda.\n4. Marque o **Seguro Prestamista** se foi vendido com seguro.\n5. Toque em **Salvar Cota**.\nA venda entra no Dashboard, no Semáforo, no Mapa de Cotas e no Cálculo de Comissão.', aba: 'leads' },
+{ id: 'venda_errada', t: 'Lancei uma venda errada, como corrijo?', k: 'venda errada, corrigir venda, editar venda, errei a venda, valor errado, grupo errado, cota errada, consertar venda',
+  r: '1. Vá em **Cálculo de Comissão** e toque em **Grp … | Cota …** na linha da venda (ou abra o cliente e entre na venda).\n2. Corrija o que estiver errado (crédito, grupo, cota, segmento, data…).\n3. Toque em **Salvar Cota**.\nSe acabou de errar, o **Desfazer** (↺ no topo, ou Ctrl+Z) volta o último passo.', aba: 'comissoes' },
+{ id: 'venda_excluir', t: 'Como apago uma venda lançada por engano?', k: 'apagar venda, excluir venda, venda duplicada, lancei duas vezes, remover cota',
+  r: 'Se ela **não aconteceu** (foi lançada por engano), use **Desfazer** logo em seguida, ou abra a venda e corrija. Se o cliente **desistiu depois de fechar**, não apague: marque a cota como **CANCELADA** (veja "Como marco uma cota como cancelada?"), assim o histórico fica certo.' },
+{ id: 'venda_cancelada', t: 'Como marco uma cota como cancelada?', k: 'cancelou o consorcio, desistiu do consorcio, cliente cancelou, cancelar cota, cliente desistiu, cota cancelada, cancelamento, desistencia',
+  r: '1. Abra a venda (em Comissões, toque em **Grp | Cota**; ou no **Mapa de Cotas**, toque na cota).\n2. Marque **⚫ Marcar esta cota como CANCELADA**.\n3. Salve.\nAs parcelas futuras (ainda não pagas) deixam de contar na projeção de comissões; o que já foi pago continua.', aba: 'mapaCotas' },
+{ id: 'venda_contemplada', t: 'Como marco uma cota como contemplada?', k: 'foi contemplado, cliente contemplado, contemplado, contemplada, contemplacao, cota contemplada, sorteada, lance aceito',
+  r: '1. No **Mapa de Cotas**, toque na cota.\n2. Marque **⭐ Marcar esta cota como Contemplada**.\n3. Toque em **Salvar Status da Cota**.\nEla fica dourada no mapa.', aba: 'mapaCotas' },
+{ id: 'cota_repetida', t: 'Diz que o grupo e a cota já existem em outra venda', k: 'cota repetida, grupo e cota ja existem, cota duplicada, aviso de cota, mesma cota',
+  r: 'O CRM avisa quando o **mesmo grupo e cota** já estão em outra venda, para evitar a mesma venda lançada duas vezes.\n- Confira o grupo e a cota no contrato.\n- Se foi lançada duas vezes, corrija ou desfaça a repetida.\n- Se a outra é de outra pessoa ou equipe, fale com o seu líder para decidir de quem é a venda.' },
+{ id: 'transferir_venda', t: 'Como passo uma venda para outro vendedor?', k: 'transferir venda, venda no nome errado, mudar vendedor, trocar responsavel da venda',
+  r: 'Em **Cálculo de Comissão**, na linha da venda, mude o nome no seletor da coluna do vendedor (**Transferir esta venda para outro usuário**). Só aparecem as pessoas que você enxerga na equipe.', aba: 'comissoes' },
+{ id: 'seguro', t: 'O que muda com o Seguro Prestamista?', k: 'seguro prestamista, seguro de vida, 0,11, decima quarta parcela',
+  r: 'Marcando **🛡️ Cota vendida com Seguro Prestamista**, a comissão ganha **0,11% do crédito na 14ª parcela**. Marque na venda ao cadastrar ou editar.' },
+{ id: 'modalidade', t: 'O que é a modalidade (50%, 70%, 85%, 100%)?', k: 'modalidade, parcela reduzida, 50 por cento, cheia, reduzida',
+  r: 'É o tipo de parcela do plano: **50%, 70% ou 85% Reduzida** ou **100% Cheia**. Ela muda o valor das parcelas de comissão. Escolha na venda; dá para trocar depois em Cálculo de Comissão, na coluna Modalidade.' },
+{ id: 'matricula', t: 'O que é a matrícula da venda?', k: 'matricula, venda na matricula de quem, previa, consultor em previa, autorizado, matricula errada',
+  r: 'Quem é **Consultor em prévia** vende na **matrícula de um autorizado acima** dele; quem é **Consultor autorizado** ou líder tem matrícula própria.\n- A venda mostra "Matrícula de …".\n- Os recebimentos da venda aparecem só para quem vendeu e para o dono da matrícula; quem está acima vê só o resumo (data, cliente, grupo, cota e valor).\nPara trocar a matrícula de uma venda, toque no selo **"Matrícula de …"** na venda.' },
+{ id: 'matricula_errada', t: 'A venda saiu na matrícula errada', k: 'matricula errada, trocar matricula, mudar matricula da venda',
+  r: 'Toque no selo **"Matrícula de …"** na linha da venda (em Cálculo de Comissão) e escolha a matrícula certa. Só aparecem os autorizados acima de quem vendeu, na loja da venda.', aba: 'comissoes' },
+{ id: 'so_minhas', so: 'on', t: 'Vendas de antes da equipe atual (só minhas)', k: 'vendas antigas, so minhas, esconder vendas do gestor, outro gestor, vendas de outra matricula, historico de vendas, vendas particulares',
+  r: 'Vendas feitas com outro gestor, ou em outra matrícula, podem ficar **só para você**: continuam nos seus números e nas suas comissões, mas quem está acima de você hoje não vê e elas não entram nos números da loja.\n1. Vá em **Configurações** › cartão do Elo CRM online.\n2. Toque em **Vendas de antes da equipe atual**.\n3. Marque as vendas que ficam só para você (ou use "Marcar anteriores a" uma data) e **Salvar**.\nAo importar um backup, o CRM já pergunta a data.', aba: 'configuracoes' },
+
+// ===================== COMISSÕES =====================
+{ id: 'comissao_como', t: 'Como funciona o Cálculo de Comissão?', k: 'comissao, quanto vou receber, calculo de comissao, previsao de recebimento, planilha de comissao',
+  r: 'A aba **Cálculo de Comissão** mostra cada venda com as **parcelas de comissão** mês a mês (2,3% do crédito, ou a taxa à vista do segmento, até a 15ª parcela, ajustada pela modalidade).\nNo topo ficam os totais: vendido, previsto, já recebido, a receber, imposto e líquido. Abaixo, a projeção por mês e a planilha de cada venda.', aba: 'comissoes' },
+{ id: 'comissao_recebi', t: 'Como marco que recebi uma parcela?', k: 'cliente pagou, pagou a parcela, parcela paga, marcar parcela paga, recebi comissao, parcela recebida, dar baixa, marcar como pago',
+  r: '- **Uma parcela**: na planilha, marque a **caixinha** da parcela daquele mês.\n- **O mês inteiro**: em "Buscar Mês de Recebimento", escolha o mês e toque em **✅ Marcar Mês Selecionado como Recebido** (e "↩️ Desmarcar" para voltar).', aba: 'comissoes' },
+{ id: 'comissao_mes', t: 'Como mudo o mês de recebimento de uma parcela?', k: 'mudar mes da parcela, parcela atrasou, adiar parcela, mes de recebimento, competencia, parcela no mes errado, efeito cascata',
+  r: '1. Na planilha de **Cálculo de Comissão**, toque no **mês** da parcela e escolha o mês certo.\n2. O CRM pergunta: **Só esta parcela** ou **Esta e as seguintes**.\n- "Esta e as seguintes" move junto as parcelas seguintes ainda não pagas.\n- Parcelas já marcadas como pagas nunca mudam.\nSe as parcelas seguintes valem zero, a pergunta nem aparece.', aba: 'comissoes' },
+{ id: 'comissao_valor', t: 'Como mudo o valor de uma parcela?', k: 'mudar valor da parcela, valor errado da comissao, ajustar parcela, editar valor',
+  r: 'Na planilha de **Cálculo de Comissão**, toque no **valor** da parcela e digite o certo. A parcela fica marcada com borda roxa (valor ajustado à mão).', aba: 'comissoes' },
+{ id: 'comissao_imposto', t: 'Como coloco o imposto da comissão?', k: 'imposto, aliquota, liquido, desconto de imposto, valor liquido',
+  r: 'Em **Cálculo de Comissão**, no cartão **Imposto sobre recebido**, digite a sua **alíquota (%)**. O CRM calcula o imposto e o **líquido recebido** de cada mês.', aba: 'comissoes' },
+{ id: 'comissao_recalc', t: 'Os valores da comissão parecem errados', k: 'recalcular, comissao errada, valores estranhos, atualizar projecao',
+  r: '1. Confira na venda o **crédito**, a **modalidade**, o **segmento** e a **data da venda**.\n2. Toque em **🔄 Recalcular Projeção**.\nParcelas que você ajustou à mão (borda roxa) continuam como você deixou.', aba: 'comissoes' },
+{ id: 'comissao_naoaparece', t: 'Uma venda não aparece na minha comissão', k: 'venda nao aparece na comissao, sumiu da comissao, nao vejo a venda',
+  r: 'Em **Cálculo de Comissão** aparecem só as vendas **da sua matrícula** e as que **você mesmo vendeu**. Se a venda é de alguém em prévia na matrícula de outra pessoa, ela aparece para o dono da matrícula. Confira também os filtros do topo (pessoa e segmento).', aba: 'comissoes' },
+{ id: 'incc', t: 'Como funciona o reajuste INCC e INPC?', k: 'incc, inpc, reajuste, correcao do credito, indice, valorizacao',
+  r: 'Na aba **INCC e INPC** fica o reajuste anual do crédito por grupo: **INCC** para Imóvel, Serviço e Bens móveis; **INPC** para Veículo. O índice acumula ano a ano e vale a partir de janeiro do ano seguinte ao da venda. Só as parcelas **futuras** mudam; as já pagas ficam como estão.', aba: 'indicesGrupo' },
+
+// ===================== AGENDA =====================
+{ id: 'agenda_nova', t: 'Como agendo uma reunião?', k: 'agendar reuniao, marcar reuniao, novo compromisso, agendamento, marcar visita, criar evento',
+  r: '1. Vá em **Agenda Comercial** e toque em **+ Agendar Reunião**.\n2. Escolha o **lead**, o responsável, a **data e hora** e a pauta.\n3. Escolha a cor do compromisso.\n4. Toque em **Confirmar Reunião**.\nTambém dá para agendar pelo mural do cliente (Notas › Agendar reunião).', aba: 'agenda' },
+{ id: 'agenda_reagendar', t: 'Como reagendo ou encerro uma reunião?', k: 'reagendar, remarcar, mudar horario, encerrar reuniao, concluir reuniao, cancelar reuniao, excluir reuniao',
+  r: 'Na **Agenda**, toque no compromisso. No painel:\n- **🔄 Reagendar**: muda a data e a hora.\n- **✅ Encerrar**: marca como realizado.\n- **🗑️ Excluir**: apaga o compromisso.', aba: 'agenda' },
+{ id: 'agenda_google', t: 'Como ligo a Agenda ao Google Agenda e ao Meet?', k: 'google agenda, google calendar, meet, sala do meet, sincronizar google, link da reuniao',
+  r: '1. Na **Agenda**, toque em **🔗 Conectar Google Agenda** e entre com a sua conta Google.\n2. Ao agendar, marque **Enviar ao Google Agenda (com sala do Meet)**.\nO CRM cria o evento no seu Google com a sala do Meet. Num compromisso já criado, use **✨ Gerar Meet**. Reagendar ou excluir aqui também muda no Google.', aba: 'agenda' },
+{ id: 'agenda_vista', t: 'Como vejo a agenda por dia, semana ou mês?', k: 'visao da agenda, ver semana, ver mes, calendario, ver mais compromissos',
+  r: 'Na **Agenda**, use os botões **Dia**, **Semana** e **Mês**, e as setas **◀ Hoje ▶** para navegar. Na visão do mês, cada dia mostra até 8 compromissos e um "ver mais".', aba: 'agenda' },
+{ id: 'para_hoje', t: 'O que é a lista "Para hoje"?', k: 'para hoje, tarefas do dia, pendencias, o que fazer hoje, atrasados',
+  r: 'No topo do **Dashboard**, o **📌 Para hoje** junta: os compromissos de hoje, os retornos **atrasados**, os leads parados há muito tempo e os aniversariantes do dia. Dá para esconder e mostrar tocando no título.', aba: 'dashboard' },
+
+// ===================== DASHBOARD, SEMÁFORO E RELATÓRIO =====================
+{ id: 'dashboard', t: 'O que tem no Dashboard?', k: 'dashboard, tela inicial, inicio, indicadores, painel principal, resumo',
+  r: 'O **Dashboard** mostra: a lista **Para hoje**, total de leads, agendamentos, **cotas fechadas** e **volume vendido** no período, a **meta mensal**, o **funil de vendas**, as cotas por segmento, a evolução dos últimos 6 meses e o desempenho da equipe. Use o filtro de período (Este mês, Hoje, Personalizado ou Todo o histórico) e o de consultor.', aba: 'dashboard' },
+{ id: 'meta', t: 'Como defino a minha meta mensal?', k: 'meta, meta mensal, objetivo do mes, definir meta, meta de vendas',
+  r: 'No **Dashboard**, no cartão **🎯 Meta mensal de vendas**, digite o valor da meta. A barra mostra quanto você já atingiu no mês. Quem lidera também define a meta de cada pessoa em **Equipe** › **Meta e senha**.', aba: 'dashboard' },
+{ id: 'producao_lojas', so: 'lider', t: 'O que é o quadro "Produção das lojas"?', k: 'producao das lojas, ranking das lojas, qual loja vende mais, quadro das lojas, retencao, unidade',
+  r: 'No **Dashboard**, quem é de **Líder em treinamento para cima** vê os números de **todas as lojas**: produção, com pagamento, aguardando pagamento, cotas, ticket médio e cancelado, além do ranking das lojas por segmento e a produção por mês. Use os filtros (ano, mês, unidade, UF, segmento, status da cota) e o botão **Tabelas** para ver em tabela. Retenção = produção ÷ (produção + cancelado).', aba: 'dashboard' },
+{ id: 'relatorio', t: 'Como exporto um relatório para imprimir?', k: 'imprimir relatorio, imprimo o relatorio, imprimir o dashboard, relatorio, imprimir, pdf, exportar relatorio, relatorio mensal, relatorio semanal, relatorio diario, relatorio anual, folha a4',
+  r: '1. No **Dashboard**, toque em **📄 Exportar relatório**.\n2. Escolha **Diário, Semanal, Mensal, Anual ou Personalizado** e a data.\n3. Toque em **Gerar relatório**.\n4. Toque em **🖨️ Imprimir / Salvar PDF**. Para ter o arquivo, escolha "Salvar como PDF" na impressão.\nPara quem lidera, o relatório traz as lojas, o ranking das lojas, o ranking de vendedores e o ranking dos membros de cada loja; para todos, traz o seu Dashboard no período.', aba: 'dashboard' },
+{ id: 'semaforo', t: 'Como funciona o Semáforo & Ranking?', k: 'semaforo, ranking, cores, verde amarelo laranja vermelho, podio, desempenho',
+  r: 'O **Semáforo** mostra o desempenho de cada pessoa no período, em cores:\n- 🟢 **Verde**: superando a meta.\n- 🟡 **Amarelo**: ritmo saudável.\n- 🟠 **Laranja**: tração baixa, acelerar contatos.\n- 🔴 **Vermelho**: sem fechamentos no período.\nNo alto fica o **pódio**. Escolha o período (dia, semana, mês, ano ou tudo).', aba: 'semaforo' },
+{ id: 'resultado_loja', so: 'lider', t: 'Onde vejo o resultado da loja inteira?', k: 'resultado da loja, numeros da loja, quanto a loja vendeu, dono de loja, socio integral',
+  r: 'O **Dono de Loja** e o **Sócio Integral** veem, no **Semáforo**, o cartão **🏬 Resultado da loja**: quantas vendas e quanto cada pessoa vendeu na loja, inclusive de outras equipes (só números, sem clientes). Os demais líderes veem a produção das lojas no quadro do Dashboard.', aba: 'semaforo' },
+{ id: 'mapa_cotas', t: 'O que é o Mapa de Cotas?', k: 'mapa de cotas, cotas vendidas, cores do mapa, ver cota, numero da cota',
+  r: 'O **Mapa de Cotas** mostra as cotas de 1 a 10.000 com cor por segmento. **Dourada** = contemplada; **cinza escuro** = cancelada. Toque numa cota para ver o cliente, o vendedor e o crédito, e para marcar contemplada ou cancelada. Filtre por consultor, segmento e faixa.', aba: 'mapaCotas' },
+
+// ===================== SIMULADOR =====================
+{ id: 'simulador', t: 'Como faço uma simulação para o cliente?', k: 'faco uma simulacao, fazer simulacao, fazer uma simulacao, simular para o cliente, simulacao, simular consorcio, simulador, parcela, lance, contemplacao, calcular plano',
+  r: '1. Vá em **Simulador de Consórcio** › **🔢 Simulador de Cotas**.\n2. Preencha os parâmetros do plano (modalidade, crédito, meses até a contemplação, reajuste…).\n3. Os cartões mostram cada estratégia de contemplação (com lance e sem lance). Em cada cartão:\n- **📢 Criar publicidade**: imagem pronta, com fundo à escolha.\n- **📲 Enviar por WhatsApp**.\n- **📄 Gerar proposta** (PDF).\n- **ℹ️ Mais informações**: a evolução mês a mês.', aba: 'simulador' },
+{ id: 'publicidade', t: 'Como crio uma publicidade da simulação?', k: 'publicidade, imagem da simulacao, arte para instagram, divulgacao, post, fundo da publicidade',
+  r: 'No **Simulador**, embaixo do cartão da estratégia, toque em **📢 Criar publicidade** e escolha o fundo. A imagem é baixada pronta para postar. Em "Enviar Simulação para o Cliente" você escolhe se vai a logo, os seus dados e o percentual da parcela.', aba: 'simulador' },
+{ id: 'proposta', t: 'Como gero a proposta em PDF?', k: 'proposta, pdf da simulacao, enviar proposta, documento para o cliente',
+  r: 'No **Simulador**, embaixo do cartão da estratégia, toque em **📄 Gerar proposta**. Sai um PDF com a simulação completa e os cenários de lance.', aba: 'simulador' },
+{ id: 'sim_outros', t: 'O que são Valor Futuro, Venda da Carta, Aplicação e Financiamento?', k: 'valor futuro, venda da carta, aplicacao juros, financiamento, sac, price, financiamento x consorcio, comparativo',
+  r: 'São as outras simulações do **Simulador**:\n- **📈 Valor Futuro**: quanto o crédito vale no futuro com o reajuste.\n- **💰 Venda da Carta**: o lucro ao vender a carta contemplada.\n- **🏦 Aplicação**: comparação com o dinheiro aplicado a juros.\n- **🏠 Financiamento (SAC/PRICE)**: a tabela de um financiamento.\n- **⚖️ Financiamento x Consórcio**: o comparativo entre os dois.', aba: 'simulador' },
+{ id: 'sim_apresentacao', t: 'Como transformo a simulação em apresentação?', k: 'virar apresentacao, simulacao em slide, apresentar simulacao',
+  r: 'No **Simulador**, toque em **🎞️ Virar apresentação**. A simulação vira slides na aba **Apresentações**, prontos para mostrar em tela cheia.', aba: 'simulador' },
+
+// ===================== PROSPECÇÃO =====================
+{ id: 'prospeccao', t: 'Como funciona a Prospecção de empresas?', k: 'prospeccao, buscar empresas, google maps, lista de empresas, prospectar',
+  r: '1. Vá em **Prospecção** e, uma vez só, coloque a sua **chave do Google** (botão "Colocar a chave e ver o passo a passo").\n2. Escreva o que procura (ex.: "imobiliária") e onde (cidade ou bairro) e toque em **Buscar**.\n3. Guarde as empresas na **Minha lista**, com a situação e as suas anotações.\n4. Quando uma empresa virar contato, transforme em lead.', aba: 'prospeccao' },
+{ id: 'prospeccao_chave', t: 'Como crio a chave do Google para a Prospecção?', k: 'chave do google, api key, places api, chave de api, google cloud',
+  r: 'Em **Prospecção**, toque em **Colocar a chave e ver o passo a passo**: lá estão os passos (criar o projeto no Google Cloud, ativar a Places API, criar e restringir a chave e limitar as consultas por dia). O Google dá 1.000 buscas grátis por mês, mas pede um cartão cadastrado. A chave fica guardada só no seu aparelho.', aba: 'prospeccao' },
+
+// ===================== FERRAMENTAS =====================
+{ id: 'aniversarios', t: 'Como vejo os aniversariantes?', k: 'aniversario, aniversariantes, quem faz aniversario, data de nascimento',
+  r: 'Na aba **Aniversariantes** ficam os aniversários da equipe e dos clientes (de quem tem data de nascimento cadastrada). Filtre por categoria e mês; "É HOJE" e "É AMANHÃ" aparecem em destaque.', aba: 'aniversarios' },
+{ id: 'parabens', t: 'Como envio uma imagem de parabéns?', k: 'parabens, mensagem de aniversario, imagem de aniversario, feliz aniversario, cartao de aniversario',
+  r: '1. Em **Aniversariantes**, toque em **🎉 Enviar parabéns** na linha da pessoa.\n2. Confira o nome, a data e o texto (o texto que você deixar vira o padrão).\n3. Se quiser, toque em **🖼️ Escolher outra foto** e ajuste o tamanho, a posição (arrastando) e o giro.\n4. Toque em **📲 Enviar pelo WhatsApp** ou **📥 Baixar imagem**.\nPara membros vai a foto do cadastro; para clientes, a imagem de um presente.', aba: 'aniversarios' },
+{ id: 'parabens_foto', t: 'A foto do parabéns ficou ruim ou cortada', k: 'foto ruim, foto borrada, foto cortada, ajustar foto, trocar foto do parabens, foto em baixa resolucao',
+  r: 'Na janela de parabéns, toque em **🖼️ Escolher outra foto** e pegue a foto original do aparelho (ela entra na qualidade original e não fica guardada no CRM). Depois use **Tamanho**, **arraste a foto** na prévia, **↻ Girar** ou **Centralizar** até ficar perfeita no quadrado.', aba: 'aniversarios' },
+{ id: 'calculadora', t: 'Onde fica a calculadora?', k: 'calculadora, hp12c, calcular, conta',
+  r: 'Na aba **Calculadora** há uma calculadora comum e uma **HP12C** (para juros e prestações).', aba: 'calculadora' },
+{ id: 'material', t: 'O que tem no Material de Apoio?', k: 'material de apoio, scripts, roteiro, abordagem, objecoes, bdr, 5 passos, pos venda',
+  r: 'Em **Material de Apoio**:\n- **💬 Scripts por Nicho**: falas e ganchos para cada nicho (dá para criar e editar).\n- **🎯 Processo BDR**.\n- **🤝 5 Passos da Venda**.\n- **💙 Pós-Venda**: o que fazer em D+0, D+3 e D+15.', aba: 'materialApoio' },
+{ id: 'apresentacoes', t: 'Como uso a aba Apresentações?', k: 'apresentar pdf, apresentar para o cliente, apresentacoes, slides, apresentar pdf, tela cheia, montar apresentacao',
+  r: 'Em **Apresentações** você:\n- monta **Slides** e apresenta em tela cheia;\n- apresenta **PDFs** página a página;\n- escreve **Notas** à mão (canetas, cores, papel, zoom).\nTudo fica guardado **só neste aparelho**. Use **Cópia de segurança** para levar a outro aparelho ou se proteger se o navegador for limpo.', aba: 'apresentacoes' },
+{ id: 'informacoes', t: 'Como publico um comunicado para a equipe?', k: 'informacoes, mural, comunicado, publicar aviso, arquivos para equipe, nova publicacao',
+  r: '1. Vá em **Informações & Arquivos**.\n2. Toque em **+ Nova Publicação**.\n3. Escreva título, texto, link (se tiver) e anexe o arquivo.\n4. Toque em **Publicar no Mural**.\nQuem organiza o mural pode **arrastar** as publicações pela alça ⠿ para mudar a ordem.', aba: 'informacoes' },
+{ id: 'gastos', t: 'Como controlo meus gastos pessoais?', k: 'gastos, despesas, receitas, financas pessoais, controle financeiro, saldo',
+  r: 'Na aba **Gastos** ficam as suas receitas e despesas mês a mês, como numa planilha: edite qualquer valor direto na tabela e crie categorias (+ Categoria). **🔗 Importar Comissões** traz as comissões recebidas; há também o comparativo entre anos e a exportação para Excel.', aba: 'gastos' },
+{ id: 'consultores_vendas', t: 'Para que serve Consultores & Vendas?', k: 'consultores e vendas, consultor externo, lancar venda de outro, vendedor sem acesso, cadastrar consultor',
+  r: 'Para lançar vendas de consultores que **não usam o CRM**:\n1. **+ Cadastrar Consultor** (nome e contato).\n2. **+ Lançar Venda** (cliente, segmento, modalidade, grupo, cota, crédito e data).\nCada venda entra no Semáforo, no Dashboard e na Comissão. Dá também para **importar vendas** de planilha.', aba: 'consultoresVendas' },
+
+// ===================== EQUIPE, LOJAS E CARGOS =====================
+{ id: 'cargos', t: 'Quais são os cargos e o que cada um pode fazer?', k: 'cargos, hierarquia, niveis, quem e lider, cargo, socio integral, licenciado, autorizado senior, lider em treinamento',
+  r: 'Do mais alto para o mais baixo: **Dono de Loja**, **Sócio Integral**, **Sócio Operacional**, **Licenciado**, **Autorizado Sênior**, **Líder em treinamento**, **Consultor autorizado** e **Consultor em prévia**.\n- De **Líder em treinamento para cima**: lidera equipe, cadastra membros, define a loja de quem está abaixo e vê a produção das lojas.\n- **Consultor autorizado**: matrícula própria.\n- **Consultor em prévia**: vende na matrícula de um autorizado acima.\n- **Dono de Loja e Sócio Integral**: também veem o resultado da loja inteira.' },
+{ id: 'quem_ve', t: 'O que o meu líder vê das minhas coisas?', k: 'o que o lider ve, privacidade, quem ve meus leads, quem ve minhas vendas, o lider ve minha comissao',
+  r: 'Quem está acima de você vê o **resumo das suas vendas** (data, cliente, grupo, cota e valor) e os seus números no Dashboard e no Semáforo. Os **recebimentos** (parcelas de comissão) ficam só com você e com o dono da matrícula. Os seus **leads** e a sua **agenda** são só seus. Pessoas de outras equipes não veem nada seu.' },
+{ id: 'membro_novo', so: 'lider', t: 'Como cadastro um novo membro na equipe?', k: 'cadastrar membro, novo consultor, adicionar pessoa, incluir na equipe, novo usuario, cadastrar liderado',
+  r: '1. Vá em **Equipe & Hierarquia** › **+ Adicionar Membro**.\n2. Preencha nome, telefone, e-mail, cargo, **líder direto** e **loja**.\n3. Toque em **Cadastrar no CRM**.\nNo Elo online aparece um **código de acesso**: envie à pessoa pelo WhatsApp (botão pronto). Ela usa o código em "Primeiro acesso ou senha nova".', aba: 'usuarios' },
+{ id: 'membro_editar', so: 'lider', t: 'Como mudo o cargo, o líder ou a loja de um membro?', k: 'editar membro, promover, mudar cargo, trocar lider, mudar de loja, mudar equipe',
+  r: '1. Em **Equipe & Hierarquia**, toque em **Editar** na linha da pessoa.\n2. Em **Lojas, cargos e líderes**, ajuste a loja, o cargo e o líder (uma linha por loja em que ela atua).\n3. Toque em **Salvar**.\nSó quem está acima da pessoa (de Líder em treinamento para cima) ou a administração mudam isso; ninguém muda a própria loja ou o próprio cargo.', aba: 'usuarios' },
+{ id: 'membro_varias_lojas', so: 'lider', t: 'Como coloco uma pessoa em mais de uma loja?', k: 'mais de uma loja, varias lojas, duas lojas, outra loja',
+  r: 'De **Líder em treinamento para cima** a pessoa pode atuar em várias lojas:\n- No cadastro novo, depois de escolher a loja principal, marque as **outras lojas**.\n- Num membro já cadastrado: **Editar** › **+ Adicionar outra loja** (cada loja pode ter cargo e líder diferentes).', aba: 'usuarios' },
+{ id: 'membro_desativar', so: 'lider', t: 'Como desativo alguém que saiu da equipe?', k: 'desativar membro, pessoa saiu, remover da equipe, demitido, inativar',
+  r: 'Em **Equipe & Hierarquia**, toque em **Desativar** na linha da pessoa. Ela não consegue mais entrar, mas as vendas já lançadas continuam no histórico. Se ela liderava alguém, o CRM avisa o que acontece com os liderados. Para voltar, use **Reativar**.', aba: 'usuarios' },
+{ id: 'lojas', t: 'Quem cria, renomeia e exclui lojas?', k: 'criar loja, nova loja, renomear loja, mudar nome da loja, excluir loja, lojas',
+  r: '- **Criar e excluir lojas**: só a administração.\n- **Mudar o nome**: a administração ou o **Dono de Loja** daquela loja (em Equipe & Hierarquia › Sua loja › renomear).\n- **Em qual loja cada pessoa fica**: quem está acima dela (de Líder em treinamento para cima) ou a administração.', aba: 'usuarios' },
+{ id: 'adm_contas', so: 'adm', t: 'Para que serve a aba Contas?', k: 'contas, bloquear acesso, quem pagou, administracao, codigo de acesso, tamanho do banco',
+  r: 'A aba **🔑 Contas** é só da administração. Ela lista todas as contas de acesso, com:\n- **bloquear e desbloquear** (por exemplo, quem não pagou);\n- marcar o **pagamento**;\n- gerar o **código de acesso** de qualquer pessoa;\n- ver o tamanho do banco de dados.', aba: 'contas' },
+{ id: 'adm_cadastro', so: 'adm', t: 'Como a administração cadastra pessoas e lojas?', k: 'administrador cadastrar, admin, cadastrar dono de loja, sem lider, topo',
+  r: 'Como administração você cadastra qualquer pessoa em qualquer loja e abaixo de qualquer líder (em **Equipe** › **+ Adicionar Membro**). Quem fica no topo de uma loja (por exemplo, o Dono de Loja) entra **sem líder**. Lojas: **+ Nova loja**, **renomear** e **excluir** em Equipe & Hierarquia.', aba: 'usuarios' },
+
+// ===================== DADOS, BACKUP E ERROS =====================
+{ id: 'desfazer', t: 'Fiz algo errado, dá para desfazer?', k: 'da pra desfazer, fiz besteira, sem querer, desfazer o que fiz, desfazer, voltar, errei, apaguei sem querer, ctrl z, refazer, volta o que eu fiz',
+  r: 'Dá. Use o botão **↺ Desfazer** no topo (ou **Ctrl+Z**); **↻ Refazer** (ou Ctrl+Y) volta a ação. Vale para leads, vendas, agenda, notas, etapas e gastos, até **20 passos**, enquanto o CRM estiver aberto. Se você já fechou o CRM, veja "Apaguei dados, como recupero?".' },
+{ id: 'recuperar', t: 'Apaguei dados por engano, como recupero?', k: 'perdi tudo, sumiu tudo do crm, apaguei tudo, recuperar o que apaguei, recuperar dados, apaguei tudo, perdi meus dados, sumiu tudo, voltar copia, restaurar',
+  r: '1. Se acabou de acontecer, use **↺ Desfazer** (Ctrl+Z).\n2. Senão, vá em **Configurações** › **🛟 Cópias automáticas**: o CRM guarda uma cópia por dia e uma antes de cada importação. Toque em **↩ Voltar para esta** na cópia de antes do problema.\n3. No Elo online, os seus dados também estão na nuvem: entrar de novo ou usar **Conferir tudo com a nuvem** traz de volta o que estava sincronizado.', aba: 'configuracoes' },
+{ id: 'backup', t: 'Como faço backup dos meus dados?', k: 'faco backup, fazer backup, como fazer backup, salvar backup, backup, copia de seguranca, salvar dados, baixar backup, exportar dados, guardar meus dados',
+  r: 'Em **Configurações** › **🛟 Cópias automáticas**:\n- **💾 Baixar agora** baixa o arquivo de backup.\n- Em "Baixar o arquivo de backup sozinho", escolha **Todo dia** ou **Toda semana**.\nGuarde o arquivo fora do aparelho (Drive, e-mail, computador). As **Apresentações** têm a cópia de segurança delas, na própria aba.', aba: 'configuracoes' },
+{ id: 'mesclar', t: 'Como trago os dados de outro CRM (outro backup)?', k: 'importar backup, mesclar backup, juntar crm, trazer dados de outro crm, importar e mesclar',
+  r: '1. Vá em **Configurações** › **🔀 Importar e Mesclar Backup de Outro CRM**.\n2. Toque em **📥 Selecionar Backup e Mesclar** e escolha o arquivo.\nO CRM acrescenta os leads e as vendas sem apagar nada e pula os que já existem (pelo telefone, ou nome + cidade). Antes, ele guarda uma cópia automática, então dá para voltar se precisar.', aba: 'configuracoes' },
+{ id: 'celular_novo', t: 'Troquei de celular, como levo meus dados?', k: 'celular novo, trocar aparelho, levar dados, novo computador, migrar',
+  r: '- **Elo online**: é só entrar com o seu e-mail e senha no aparelho novo; tudo vem da nuvem. As **Apresentações** (slides, PDFs e notas) ficam no aparelho: leve pela Cópia de segurança da aba.\n- **CRM de um aparelho**: baixe o **backup** no aparelho antigo (Configurações › Baixar agora) e, no novo, importe o arquivo.' },
+{ id: 'lento', t: 'O CRM está lento ou travando', k: 'lento, travando, demorando, pesado, nao carrega, tela branca',
+  r: '1. Feche e abra o CRM de novo (no celular, tire o app da lista de abertos).\n2. Confira a internet (no Elo online).\n3. Fotos e arquivos grandes deixam o CRM pesado: remova anexos e fotos que não precisa.\n4. Se continuar, avise o seu líder ou a administração.' },
+{ id: 'atualizar', t: 'Como pego a versão nova do CRM?', k: 'atualizar o crm, versao nova, atualizacao, novidade nao apareceu',
+  r: 'O CRM se atualiza sozinho. Se uma novidade não apareceu, **feche e abra** o CRM (no celular, tire o app da lista de abertos e abra de novo).' },
+{ id: 'zerar', so: 'local', t: 'Como deixo o CRM limpo (zerado)?', k: 'zerar crm, apagar tudo, resetar, limpar banco, comecar do zero',
+  r: 'Em **Configurações** › **⚠️ Zerar Banco de Dados Local** › **🧹 Resetar CRM Local**. Isso apaga **todos** os dados deste aparelho. Antes, baixe um **backup**!', aba: 'configuracoes' },
+{ id: 'perfil', t: 'Como mudo minha foto e meus dados?', k: 'foto de perfil, mudar foto, meu perfil, meus dados, telefone, data de nascimento, pix, cpf',
+  r: '1. Vá em **Configurações**.\n2. Em **Meu Perfil**, toque em **📷 Carregar Nova Foto** e ajuste nome, nascimento, telefone, CPF e PIX.\n3. Toque em **Salvar Meus Dados**.\nA foto é reduzida sozinha para ficar leve.', aba: 'configuracoes' },
+{ id: 'identidade', so: 'local', t: 'Como mudo o nome e a logo do CRM?', k: 'identidade visual, nome do crm, logo, marca, subtitulo',
+  r: 'Em **Configurações** › **🏷️ Identidade Visual do CRM**, mude o nome, o subtítulo, as iniciais da logo e o texto inferior, e toque em **Salvar Identidade**.', aba: 'configuracoes' },
+{ id: 'privacidade', t: 'Meus dados ficam seguros? Outros consultores veem minhas coisas?', k: 'seguranca, privacidade, lgpd, outros veem meus dados, sigilo, dados dos clientes',
+  r: 'Cada pessoa vê só o que é dela e de quem está abaixo dela. Consultores de outras equipes **não** veem os seus leads, vendas nem comissões. Os recebimentos ficam só com você e o dono da matrícula. No Elo online, o acesso é com e-mail e senha pessoais; nunca passe a sua senha para ninguém.' },
+{ id: 'assistente', t: 'O que este assistente sabe?', k: 'quem e voce, o que voce sabe, assistente, ajuda, voce e uma ia, chat',
+  r: 'Sou o assistente de dúvidas do CRM: explico cada aba e cada função, com passo a passo, e o que fazer quando algo dá errado. Eu não vejo os seus dados nem os de ninguém. Se eu não souber responder, fale com o seu líder ou com a administração.' }
+];
+
+// ================== ASSISTENTE DE DÚVIDAS (dentro do CRM, sem internet e sem custo) ==================
+// Responde pela base ASSIST_BASE (perguntas e respostas escritas sobre cada aba e função do CRM).
+// Entende jeitos diferentes de perguntar, sinônimos e erros de digitação; quando não tem certeza, sugere as perguntas mais parecidas.
+// Não vê dados de ninguém: só conhece o texto da base.
+(function(){
+  if (typeof ASSIST_BASE === 'undefined') return;
+  const PARADAS = new Set(('a o as os e é de da do das dos em no na nos nas num numa um uma uns umas para pra pro por pelo pela com como que qual quais onde quando ' +
+    'eu me meu minha meus minhas mim voce vc voces se seu sua seus suas ele ela eles elas isso esse essa este esta isto aquele aquela ja ai la aqui ' +
+    'faco fazer faz fiz feito tem ter tenho temos tinha da dar consigo consegue conseguir posso pode podemos poder gostaria queria quero preciso precisa ' +
+    'saber sei sabe alguem algum alguma tipo coisa coisas entao mas mais muito muita pouco favor obrigado ola oi bom boa dia tarde noite tudo bem ' +
+    'agora hoje sempre so ao aos ou vou vai ir ser sao estar esta estou foi era fica ficar ficou the uso usar usa usando funciona funcionar vejo ver vendo acho achar crm sistema consorcio consorcios deixo deixar deixa alguem algo acontece aconteceu').split(' '));
+  // jeitos diferentes de dizer a mesma coisa (tudo vira a palavra da direita)
+  const SINON = {
+    cliente: 'lead', clientes: 'lead', contato: 'lead', contatos: 'lead', leads: 'lead', prospect: 'lead',
+    zap: 'whatsapp', whats: 'whatsapp', wpp: 'whatsapp', zapzap: 'whatsapp',
+    apagar: 'excluir', apaguei: 'excluir', deletar: 'excluir', deletei: 'excluir', remover: 'excluir', removi: 'excluir', exclui: 'excluir', excluo: 'excluir', apago: 'excluir',
+    cadastrar: 'cadastro', cadastro: 'cadastro', adicionar: 'cadastro', incluir: 'cadastro', criar: 'cadastro', crio: 'cadastro', cadastrei: 'cadastro', registrar: 'cadastro', lancar: 'cadastro', lanco: 'cadastro', lancei: 'cadastro', novo: 'cadastro', nova: 'cadastro', cadastrando: 'cadastro', cadastra: 'cadastro', inserir: 'cadastro', colocar: 'cadastro', coloco: 'cadastro',
+    mudar: 'alterar', mudo: 'alterar', trocar: 'alterar', troco: 'alterar', editar: 'alterar', edito: 'alterar', alterar: 'alterar', altero: 'alterar', corrigir: 'alterar', corrijo: 'alterar', ajustar: 'alterar', modificar: 'alterar', atualizar: 'alterar', arrumar: 'alterar', consertar: 'alterar',
+    reuniao: 'reuniao', reunioes: 'reuniao', compromisso: 'reuniao', compromissos: 'reuniao', evento: 'reuniao', eventos: 'reuniao', visita: 'reuniao', encontro: 'reuniao', agendamento: 'reuniao', agendar: 'agenda', marcar: 'agenda',
+    membro: 'membro', membros: 'membro', usuario: 'membro', usuarios: 'membro', liderado: 'membro', liderados: 'membro', colaborador: 'membro', pessoa: 'membro', pessoas: 'membro', vendedor: 'membro', vendedores: 'membro',
+    unidade: 'loja', unidades: 'loja', lojas: 'loja', filial: 'loja',
+    errado: 'erro', errada: 'erro', errei: 'erro', engano: 'erro', equivocado: 'erro', erros: 'erro', errados: 'erro', erradas: 'erro',
+    sumiu: 'sumiu', desapareceu: 'sumiu', sumiram: 'sumiu', perdi: 'sumiu', perdeu: 'sumiu', sumindo: 'sumiu', aparece: 'aparecer', aparecendo: 'aparecer', apareceu: 'aparecer',
+    copia: 'backup', copias: 'backup', backups: 'backup', bkp: 'backup',
+    comissoes: 'comissao', comisao: 'comissao', comicao: 'comissao', parcelas: 'parcela', parcela: 'parcela', recebimento: 'parcela', recebimentos: 'parcela',
+    vendas: 'venda', vendi: 'venda', vender: 'venda', vendida: 'venda', vendido: 'venda', fechei: 'venda', fechamento: 'venda', fechou: 'venda',
+    cotas: 'cota', senha: 'senha', password: 'senha', senhas: 'senha', login: 'entrar', logar: 'entrar', acessar: 'entrar', acesso: 'entrar', entro: 'entrar',
+    celular: 'celular', smartphone: 'celular', iphone: 'celular', android: 'celular', telefone: 'telefone', fone: 'telefone', numero: 'telefone', telefones: 'telefone',
+    registro: 'cadastro', registrei: 'cadastro', mando: 'enviar', mandar: 'enviar', envio: 'enviar', enviar: 'enviar', envia: 'enviar', mandei: 'enviar', imprimo: 'relatorio', impressora: 'relatorio', desfazer: 'desfazer', desfaco: 'desfazer', desfiz: 'desfazer', voltar: 'desfazer',
+    imprimir: 'relatorio', impressao: 'relatorio', relatorios: 'relatorio',
+    apresentacao: 'apresentacoes', slide: 'apresentacoes', slides: 'apresentacoes',
+    lider: 'lider', gestor: 'lider', gerente: 'lider', chefe: 'lider', supervisor: 'lider', lideres: 'lider',
+    desistiu: 'cancelada', desistencia: 'cancelada', cancelar: 'cancelada', cancelei: 'cancelada', cancelamento: 'cancelada', cancelou: 'cancelada',
+    aniversario: 'aniversario', aniversarios: 'aniversario', niver: 'aniversario', aniversariante: 'aniversario', aniversariantes: 'aniversario',
+    pagou: 'pago', pago: 'pago', paga: 'pago', pagar: 'pago', pagamento: 'pago', pagaram: 'pago', quitou: 'pago',
+    tirar: 'excluir', tiro: 'excluir', tira: 'excluir', subir: 'importar', subo: 'importar', sobe: 'importar', importo: 'importar', importar: 'importar', importacao: 'importar',
+    apresento: 'apresentacoes', apresentar: 'apresentacoes', apresentando: 'apresentacoes',
+    baixo: 'baixar', baixar: 'baixar', baixei: 'baixar', download: 'baixar',
+    meta: 'meta', metas: 'meta', objetivo: 'meta', foto: 'foto', fotos: 'foto', imagem: 'foto', imagens: 'foto'
+  };
+  const norm = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+  function raiz(w){
+    if (SINON[w]) return SINON[w];
+    for (const suf of ['amentos', 'amento', 'imento', 'acoes', 'icoes', 'acao', 'icao', 'ando', 'endo', 'indo', 'ados', 'adas', 'idos', 'idas', 'ado', 'ada', 'ido', 'ida', 'ar', 'er', 'ir', 'ei', 'ou', 'es', 's'])
+      if (w.endsWith(suf) && w.length - suf.length >= 4) { const r = w.slice(0, -suf.length); return SINON[r] || r; }
+    return w;
+  }
+  const tokens = s => norm(s).split(' ').filter(w => w && w.length > 1 && !PARADAS.has(w)).map(raiz);
+  function lev(a, b, max){
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    const v = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) { let ant = v[0]; v[0] = i; let menor = v[0];
+      for (let j = 1; j <= b.length; j++) { const t = v[j]; v[j] = Math.min(v[j] + 1, v[j - 1] + 1, ant + (a[i - 1] === b[j - 1] ? 0 : 1)); ant = t; if (v[j] < menor) menor = v[j]; }
+      if (menor > max) return max + 1; }
+    return v[b.length];
+  }
+  // ---------- índice da base ----------
+  const INDICE = ASSIST_BASE.map(e => {
+    const pesos = new Map(); const pesar = (txt, p) => tokens(txt).forEach(w => pesos.set(w, Math.max(pesos.get(w) || 0, p)));
+    pesar(String(e.r || '').replace(/\*\*/g, '').slice(0, 500), 0.6); pesar(e.k || '', 2); pesar(e.t, 3);
+    const frases = String(e.k || '').split(',').map(norm).filter(f => f.split(' ').length >= 2).concat([norm(e.t).replace(/^(como|o que|onde|quem|qual|quais|para que serve)\s+/, '')]);
+    return { e, pesos, frases, lista: [...pesos.keys()], titulo: new Set(tokens(e.t)) };
+  });
+  const DF = new Map(); INDICE.forEach(x => x.lista.forEach(w => DF.set(w, (DF.get(w) || 0) + 1)));
+  const RARO = new Map(); { const N = INDICE.length; let soma = 0; DF.forEach((d, w) => { const v = Math.log((N + 1) / (d + 0.5)); RARO.set(w, v); soma += v; }); const media = soma / Math.max(1, DF.size); RARO.forEach((v, w) => RARO.set(w, Math.max(0.25, v / media))); }
+  const raro = w => RARO.get(w) || 1;
+  function visivel(e){
+    if (!e.so) return true;
+    const online = typeof ELO_ONLINE !== 'undefined' && ELO_ONLINE;
+    const admin = online && typeof eloOnSouAdmin === 'function' && eloOnSouAdmin();
+    if (e.so === 'on') return online;
+    if (e.so === 'local') return !online;
+    if (e.so === 'adm') return admin;
+    if (e.so === 'lider') { try { return admin || (typeof hierDonoVeTudo === 'function' && hierDonoVeTudo()) || (currentUser && hierMelhorNivel(currentUser) < HIER_NIVEL_CONSULTOR); } catch (err) { return true; } }
+    return true;
+  }
+  function procurar(pergunta){
+    const q = [...new Set(tokens(pergunta))], qn = ' ' + norm(pergunta) + ' ';
+    if (!q.length) return [];
+    return INDICE.filter(x => visivel(x.e)).map(x => {
+      let s = 0, achou = 0; const tocados = new Set();
+      q.forEach(w => {
+        let p = (x.pesos.get(w) || 0) * raro(w); if (p) tocados.add(w);
+        if (!p && w.length >= 5) x.lista.forEach(o => {
+          if (o.length < 5) return;
+          const lim = w.length >= 8 ? 2 : 1; let v = 0;
+          if (lev(w, o, lim) <= lim) v = (x.pesos.get(o) || 0) * raro(o) * 0.75;
+          else if (w.length >= 5 && (o.startsWith(w) || w.startsWith(o)) && Math.min(o.length, w.length) >= 5) v = (x.pesos.get(o) || 0) * raro(o) * 0.6;
+          if (v > p) { p = v; } if (v) tocados.add(o);
+        });
+        if (p) { s += p; achou++; }
+      });
+      x.frases.forEach(f => { if (f && f.length > 4 && qn.includes(' ' + f + ' ')) s += 4; });
+      const cobre = achou / q.length;
+      const preciso = x.titulo.size ? [...x.titulo].filter(w => tocados.has(w)).length / x.titulo.size : 0;   // quanto da pergunta principal bate
+      return { e: x.e, s: (s + (preciso >= 0.5 ? 1.5 * preciso : 0)) * (0.55 + 0.45 * cobre) * (0.7 + 0.3 * preciso) };
+    }).filter(r => r.s > 0).sort((a, b) => b.s - a.s);
+  }
+
+  // ---------- conversa ----------
+  const SAUDACAO = /^(oi+|ola|opa|bom dia|boa tarde|boa noite|e ai|eai|hey|hello)\b/;
+  const AGRADECE = /^(obrigad[oa]|valeu|vlw|brigad[oa]|show|top|perfeito|otimo|beleza|blz|ok|entendi)\b/;
+  const POR_ABA = {
+    dashboard: ['dashboard', 'relatorio', 'meta', 'para_hoje'], leads: ['lead_novo', 'venda_nova', 'lead_notas', 'importar_planilha'], prospeccao: ['prospeccao', 'prospeccao_chave'],
+    mapaCotas: ['mapa_cotas', 'venda_contemplada', 'venda_cancelada'], semaforo: ['semaforo', 'resultado_loja'], agenda: ['agenda_nova', 'agenda_reagendar', 'agenda_google'],
+    simulador: ['simulador', 'publicidade', 'proposta'], comissoes: ['comissao_mes', 'comissao_recebi', 'venda_errada', 'matricula'], gastos: ['gastos'], indicesGrupo: ['incc'],
+    calculadora: ['calculadora'], aniversarios: ['parabens', 'parabens_foto', 'aniversarios'], materialApoio: ['material'], apresentacoes: ['apresentacoes', 'sim_apresentacao'],
+    informacoes: ['informacoes'], usuarios: ['membro_novo', 'membro_editar', 'on_gerar_codigo', 'lojas'], consultoresVendas: ['consultores_vendas'], configuracoes: ['backup', 'recuperar', 'trocar_senha', 'personalizar'], contas: ['adm_contas']
+  };
+  const GERAIS = ['venda_nova', 'venda_errada', 'comissao_mes', 'desfazer', 'backup', 'lead_novo'];
+  const GRUPOS = [
+    ['Começo e navegação', ['oque', 'tour', 'menu_cel', 'personalizar', 'busca', 'tema', 'notif', 'instalar', 'zoom', 'assistente']],
+    ['Entrar e senha', ['on_primeiro', 'on_esqueci', 'on_gerar_codigo', 'trocar_senha', 'local_esqueci', 'trocar_email', 'bloqueado', 'outro_aparelho', 'sem_internet', 'nao_aparece', 'sair']],
+    ['Leads e clientes', ['lead_novo', 'lead_duplicado', 'lead_editar', 'lead_excluir', 'lead_score', 'lead_privado', 'lead_filtros', 'lead_whats', 'lead_notas', 'indicadores', 'importar_planilha', 'exportar_leads', 'nota_mao', 'transferir_lead']],
+    ['Vendas e cotas', ['venda_nova', 'venda_errada', 'venda_excluir', 'venda_cancelada', 'venda_contemplada', 'cota_repetida', 'transferir_venda', 'seguro', 'modalidade', 'matricula', 'matricula_errada', 'so_minhas']],
+    ['Comissões', ['comissao_como', 'comissao_recebi', 'comissao_mes', 'comissao_valor', 'comissao_imposto', 'comissao_recalc', 'comissao_naoaparece', 'incc']],
+    ['Agenda', ['agenda_nova', 'agenda_reagendar', 'agenda_google', 'agenda_vista', 'para_hoje']],
+    ['Dashboard, ranking e relatório', ['dashboard', 'meta', 'producao_lojas', 'relatorio', 'semaforo', 'resultado_loja', 'mapa_cotas']],
+    ['Simulador e prospecção', ['simulador', 'publicidade', 'proposta', 'sim_outros', 'sim_apresentacao', 'prospeccao', 'prospeccao_chave']],
+    ['Outras ferramentas', ['aniversarios', 'parabens', 'parabens_foto', 'calculadora', 'material', 'apresentacoes', 'informacoes', 'gastos', 'consultores_vendas']],
+    ['Equipe, lojas e cargos', ['cargos', 'quem_ve', 'membro_novo', 'membro_editar', 'membro_varias_lojas', 'membro_desativar', 'lojas', 'adm_contas', 'adm_cadastro']],
+    ['Dados, backup e problemas', ['desfazer', 'recuperar', 'backup', 'mesclar', 'celular_novo', 'lento', 'atualizar', 'zerar', 'perfil', 'identidade', 'privacidade']]
+  ];
+  const porId = id => ASSIST_BASE.find(e => e.id === id);
+  const e_ = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function formatar(txt){
+    const linhas = e_(txt).split('\n'); let html = '', lista = null;
+    const fecha = () => { if (lista) { html += `</${lista}>`; lista = null; } };
+    linhas.forEach(l => {
+      const num = /^\d+\.\s+(.*)$/.exec(l), tp = /^-\s+(.*)$/.exec(l);
+      if (num) { if (lista !== 'ol') { fecha(); html += '<ol>'; lista = 'ol'; } html += `<li>${num[1]}</li>`; }
+      else if (tp) { if (lista !== 'ul') { fecha(); html += '<ul>'; lista = 'ul'; } html += `<li>${tp[1]}</li>`; }
+      else { fecha(); if (l.trim()) html += `<p>${l}</p>`; }
+    });
+    fecha();
+    return html.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+  }
+  const NOMES_ABA = () => (typeof PAGE_TITLES !== 'undefined' ? PAGE_TITLES : {});
+  function abaExiste(aba){ const b = document.querySelector(`.sidebar .nav button[onclick*="show('${aba}'"], #btnNavContas`); return !!document.getElementById(aba) && (aba !== 'contas' || !!document.getElementById('btnNavContas')); }
+
+  // ---------- tela ----------
+  let painel = null, historico = [];
+  function botaoFlutuante(){
+    if (document.getElementById('assistBtn')) return;
+    const b = document.createElement('button'); b.id = 'assistBtn'; b.type = 'button'; b.title = 'Dúvidas sobre o CRM';
+    b.innerHTML = '<span class="as-ic">💬</span><span class="as-tx">Dúvidas</span>'; b.onclick = () => assistenteAbrir();
+    document.body.appendChild(b);
+  }
+  function montarPainel(){
+    painel = document.createElement('div'); painel.id = 'assistPainel'; painel.setAttribute('role', 'dialog'); painel.setAttribute('aria-label', 'Assistente de dúvidas');
+    painel.innerHTML = `<div class="as-topo"><div><b>💬 Dúvidas do CRM</b><small>Explico cada aba e função, passo a passo</small></div>
+        <div class="as-topo-bt"><button type="button" title="Ver todos os assuntos" onclick="assistenteAssuntos()">☰</button><button type="button" title="Fechar" onclick="assistenteFechar()">✕</button></div></div>
+      <div class="as-msgs" id="assistMsgs" aria-live="polite"></div>
+      <form class="as-entrada" onsubmit="event.preventDefault(); assistentePerguntar(document.getElementById('assistTexto').value)">
+        <input id="assistTexto" type="text" autocomplete="off" placeholder="Escreva sua dúvida… ex.: como lanço uma venda?" maxlength="300">
+        <button type="submit" title="Enviar">➤</button></form>`;
+    document.body.appendChild(painel);
+  }
+  function rolar(){ const m = document.getElementById('assistMsgs'); if (m) m.scrollTop = m.scrollHeight; }
+  function balao(quem, html){
+    const m = document.getElementById('assistMsgs'); if (!m) return;
+    const d = document.createElement('div'); d.className = 'as-msg ' + (quem === 'eu' ? 'as-eu' : 'as-ele'); d.innerHTML = html; m.appendChild(d);
+    historico.push({ quem, html }); if (historico.length > 60) historico.shift();
+    rolar();
+  }
+  function chips(ids, titulo){
+    const vis = ids.map(porId).filter(e => e && visivel(e)); if (!vis.length) return '';
+    return `${titulo ? `<div class="as-sub">${titulo}</div>` : ''}<div class="as-chips">${vis.map(e => `<button type="button" onclick="assistenteResposta('${e.id}', true)">${e_(e.t)}</button>`).join('')}</div>`;
+  }
+  function paginaAtual(){ return (document.querySelector('.page.active') || {}).id || 'dashboard'; }
+  function boasVindas(){
+    const nome = (typeof currentUser !== 'undefined' && currentUser && currentUser.nome) ? currentUser.nome.split(' ')[0] : '';
+    const aba = paginaAtual(), tit = NOMES_ABA()[aba];
+    const sugest = [...new Set((POR_ABA[aba] || []).concat(GERAIS))].slice(0, 6);
+    balao('ele', `<p>Olá${nome ? ', ' + e_(nome) : ''}! 👋 Sou o assistente de dúvidas do CRM. Pergunte do seu jeito, por exemplo: <i>"como lanço uma venda?"</i> ou <i>"errei o mês da parcela, e agora?"</i></p>${chips(sugest, tit ? 'Dúvidas comuns em ' + e_(tit) + ':' : 'Dúvidas comuns:')}`);
+  }
+  window.assistenteAbrir = function(){
+    if (!painel) montarPainel();
+    painel.classList.add('aberto'); document.body.classList.add('as-aberto');
+    if (!historico.length) boasVindas();
+    setTimeout(() => { const i = document.getElementById('assistTexto'); if (i && window.innerWidth > 700) i.focus(); }, 60);
+  };
+  window.assistenteFechar = function(){ if (painel) painel.classList.remove('aberto'); document.body.classList.remove('as-aberto'); };
+  window.assistenteResposta = function(id, mostrarPergunta){
+    const e = porId(id); if (!e || !visivel(e)) return;
+    if (mostrarPergunta) balao('eu', `<p>${e_(e.t)}</p>`);
+    const nomeAba = e.aba && NOMES_ABA()[e.aba];
+    const irPara = e.aba && abaExiste(e.aba) ? `<button type="button" class="as-ir" onclick="assistenteIr('${e.aba}')">➜ Ir para ${e_(nomeAba || 'a aba')}</button>` : '';
+    const relacionadas = procurar(e.t + ' ' + (e.k || '')).filter(r => r.e.id !== e.id).slice(0, 3).map(r => r.e.id);
+    balao('ele', `<div class="as-tit">${e_(e.t)}</div>${formatar(e.r)}${irPara}${chips(relacionadas, 'Veja também:')}`);
+  };
+  window.assistenteIr = function(aba){
+    try { show(aba, document.querySelector(`.sidebar .nav button[onclick*="show('${aba}'"]`)); } catch (err) { try { show(aba, null); } catch (e2) {} }
+    if (window.innerWidth <= 700) assistenteFechar();
+  };
+  window.assistenteAssuntos = function(){
+    if (!painel) assistenteAbrir();
+    balao('ele', '<p>Estes são os assuntos que eu sei explicar:</p>' + GRUPOS.map(([g, ids]) => chips(ids, g)).join(''));
+  };
+  window.assistentePerguntar = function(texto){
+    const t = String(texto || '').trim(); const inp = document.getElementById('assistTexto'); if (inp) inp.value = '';
+    if (!t) return;
+    balao('eu', `<p>${e_(t)}</p>`);
+    const n = norm(t);
+    if (AGRADECE.test(n) && n.split(' ').length <= 4) return balao('ele', '<p>Por nada! Se surgir outra dúvida, é só perguntar. 😊</p>');
+    if (SAUDACAO.test(n) && tokens(t).length === 0) return balao('ele', '<p>Olá! Em que posso ajudar? Pergunte sobre qualquer aba ou função do CRM.</p>' + chips(GERAIS, 'Dúvidas comuns:'));
+    if (/codigo fonte|source|programacao|javascript|html/.test(n)) return balao('ele', '<p>Eu explico como usar o CRM, mas não mostro o código do sistema. Pergunte sobre qualquer aba ou função!</p>');
+    const r = procurar(t);
+    const melhor = r[0], seg = r[1];
+    if (melhor && ((melhor.s >= 2.6 && (!seg || melhor.s >= seg.s * 1.12)) || (melhor.s >= 1.5 && (!seg || melhor.s >= seg.s * 1.3)))) return assistenteResposta(melhor.e.id, false);
+    if (melhor && melhor.s >= 0.8) return balao('ele', '<p>Não tenho certeza do que você quis dizer. Seria uma destas?</p>' + chips(r.slice(0, 4).map(x => x.e.id)));
+    balao('ele', '<p>Não encontrei essa dúvida. 🤔 Tente com outras palavras (por exemplo, o nome da aba ou do botão), toque em ☰ para ver todos os assuntos, ou fale com o seu líder.</p>' + chips([...new Set((POR_ABA[paginaAtual()] || []).concat(GERAIS))].slice(0, 4), 'Talvez ajude:'));
+  };
+  window.assistenteProcurar = procurar;          // usado nos testes
+  botaoFlutuante(); document.addEventListener('DOMContentLoaded', botaoFlutuante);
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && painel && painel.classList.contains('aberto')) assistenteFechar(); });
 })();
 </script>
 </body>
