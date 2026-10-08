@@ -11503,10 +11503,10 @@ function renderDashboard(){
   if (selConsultor && Array.isArray(usersList)) {
     const atual = selConsultor.value;
     const opts = '<option value="all">Todos os Consultores</option>' +
-      equipeNaTela().map(u => `<option value="${esc(u.nome)}">${esc(u.nome)}</option>`).join('');
+      equipeNaTela().filter(u => typeof dashCargoOk !== 'function' || dashCargoOk(u)).map(u => `<option value="${esc(u.nome)}">${esc(u.nome)}</option>`).join('');
     if (selConsultor.innerHTML !== opts) {
       selConsultor.innerHTML = opts;
-      if (atual && equipeNaTela().some(u => u.nome === atual)) selConsultor.value = atual;
+      if (atual && equipeNaTela().some(u => u.nome === atual && (typeof dashCargoOk !== 'function' || dashCargoOk(u)))) selConsultor.value = atual;
     }
   }
   const filtroConsultor = selConsultor?.value || 'all';
@@ -11519,6 +11519,12 @@ function renderDashboard(){
     baseLeads = baseLeads.filter(l => l.responsavel === filtroConsultor);
     baseMeetings = baseMeetings.filter(m => m.responsavel === filtroConsultor);
     baseSales = baseSales.filter(s => s.responsavel === filtroConsultor);
+  } else if (typeof dashCargoFiltro === 'function' && dashCargoFiltro() !== 'all') {
+    // filtro por cargo: só o que é de quem tem aquele cargo
+    const nomesCargo = new Set(equipeNaTela().filter(dashCargoOk).map(u => u.nome));
+    baseLeads = baseLeads.filter(l => nomesCargo.has(l.responsavel));
+    baseMeetings = baseMeetings.filter(m => nomesCargo.has(m.responsavel));
+    baseSales = baseSales.filter(s => nomesCargo.has(s.responsavel));
   }
 
   const filteredLeads = baseLeads.filter(l => { const d = new Date(l.created || 0); return !isNaN(d.getTime()) && d >= start && d <= end; });
@@ -11576,6 +11582,7 @@ function renderDashboard(){
     const __subs = new Set(subIds);
     let targetUsersList = canSeeGeneral ? usersList : usersList.filter(u => __subs.has(u.id) && hierNaLoja(u));
     if (filtroConsultor !== 'all') targetUsersList = targetUsersList.filter(u => u.nome === filtroConsultor);
+    if (typeof dashCargoOk === 'function') targetUsersList = targetUsersList.filter(dashCargoOk);
 
     const __nLeads = new Map(), __nMeets = new Map(), __nSales = new Map();
     filteredLeads.forEach(l => { new Set([l.responsavel, l.createdByName]).forEach(n => __nLeads.set(n, (__nLeads.get(n) || 0) + 1)); });
@@ -20348,6 +20355,8 @@ const ASSIST_BASE = [
   r: 'O **Dashboard** mostra: a lista **Para hoje**, total de leads, agendamentos, **cotas fechadas** e **volume vendido** no período, a **meta mensal**, o **funil de vendas**, as cotas por segmento, a evolução dos últimos 6 meses e o desempenho da equipe. Use o filtro de período (Este mês, Hoje, Personalizado ou Todo o histórico) e o de consultor.', aba: 'dashboard' },
 { id: 'meta', t: 'Como defino a minha meta mensal?', k: 'meta, meta mensal, objetivo do mes, definir meta, meta de vendas',
   r: 'No **Dashboard**, no cartão **🎯 Meta mensal de vendas**, digite o valor da meta. A barra mostra quanto você já atingiu no mês. Quem lidera também define a meta de cada pessoa em **Equipe** › **Meta e senha**.', aba: 'dashboard' },
+{ id: 'filtro_cargo', so: 'lider', t: 'Como vejo qual equipe vendeu mais e o melhor de cada cargo?', k: 'filtro por cargo, cargo, melhor de cada cargo, qual equipe vendeu mais, ranking de equipes, equipe que mais vendeu, melhor lider, melhor consultor',
+  r: 'No **Dashboard**, no **Filtro de Progresso Comercial**, escolha o **cargo** (ex.: Líder em treinamento). Os números passam a ser só de quem tem aquele cargo. Logo abaixo, o quadro **🏅 Resultado por cargo** mostra **o melhor de cada cargo** e **as equipes que mais venderam** (a equipe soma o líder e todos abaixo dele). Com um cargo de liderança escolhido, ele compara as equipes de cada pessoa daquele cargo. Use o filtro de período ao lado (mês, hoje, personalizado ou todo o histórico).', aba: 'dashboard' },
 { id: 'producao_lojas', so: 'lider', t: 'O que é o quadro "Produção das lojas"?', k: 'producao das lojas, ranking das lojas, qual loja vende mais, quadro das lojas, retencao, unidade, ver todas, print do quadro, filtro de data, varias lojas',
   r: 'No **Dashboard**, quem é de **Líder em treinamento para cima** vê os números de **todas as lojas**: produção, com pagamento, aguardando pagamento, cotas, ticket médio e cancelado, além do ranking das lojas por segmento e a produção por mês. Nos filtros dá para marcar **várias opções de uma vez** (várias lojas, segmentos, UFs…), pesquisar a loja pelo nome e escolher a data em árvore (**Ano › Mês › Dia**). Nada marcado = todos. O botão **Ver todas** mostra todas as lojas nos quatro quadros sem precisar rolar (bom para tirar print), e **Tabelas** mostra tudo em tabela. Retenção = quanto do total vendido continua ativo: produção ÷ (produção + cancelado).', aba: 'dashboard' },
 { id: 'relatorio', t: 'Como exporto um relatório para imprimir?', k: 'imprimir relatorio, imprimo o relatorio, imprimir o dashboard, relatorio, imprimir, pdf, exportar relatorio, relatorio mensal, relatorio semanal, relatorio diario, relatorio anual, folha a4',
@@ -20660,6 +20669,158 @@ const ASSIST_BASE = [
   window.assistenteProcurar = procurar;          // usado nos testes
   botaoFlutuante(); document.addEventListener('DOMContentLoaded', botaoFlutuante);
   document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && painel && painel.classList.contains('aberto')) assistenteFechar(); });
+})();
+</script>
+<script id="cargoDashScript">
+// ================== FILTRO POR CARGO (Dashboard › Filtro de Progresso Comercial) ==================
+// Um seletor "Cargo" ao lado do de consultores: os números do Dashboard passam a ser só de quem tem aquele cargo.
+// E um quadro "Resultado por cargo": o melhor de cada cargo e as equipes que mais venderam no período.
+(function(){
+  const pagina = () => document.getElementById('dashboard');
+  // cargos de uma pessoa (pode ter um cargo em cada loja)
+  window.dashCargosDe = function(u){
+    const s = new Set();
+    try { (hierVinculos(u) || []).forEach(v => { if (v && v.cargo) s.add(hierCargoAtual(v.cargo)); }); } catch (e) {}
+    if (!s.size && u && u.cargo) s.add(typeof hierCargoAtual === 'function' ? hierCargoAtual(u.cargo) : u.cargo);
+    return s;
+  };
+  window.dashCargoFiltro = () => (document.getElementById('dashFilterCargo') || {}).value || 'all';
+  window.dashCargoOk = u => { const c = dashCargoFiltro(); return c === 'all' || (!!u && dashCargosDe(u).has(c)); };
+  const ordem = c => { const i = (typeof HIER_CARGOS !== 'undefined' ? HIER_CARGOS : []).indexOf(c); return i < 0 ? 99 : i; };
+  const moeda = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  const equipe = () => { try { return equipeNaTela(); } catch (e) { return []; } };
+
+  // ---------- o seletor ----------
+  function montarSeletor(){
+    const ref = document.getElementById('dashFilterConsultor'); if (!ref) return;
+    let sel = document.getElementById('dashFilterCargo');
+    if (!sel) {
+      sel = document.createElement('select'); sel.id = 'dashFilterCargo'; sel.style.maxWidth = '200px'; sel.title = 'Mostrar só quem tem este cargo';
+      sel.onchange = () => { try { renderDashboard(); } catch (e) {} };
+      ref.insertAdjacentElement('beforebegin', sel);
+    }
+    const atual = sel.value || 'all';
+    const cargos = [...new Set(equipe().reduce((a, u) => a.concat([...dashCargosDe(u)]), []))].filter(c => c && c !== 'Administrador').sort((a, b) => ordem(a) - ordem(b));
+    const opts = '<option value="all">Todos os cargos</option>' + cargos.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+    if (sel.innerHTML !== opts) sel.innerHTML = opts;
+    sel.value = cargos.includes(atual) ? atual : 'all';
+    sel.style.display = cargos.length > 1 ? '' : 'none';      // sem equipe não tem o que filtrar
+  }
+
+  // ---------- o quadro "Resultado por cargo" ----------
+  let verTodasEquipes = false;
+  function quadro(){
+    const pg = pagina(); if (!pg) return;
+    let c = document.getElementById('cardResultadoCargo');
+    const gente = equipe().filter(u => u && u.ativo !== false);
+    if (gente.length < 2) { if (c) c.style.display = 'none'; return; }
+    if (!c) {
+      c = document.createElement('div'); c.id = 'cardResultadoCargo'; c.className = 'card'; c.style.marginBottom = '16px';
+      const ref = document.getElementById('cardMemberPerformance') || document.getElementById('cardRankingConsultores');
+      if (ref) ref.insertAdjacentElement('beforebegin', c); else pg.appendChild(c);
+    }
+    c.style.display = '';
+    const { start, end } = getFilterDateRange();
+    const base = (typeof MODO_HIERARQUIA !== 'undefined' && MODO_HIERARQUIA) ? hierVendasVisiveis() : (db.sales || []);
+    // vendas ativas do período, por nome de quem vendeu (o Dashboard usa o nome)
+    const porNome = new Map();
+    base.forEach(s => {
+      if (!s || s.cancelada) return; const d = new Date(s.date || 0); if (isNaN(d.getTime()) || d < start || d > end) return;
+      const o = porNome.get(s.responsavel) || { n: 0, v: 0 }; o.n++; o.v += Number(s.valor || 0); porNome.set(s.responsavel, o);
+    });
+    const res = u => porNome.get(u.nome) || { n: 0, v: 0 };
+    const filtro = dashCargoFiltro();
+
+    // 1) melhor de cada cargo
+    const cargos = [...new Set(gente.reduce((a, u) => a.concat([...dashCargosDe(u)]), []))].filter(x => x && x !== 'Administrador' && (filtro === 'all' || x === filtro)).sort((a, b) => ordem(a) - ordem(b));
+    const linhasCargo = cargos.map(cg => {
+      const lista = gente.filter(u => dashCargosDe(u).has(cg)).map(u => ({ u, r: res(u) })).sort((a, b) => b.r.v - a.r.v || b.r.n - a.r.n);
+      const venderam = lista.filter(x => x.r.v > 0);
+      const quantos = filtro === 'all' ? 2 : 10;                 // um cargo escolhido: mostra os 10 primeiros
+      const top = venderam.slice(0, quantos);
+      const tot = lista.reduce((a, x) => a + x.r.v, 0);
+      return `<tr><td><b>${esc(cg)}</b><br><span class="tc-sub">${lista.length} pessoa(s) · ${venderam.length} vendeu(ram)</span></td>
+        <td>${top.length ? top.map((x, i) => `<div class="rc-pessoa">${['🥇', '🥈', '🥉'][i] || (i + 1) + 'º'} ${hierFoto(x.u, 20)}<b>${esc(x.u.nome)}</b> <span class="tc-sub">${x.r.n} cota(s) · ${moeda(x.r.v)}</span></div>`).join('') : '<span class="tc-sub">Ninguém vendeu no período.</span>'}</td>
+        <td style="text-align:right;white-space:nowrap"><b>${moeda(tot)}</b></td></tr>`;
+    }).join('');
+
+    // 2) equipes que mais venderam: cada líder + todos abaixo dele
+    const cargoNaLoja = (u, l) => { if (!u) return ''; const v = (hierVinculos(u) || []).find(x => x.loja === l) || (hierVinculos(u) || [])[0]; return hierCargoAtual((v && v.cargo) || u.cargo || ''); };
+    const ids = new Set(gente.map(u => u.id)), porId = new Map(gente.map(u => [u.id, u])), timeDe = new Map();
+    gente.forEach(w => {
+      const lojas = (typeof hierLojasDe === 'function' ? hierLojasDe(w) : []); const acima = new Map();
+      (lojas.length ? lojas : ['']).forEach(l => { try { hierCadeiaAcima(w.id, l).forEach(a => { if (!acima.has(a)) acima.set(a, new Set()); acima.get(a).add(l); }); } catch (e) {} });
+      acima.forEach((ls, a) => {
+        if (!ids.has(a)) return;
+        // com um cargo escolhido, a equipe é só a das lojas em que o líder tem aquele cargo (quem é Sócio numa loja e Líder em outra)
+        if (filtro !== 'all' && ![...ls].some(l => cargoNaLoja(porId.get(a), l) === filtro)) return;
+        if (!timeDe.has(a)) timeDe.set(a, new Set()); timeDe.get(a).add(w.id);
+      });
+    });
+    let lideres, titulo;
+    const nivelOk = cg => { try { return hierNivel(cg) < HIER_NIVEL_CONSULTOR; } catch (e) { return true; } };
+    if (filtro !== 'all') {
+      lideres = nivelOk(filtro) ? gente.filter(u => dashCargosDe(u).has(filtro) && timeDe.has(u.id)) : [];
+      titulo = `Equipes de cada ${esc(filtro)}`;
+    } else {
+      // os líderes logo abaixo de mim; quem está no topo (ou a administração) vê as equipes de quem não tem líder
+      lideres = gente.filter(u => u.id !== (currentUser || {}).id && timeDe.has(u.id) && hierVinculos(u).some(v => v.liderId === (currentUser || {}).id));
+      if (!lideres.length) lideres = gente.filter(u => timeDe.has(u.id) && !hierVinculos(u).some(v => v.liderId && ids.has(v.liderId)));
+      if (lideres.length === 1 && lideres[0].id !== (currentUser || {}).id) {   // um só no topo: compara os líderes logo abaixo dele
+        const topo = lideres[0].id; const abaixo = gente.filter(u => timeDe.has(u.id) && hierVinculos(u).some(v => v.liderId === topo));
+        if (abaixo.length) lideres = abaixo;
+      }
+      titulo = 'Equipes que mais venderam';
+    }
+    const equipes = lideres.map(L => {
+      const membros = [L.id].concat([...(timeDe.get(L.id) || [])]).map(id => porId.get(id)).filter(Boolean);
+      let n = 0, v = 0, melhor = null;
+      membros.forEach(u => { const r = res(u); n += r.n; v += r.v; if (r.v > 0 && (!melhor || r.v > melhor.r.v)) melhor = { u, r }; });
+      return { L, pessoas: membros.length, n, v, melhor };
+    }).sort((a, b) => b.v - a.v || b.n - a.n);
+    const mostrar = verTodasEquipes ? equipes : equipes.slice(0, 10);
+    const linhasEquipe = mostrar.map((e, i) => `<tr${e.v ? '' : ' style="opacity:.65"'}><td>${e.v ? (i + 1) + 'º' : '-'}</td>
+      <td>${hierFoto(e.L, 20)}<b>${esc(e.L.nome)}</b><br><span class="tc-sub">${esc([...dashCargosDe(e.L)].join(' / '))} · ${e.pessoas} pessoa(s)</span></td>
+      <td style="text-align:right">${e.n}</td><td style="text-align:right;white-space:nowrap"><b>${moeda(e.v)}</b></td>
+      <td>${e.melhor ? `${esc(e.melhor.u.nome)} <span class="tc-sub">${moeda(e.melhor.r.v)}</span>` : '<span class="tc-sub">-</span>'}</td></tr>`).join('');
+    const notaEquipe = filtro !== 'all' && !nivelOk(filtro) ? `<p class="tc-sub" style="margin:8px 0 0">${esc(filtro)} não tem equipe. Escolha um cargo de liderança (ex.: Líder em treinamento) para comparar as equipes.</p>` : '';
+
+    c.innerHTML = `<div class="between" style="margin-bottom:10px;gap:8px;flex-wrap:wrap"><h2 style="margin:0">🏅 Resultado por cargo</h2>
+        <span class="badge b-purple">Volume ativo no período${filtro === 'all' ? '' : ' · ' + esc(filtro)}</span></div>
+      <div class="rc-grade">
+        <div><h3 class="rc-tit">${filtro === 'all' ? 'O melhor de cada cargo' : 'Os melhores: ' + esc(filtro)}</h3>
+          <div style="overflow-x:auto"><table class="tabela-compacta rc-cargos"><thead><tr><th>Cargo</th><th>${filtro === 'all' ? 'Melhores' : 'Ranking'}</th><th style="text-align:right">Total do cargo</th></tr></thead>
+          <tbody>${linhasCargo || '<tr><td colspan="3" class="tc-sub">Sem ninguém com este cargo.</td></tr>'}</tbody></table></div></div>
+        <div><h3 class="rc-tit">${titulo}</h3>
+          ${equipes.length ? `<div style="overflow-x:auto"><table class="tabela-compacta"><thead><tr><th>Pos.</th><th>Líder da equipe</th><th style="text-align:right">Cotas</th><th style="text-align:right">Volume</th><th>Melhor da equipe</th></tr></thead><tbody>${linhasEquipe}</tbody></table></div>
+            ${equipes.length > 10 ? `<button class="btn" style="margin-top:8px" onclick="dashCargoVerEquipes()">${verTodasEquipes ? 'Ver só as 10 primeiras' : 'Ver todas as ' + equipes.length + ' equipes'}</button>` : ''}` : (notaEquipe || '<p class="tc-sub">Ainda não há equipes para comparar.</p>')}
+          <p class="tc-sub" style="margin:8px 0 0">A equipe soma o líder e todos que estão abaixo dele. Mude o período no filtro acima.</p></div>
+      </div>`;
+  }
+  window.dashCargoVerEquipes = function(){ verTodasEquipes = !verTodasEquipes; quadro(); };
+
+  const st = document.createElement('style');
+  st.textContent = `.rc-grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+    .rc-tit { margin: 0 0 8px; font-size: 14.5px; color: var(--red); }
+    .rc-pessoa { padding: 2px 0; }
+    #cardResultadoCargo table { width: 100%; }
+    @media (max-width: 600px) {
+      #cardResultadoCargo .rc-cargos thead { display: none; }
+      #cardResultadoCargo .rc-cargos tr { display: block; border-bottom: 1px solid var(--line); padding: 6px 0; }
+      #cardResultadoCargo .rc-cargos td { display: block; border: 0; padding: 2px 8px; text-align: left !important; }
+    }`;
+  document.head.appendChild(st);
+
+  // entra junto com o Dashboard: o seletor antes (para os números já saírem filtrados) e o quadro depois
+  const antes = window.renderDashboard;
+  if (typeof antes === 'function') {
+    window.renderDashboard = function(){
+      try { montarSeletor(); } catch (e) { console.warn('Filtro por cargo', e); }
+      const r = antes.apply(this, arguments);
+      try { quadro(); } catch (e) { console.warn('Resultado por cargo', e); }
+      return r;
+    };
+  }
 })();
 </script>
 </body>
