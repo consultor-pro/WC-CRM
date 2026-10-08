@@ -20448,8 +20448,8 @@ const ASSIST_BASE = [
   r: '1. Em **Aniversariantes**, toque em **🎉 Enviar parabéns** na linha da pessoa.\n2. Confira o nome, a data e o texto (o texto que você deixar vira o padrão).\n3. Se quiser, toque em **🖼️ Escolher outra foto** e ajuste o tamanho, a posição (arrastando) e o giro.\n4. Toque em **📲 Enviar pelo WhatsApp** ou **📥 Baixar imagem**.\nPara membros vai a foto do cadastro; para clientes, a imagem de um presente.', aba: 'aniversarios' },
 { id: 'parabens_foto', t: 'A foto do parabéns ficou ruim ou cortada', k: 'foto ruim, foto borrada, foto cortada, ajustar foto, trocar foto do parabens, foto em baixa resolucao',
   r: 'Na janela de parabéns, toque em **🖼️ Escolher outra foto** e pegue a foto original do aparelho (ela entra na qualidade original e não fica guardada no CRM). Depois use **Tamanho**, **arraste a foto** na prévia, **↻ Girar** ou **Centralizar** até ficar perfeita no quadrado.', aba: 'aniversarios' },
-{ id: 'calculadora', t: 'Onde fica a calculadora?', k: 'calculadora, hp12c, calcular, conta',
-  r: 'Na aba **Calculadora** há uma calculadora comum e uma **HP12C** (para juros e prestações).', aba: 'calculadora' },
+{ id: 'calculadora', t: 'Onde fica a calculadora?', k: 'calculadora, hp12c, calcular, conta, calculadora flutuante, calculadora por cima, minimizar calculadora',
+  r: 'Na aba **Calculadora** há uma calculadora comum e uma **HP12C** (para juros e prestações).\nPara usar por cima de qualquer aba (até nas Apresentações), toque no **🧮** no alto da tela (ou em **📌 Flutuante** na aba Calculadora). A janelinha ocupa no máximo 1/4 da tela: arraste pela barra de cima, mude o tamanho pelo cantinho de baixo, troque entre as duas calculadoras no topo e toque em **–** para minimizar (vira uma bolinha 🧮; toque nela para voltar). **✕** fecha.', aba: 'calculadora' },
 { id: 'material', t: 'O que tem no Material de Apoio?', k: 'material de apoio, scripts, roteiro, abordagem, objecoes, bdr, 5 passos, pos venda',
   r: 'Em **Material de Apoio**:\n- **💬 Scripts por Nicho**: falas e ganchos para cada nicho (dá para criar e editar).\n- **🎯 Processo BDR**.\n- **🤝 5 Passos da Venda**.\n- **💙 Pós-Venda**: o que fazer em D+0, D+3 e D+15.', aba: 'materialApoio' },
 { id: 'apresentacoes', t: 'Como uso a aba Apresentações?', k: 'apresentar pdf, apresentar para o cliente, apresentacoes, slides, apresentar pdf, tela cheia, montar apresentacao',
@@ -20921,6 +20921,228 @@ const ASSIST_BASE = [
   // grupo e cota sempre do mesmo jeito (sem zeros à esquerda, sem espaços): é assim que o CRM sabe que a cota já existe
   window.importNormCota = s => { const t = String(s == null ? '' : s).trim().replace(/\s+/g, '').replace(/\.0+$/, ''); return /^\d+$/.test(t) ? String(+t) : t.toUpperCase(); };
   window.importIdDaCota = (g, c) => ('imp_' + importNormCota(g) + '_' + importNormCota(c)).replace(/[^A-Za-z0-9_.:@-]/g, '').slice(0, 90);
+})();
+</script>
+<script id="calcFlutuanteScript">
+// ================== CALCULADORA FLUTUANTE ==================
+// As duas calculadoras (a comum e a HP12C) numa janelinha que fica por cima de qualquer aba: dá para arrastar,
+// minimizar (vira uma bolinha) e trazer de volta. Ocupa no máximo 1/4 da tela. Também aparece em cima das
+// Apresentações em tela cheia. São as MESMAS calculadoras da aba Calculadora (a conta continua de onde parou).
+(function(){
+  const CHAVE = 'elo_calc_flut_' + (typeof EQUIPE_ID !== 'undefined' ? EQUIPE_ID : '');
+  const est = { aberto: false, min: false, aba: 'normal', x: null, y: null, bx: null, by: null, tam: 1 };
+  try { Object.assign(est, JSON.parse(localStorage.getItem(CHAVE) || '{}'), { aberto: false, min: false }); } catch (e) {}
+  const guardar = () => { try { localStorage.setItem(CHAVE, JSON.stringify({ aba: est.aba, x: est.x, y: est.y, bx: est.bx, by: est.by, tam: est.tam })); } catch (e) {} };
+  const LARG = { normal: 290, hp: 340 };                       // largura "de verdade" das calculadoras dentro da janelinha
+
+  const css = document.createElement('style'); css.id = 'calcFlutEstilos';
+  css.textContent = `
+  #calcFlut { position: fixed; z-index: 99990; background: #151a23; border-radius: 16px; box-shadow: 0 16px 44px rgba(0,0,0,.42); border: 1px solid rgba(255,255,255,.08);
+    display: none; flex-direction: column; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
+  #calcFlut.aberto { display: flex; }
+  #calcFlut .cf-cab { display: flex; align-items: center; gap: 4px; padding: 5px 6px 5px 10px; background: #0d1117; color: #e5e7eb; cursor: move; }
+  #calcFlut .cf-arrastar { color: #6b7280; font-size: 13px; letter-spacing: -2px; margin-right: 2px; }
+  #calcFlut .cf-abas { display: flex; gap: 3px; flex: 1; min-width: 0; }
+  #calcFlut .cf-aba { border: 0; background: transparent; color: #9ca3af; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
+  #calcFlut .cf-aba.on { background: var(--red, #c8102e); color: #fff; }
+  #calcFlut .cf-curto { display: none; }
+  #calcFlut.estreito .cf-longo, #calcFlut.estreito .cf-arrastar { display: none; }
+  #calcFlut.estreito .cf-curto { display: inline; margin-left: 2px; }
+  #calcFlut.estreito .cf-cab { padding: 4px; }
+  #calcFlut.estreito .cf-bt { width: 24px; height: 24px; }
+  #calcFlut .cf-bt { border: 0; background: rgba(255,255,255,.08); color: #e5e7eb; width: 26px; height: 26px; border-radius: 7px; cursor: pointer; font-size: 14px; line-height: 1; flex: none; }
+  #calcFlut .cf-bt:hover { background: rgba(255,255,255,.18); }
+  #calcFlut .cf-corpo { padding: 6px; overflow: hidden; }
+  #calcFlut .cf-escala { transform-origin: 0 0; }
+  #calcFlut .calc-body { width: ${LARG.normal}px; max-width: none; padding: 12px; box-shadow: none; border-radius: 14px; }
+  #calcFlut .calc-display { font-size: 28px; padding: 12px; margin-bottom: 10px; min-height: 36px; }
+  #calcFlut .calc-grid { gap: 7px; }
+  #calcFlut .calc-key { padding: 12px 0; font-size: 17px; }
+  #calcFlut .hp12c-body { width: ${LARG.hp}px; max-width: none; padding: 12px 10px 14px; box-shadow: none; border-radius: 14px; }
+  #calcFlut .hp12c-key { padding: 10px 0; }
+  #calcFlut .hp12c-note { display: none; }
+  #calcFlut .cf-tam { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; cursor: nwse-resize; touch-action: none;
+    background: linear-gradient(135deg, transparent 55%, rgba(255,255,255,.35) 56%, rgba(255,255,255,.35) 62%, transparent 63%, transparent 72%, rgba(255,255,255,.35) 73%, rgba(255,255,255,.35) 79%, transparent 80%); }
+  #calcFlutBolha { position: fixed; z-index: 99990; width: 48px; height: 48px; border-radius: 50%; border: 0; background: var(--red, #c8102e); color: #fff; font-size: 22px;
+    box-shadow: 0 8px 22px rgba(0,0,0,.35); cursor: pointer; display: none; touch-action: none; }
+  #calcFlutBolha.aberto { display: block; }
+  .cf-aviso { text-align: center; padding: 26px 16px; border: 1px dashed var(--line, #d1d5db); border-radius: 14px; color: var(--muted, #64748b); max-width: 380px; margin: 0 auto; }
+  .cf-aviso button { margin-top: 10px; }
+  #btnCalcFlut { padding: 6px 10px; font-size: 15px; }
+  @media print { #calcFlut, #calcFlutBolha { display: none !important; } }`;
+  document.head.appendChild(css);
+
+  let painel, bolha, escala, corpo;
+  const corpoNormal = () => document.querySelector('#calcFlut .calc-body') || document.querySelector('#calcNormal .calc-body');
+  const corpoHp = () => document.querySelector('#calcFlut .hp12c-body') || document.querySelector('#calcHp12c .hp12c-body');
+  // onde elas moram na aba Calculadora
+  const casaNormal = () => document.querySelector('#calcNormal .calc-wrap');
+  const casaHp = () => document.querySelector('#calcHp12c .calc-wrap');
+
+  function montar(){
+    if (painel) return;
+    painel = document.createElement('div'); painel.id = 'calcFlut'; painel.setAttribute('role', 'dialog'); painel.setAttribute('aria-label', 'Calculadora flutuante');
+    painel.innerHTML = `<div class="cf-cab" title="Arraste para mudar de lugar"><span class="cf-arrastar">⋮⋮</span>
+        <div class="cf-abas"><button class="cf-aba" data-aba="normal" title="Calculadora comum">🧮<span class="cf-longo"> Calculadora</span></button><button class="cf-aba" data-aba="hp" title="HP12C">🖩<span class="cf-longo"> HP12C</span><span class="cf-curto">HP</span></button></div>
+        <button class="cf-bt" data-acao="min" title="Minimizar">–</button><button class="cf-bt" data-acao="fechar" title="Fechar">✕</button></div>
+      <div class="cf-corpo"><div class="cf-escala"></div></div><div class="cf-tam" title="Arraste para aumentar ou diminuir"></div>`;
+    escala = painel.querySelector('.cf-escala'); corpo = painel.querySelector('.cf-corpo');
+    painel.querySelectorAll('.cf-aba').forEach(b => b.addEventListener('click', () => { est.aba = b.dataset.aba; guardar(); mostrarAba(); }));
+    painel.querySelector('[data-acao="min"]').addEventListener('click', () => calcFlutMinimizar());
+    painel.querySelector('[data-acao="fechar"]').addEventListener('click', () => calcFlutFechar());
+    arrastar(painel.querySelector('.cf-cab'), painel, (x, y) => { est.x = x; est.y = y; }, true);
+    redimensionar(painel.querySelector('.cf-tam'));
+    bolha = document.createElement('button'); bolha.id = 'calcFlutBolha'; bolha.title = 'Abrir a calculadora'; bolha.textContent = '🧮';
+    arrastar(bolha, bolha, (x, y) => { est.bx = x; est.by = y; }, false, () => calcFlutAbrir());
+    lugar().appendChild(painel); lugar().appendChild(bolha);
+  }
+  // em tela cheia (Apresentações) só aparece o que está dentro do elemento em tela cheia
+  const lugar = () => document.fullscreenElement || document.webkitFullscreenElement || document.body;
+  function mudarDeLugar(){
+    if (!painel) return;
+    const l = lugar();
+    if (painel.parentNode !== l) l.appendChild(painel);
+    if (bolha.parentNode !== l) l.appendChild(bolha);
+    ajustar();
+  }
+  document.addEventListener('fullscreenchange', mudarDeLugar);
+  document.addEventListener('webkitfullscreenchange', mudarDeLugar);
+
+  // leva as calculadoras da aba para a janelinha (e de volta), deixando um aviso no lugar
+  function trazerParaJanela(){
+    const n = corpoNormal(), h = corpoHp();
+    if (n && n.parentNode !== escala) escala.appendChild(n);
+    if (h && h.parentNode !== escala) escala.appendChild(h);
+    [casaNormal(), casaHp()].forEach(c => {
+      if (c && !c.querySelector('.cf-aviso')) c.insertAdjacentHTML('beforeend', '<div class="cf-aviso">🧮 A calculadora está aberta na janela flutuante.<br><button class="btn" onclick="calcFlutFechar()">Trazer de volta para cá</button></div>');
+    });
+  }
+  function devolver(){
+    const n = corpoNormal(), h = corpoHp();
+    document.querySelectorAll('.cf-aviso').forEach(a => a.remove());
+    if (n && casaNormal() && n.parentNode !== casaNormal()) casaNormal().appendChild(n);
+    if (h && casaHp() && h.parentNode !== casaHp()) casaHp().appendChild(h);
+  }
+  function mostrarAba(){
+    if (!painel) return;
+    painel.querySelectorAll('.cf-aba').forEach(b => b.classList.toggle('on', b.dataset.aba === est.aba));
+    const n = corpoNormal(), h = corpoHp();
+    if (n) n.style.display = est.aba === 'normal' ? '' : 'none';
+    if (h) h.style.display = est.aba === 'hp' ? '' : 'none';
+    ajustar();
+  }
+
+  // tamanho: no máximo 1/4 da área da tela (e sempre dentro da tela)
+  function ajustar(){
+    if (!painel || !painel.classList.contains('aberto')) return;
+    const atual = est.aba === 'hp' ? corpoHp() : corpoNormal(); if (!atual) return;
+    escala.style.transform = 'none'; escala.style.width = ''; escala.style.height = '';
+    const nw = atual.offsetWidth, nh = atual.offsetHeight, cab = painel.querySelector('.cf-cab').offsetHeight + 12;
+    const W = window.innerWidth, H = window.innerHeight, area = W * H / 4;
+    // maior escala que cabe em 1/4 da tela: (nw*s+12)*(nh*s+cab) <= area
+    let sMax = 1;
+    for (let s = 1; s > 0.3; s -= 0.01) { sMax = s; if ((nw * s + 12) * (nh * s + cab) <= area && nw * s + 12 <= W - 16 && nh * s + cab <= H - 16) break; }
+    const s = Math.max(0.3, sMax * Math.min(1, Math.max(0.5, est.tam || 1)));
+    escala.style.transform = `scale(${s})`;
+    const largura = Math.round(nw * s) + 12;
+    corpo.style.width = largura + 'px'; corpo.style.height = Math.round(nh * s) + 12 + 'px';
+    painel.style.width = largura + 'px'; painel.classList.toggle('estreito', largura < 260);
+    escala.style.width = nw + 'px'; escala.style.height = nh + 'px';
+    posicionar(painel, est.x, est.y, () => [W - painel.offsetWidth - 16, 76]);
+  }
+  function posicionar(el, x, y, padrao){
+    const W = window.innerWidth, H = window.innerHeight, w = el.offsetWidth, h = el.offsetHeight;
+    if (x == null || y == null) [x, y] = padrao();
+    x = Math.min(Math.max(4, x), Math.max(4, W - w - 4)); y = Math.min(Math.max(4, y), Math.max(4, H - h - 4));
+    el.style.left = x + 'px'; el.style.top = y + 'px';
+  }
+  function arrastar(alca, el, salvar, ignorarBotoes, clique){
+    let ini = null;
+    alca.addEventListener('pointerdown', ev => {
+      if (ignorarBotoes && ev.target.closest('button')) return;
+      ini = { px: ev.clientX, py: ev.clientY, x: el.offsetLeft, y: el.offsetTop, moveu: false };
+      try { alca.setPointerCapture(ev.pointerId); } catch (e) {}
+      ev.preventDefault();
+    });
+    alca.addEventListener('pointermove', ev => {
+      if (!ini) return;
+      const dx = ev.clientX - ini.px, dy = ev.clientY - ini.py;
+      if (Math.abs(dx) + Math.abs(dy) > 4) ini.moveu = true;
+      if (!ini.moveu) return;
+      const W = window.innerWidth, H = window.innerHeight;
+      const x = Math.min(Math.max(4, ini.x + dx), W - el.offsetWidth - 4), y = Math.min(Math.max(4, ini.y + dy), H - el.offsetHeight - 4);
+      el.style.left = x + 'px'; el.style.top = y + 'px'; salvar(x, y);
+    });
+    const fim = () => { if (!ini) return; const foiClique = !ini.moveu; ini = null; guardar(); if (foiClique && clique) clique(); };
+    alca.addEventListener('pointerup', fim); alca.addEventListener('pointercancel', () => { ini = null; });
+  }
+  function redimensionar(alca){
+    let ini = null;
+    alca.addEventListener('pointerdown', ev => { ini = { px: ev.clientX, py: ev.clientY, tam: est.tam || 1, w: painel.offsetWidth }; try { alca.setPointerCapture(ev.pointerId); } catch (e) {} ev.preventDefault(); ev.stopPropagation(); });
+    alca.addEventListener('pointermove', ev => {
+      if (!ini) return;
+      const d = ((ev.clientX - ini.px) + (ev.clientY - ini.py)) / 2;
+      est.tam = Math.min(1, Math.max(0.5, ini.tam * (1 + d / Math.max(160, ini.w)))); ajustar();
+    });
+    alca.addEventListener('pointerup', () => { ini = null; guardar(); });
+  }
+
+  // ---------- abrir, minimizar, fechar ----------
+  window.calcFlutAbrir = function(aba){
+    montar(); mudarDeLugar();
+    if (aba) est.aba = aba;
+    trazerParaJanela();
+    est.aberto = true; est.min = false;
+    painel.classList.add('aberto'); bolha.classList.remove('aberto');
+    mostrarAba(); guardar();
+  };
+  window.calcFlutMinimizar = function(){
+    if (!painel) return;
+    est.min = true; painel.classList.remove('aberto'); bolha.classList.add('aberto');
+    posicionar(bolha, est.bx, est.by, () => [window.innerWidth - 64, Math.round(window.innerHeight * 0.45)]);
+  };
+  window.calcFlutFechar = function(){
+    if (!painel) return;
+    est.aberto = false; est.min = false; painel.classList.remove('aberto'); bolha.classList.remove('aberto');
+    devolver();
+    const n = document.querySelector('#calcNormal .calc-body'), h = document.querySelector('#calcHp12c .hp12c-body');
+    if (n) n.style.display = ''; if (h) h.style.display = '';
+  };
+  window.calcFlutAlternar = function(){ if (est.aberto && !est.min) calcFlutMinimizar(); else calcFlutAbrir(); };
+  window.calcFlutEstado = () => ({ aberto: est.aberto, min: est.min, aba: est.aba });
+  window.addEventListener('resize', () => { ajustar(); if (bolha && bolha.classList.contains('aberto')) posicionar(bolha, est.bx, est.by, () => [window.innerWidth - 64, Math.round(window.innerHeight * 0.45)]); });
+
+  // teclado: com a janelinha aberta, os números vão para ela (fora de campos de texto e fora da aba Calculadora, que já tem o seu)
+  document.addEventListener('keydown', ev => {
+    if (!est.aberto || est.min || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    if (document.getElementById('calculadora')?.classList.contains('active')) return;
+    const a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable)) return;
+    const hp = est.aba === 'hp', k = ev.key;
+    let feito = true;
+    if (/^[0-9]$/.test(k)) hp ? hpDigit(k) : calcInput(k);
+    else if (k === '.' || k === ',') hp ? hpDigit('.') : calcInput('.');
+    else if ('+-*/'.includes(k) && k.length === 1) hp ? hpOp(k) : calcInput(k);
+    else if (k === 'Enter' || k === '=') hp ? hpEnter() : calcEquals();
+    else if (k === 'Backspace') hp ? (typeof hpBackspace === 'function' && hpBackspace()) : calcBackspace();
+    else if (k === 'Delete') hp ? hpClearX() : calcClearAll();
+    else feito = false;
+    if (feito) { ev.preventDefault(); ev.stopPropagation(); }
+  }, true);
+
+  // ---------- onde abrir: botão no topo (todas as abas) e na aba Calculadora ----------
+  function botoes(){
+    const topo = document.querySelector('.top .row');
+    if (topo && !document.getElementById('btnCalcFlut')) {
+      const b = document.createElement('button'); b.id = 'btnCalcFlut'; b.className = 'btn'; b.title = 'Calculadora flutuante (fica por cima de qualquer aba)'; b.textContent = '🧮';
+      b.onclick = () => calcFlutAlternar();
+      const ref = topo.querySelector('.notif-btn'); if (ref) topo.insertBefore(b, ref); else topo.appendChild(b);
+    }
+    const pills = document.querySelector('#calculadora .tab-pills');
+    if (pills && !document.getElementById('btnCalcFlutAba')) pills.insertAdjacentHTML('beforeend', '<button class="tab-pill" id="btnCalcFlutAba" style="margin-left:auto" onclick="calcFlutAbrir(document.getElementById(\'calcHp12c\').classList.contains(\'active\') ? \'hp\' : \'normal\')" title="Deixar a calculadora por cima de qualquer aba">📌 Flutuante</button>');
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', botoes); else botoes();
+  setTimeout(botoes, 1500);
 })();
 </script>
 </body>
