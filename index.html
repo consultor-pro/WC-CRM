@@ -10139,7 +10139,11 @@ const IMPORT_VENDA_SINONIMOS_CAMPO = {
   cancelou: ['cancelou', 'cancelada', 'cancelado', 'cancelamento'],
   contemplou: ['contemplou', 'contemplada', 'contemplado', 'contemplacao'],
   observacao: ['observacao', 'observacoes', 'obs', 'nota', 'notas'],
-  data: ['data da venda', 'data venda', 'data de fechamento', 'data fechamento', 'data']
+  data: ['data da venda', 'data venda', 'data de fechamento', 'data fechamento', 'data'],
+  consultor: ['consultor', 'vendedor', 'consultora', 'vendedora', 'responsavel'],
+  loja: ['loja', 'unidade'],
+  situacao: ['situacao', 'status', 'situacao da cota'],
+  recebidas: ['parcelas recebidas', 'recebidas', 'parcelas pagas', 'pagas', 'qtd recebidas']
 };
 
 // Mesma ideia de detectarLinhaCabecalhoImport() (dos Leads), mas exige
@@ -10302,6 +10306,9 @@ function parseNumeroImportVendas(raw){
 function parseDataImportVendas(raw){
   if (!raw) return new Date().toISOString();
   const s = String(raw).trim();
+  if (/^\d{5}(\.\d+)?$/.test(s)) { const d0 = new Date(Date.UTC(1899, 11, 30) + Math.floor(+s) * 86400000); return new Date(d0.getUTCFullYear(), d0.getUTCMonth(), d0.getUTCDate(), 12).toISOString(); }
+  const m2 = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2})$/);
+  if (m2) return new Date(2000 + +m2[3], +m2[2]-1, +m2[1], 12).toISOString();
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
   if (m) return new Date(+m[1], +m[2]-1, +m[3], 12).toISOString();
   m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
@@ -10317,7 +10324,11 @@ function abrirImportarVendas(){
   importVendasState = null;
   openModal(`
     <div class="between"><h2>📥 Importar Vendas</h2><button class="btn" onclick="closeModal()">✕</button></div>
-    <p class="muted" style="margin-top:-6px">Envie uma planilha (.xlsx, .xls ou .csv) com vendas já fechadas: cliente, grupo, cota, crédito, segmento, modalidade e seguro. Se a planilha tiver vendas de vários consultores separadas em blocos, você confirma para quem vai cada bloco antes de importar.</p>
+    <p class="muted" style="margin-top:-6px">Envie uma planilha (.xlsx, .xls ou .csv) com vendas já fechadas: cliente, data, grupo, cota, crédito, segmento, modalidade e seguro. Pode ser a sua própria planilha ou o modelo pronto. As vendas importadas entram direto, sem aceite, e cota que já está no CRM nunca entra duas vezes.</p>
+    <div class="card" style="padding:10px 12px;margin:8px 0;background:rgba(200,16,46,.05);border:1px dashed rgba(200,16,46,.35)">
+      <b>📄 Modelo de planilha</b><br><small class="muted">Uma linha por cota. Deixe a coluna <b>Consultor</b> em branco se as vendas são suas; se você é líder, escreva o nome (ou e-mail) de quem vendeu.</small><br>
+      <button class="btn" style="margin-top:6px" onclick="baixarModeloVendas()">⬇️ Baixar modelo (Excel)</button>
+    </div>
     <div class="field">
       <label>Arquivo (.xlsx, .xls ou .csv)</label>
       <input type="file" id="importVendasInput" accept=".xlsx,.xls,.csv" onchange="onArquivoImportVendasSelecionado(this)">
@@ -10345,6 +10356,7 @@ function onArquivoImportVendasSelecionado(inputEl){
       const wb = XLSX.read(data, { type: 'array' });
       const abasIgnoradas = [];
       const abas = wb.SheetNames.map(nomeAba => {
+        if (normalizarTextoImport(nomeAba).startsWith('como preencher')) return null;   // aba de instruções do modelo
         const ws = wb.Sheets[nomeAba];
         const matriz = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: false });
         if (!matriz.length) return null;
@@ -10382,11 +10394,16 @@ function prepararPreviewImportacaoVendas(abas, abasIgnoradas){
       cancelou: detectarColunaImport(headersNorm, IMPORT_VENDA_SINONIMOS_CAMPO.cancelou),
       contemplou: detectarColunaImport(headersNorm, IMPORT_VENDA_SINONIMOS_CAMPO.contemplou),
       observacao: detectarColunaImport(headersNorm, IMPORT_VENDA_SINONIMOS_CAMPO.observacao),
-      data: detectarColunaImport(headersNorm, IMPORT_VENDA_SINONIMOS_CAMPO.data)
+      data: detectarColunaImport(headersNorm, IMPORT_VENDA_SINONIMOS_CAMPO.data),
+      consultor: detectarColunaImport(headersNorm, IMPORT_VENDA_SINONIMOS_CAMPO.consultor),
+      loja: detectarColunaImport(headersNorm, IMPORT_VENDA_SINONIMOS_CAMPO.loja),
+      situacao: detectarColunaImport(headersNorm, IMPORT_VENDA_SINONIMOS_CAMPO.situacao),
+      recebidas: detectarColunaImport(headersNorm, IMPORT_VENDA_SINONIMOS_CAMPO.recebidas)
     };
     const blocos = lerBlocosVendas(aba.matriz, aba.linhaCabecalho, mapa).map(b => ({
       consultorTexto: b.consultorTexto,
-      consultorReal: melhorMatchConsultorVendas(b.consultorTexto) || '',
+      // planilha sem nome de consultor: as vendas são de quem está importando
+      consultorReal: melhorMatchConsultorVendas(b.consultorTexto) || (!b.consultorTexto && currentUser ? currentUser.nome : ''),
       linhas: b.linhas
     }));
     return { nome: aba.nome, headers: aba.headers, mapa, blocos };
@@ -10425,9 +10442,14 @@ function processarLinhasImportVendas(state){
   // cota cancelada que foi LEGITIMAMENTE revendida pra outro cliente (mesmo
   // número de grupo/cota, cliente diferente) continua entrando normalmente,
   // só bloqueia quando é exatamente a mesma venda sendo reimportada.
-  const cotasExistentes = new Set(
-    db.sales.map(s => `${String(s.grupo || '').trim()}|${String(s.cota || '').trim()}|${normalizarTextoImport(s.lead)}`)
-  );
+  // cota já no CRM: pelo grupo e cota (de quem quer que seja: o líder e o consultor podem importar a mesma).
+  // Só entra de novo se a que está lá foi cancelada e o cliente agora é outro (cota revendida).
+  const existentes = new Map();
+  (db.sales || []).concat((db.vendasEnviadas || []).map(e => e && e.sale).filter(Boolean)).forEach(s => {
+    const k = importNormCota(s.grupo) + '|' + importNormCota(s.cota);
+    if (!existentes.has(k)) existentes.set(k, []);
+    existentes.get(k).push(s);
+  });
   const cotasVistasNoArquivo = new Set();
   const linhas = [];
 
@@ -10448,18 +10470,35 @@ function processarLinhasImportVendas(state){
         const contemplou = mapa.contemplou !== -1 ? mapearMarcadorVendas(linha[mapa.contemplou]) : false;
         const obs = mapa.observacao !== -1 ? String(linha[mapa.observacao] || '').trim() : '';
         const dataRaw = mapa.data !== -1 ? linha[mapa.data] : '';
+        // consultor escrito na própria linha (líder lançando pela equipe) vale mais que o bloco
+        const consultorLinhaTxt = mapa.consultor !== undefined && mapa.consultor !== -1 ? String(linha[mapa.consultor] || '').trim() : '';
+        const consultorLinha = consultorLinhaTxt ? importAcharConsultor(consultorLinhaTxt) : null;
+        const consultorReal = consultorLinhaTxt ? (consultorLinha ? consultorLinha.nome : '') : bloco.consultorReal;
+        const situacaoTxt = mapa.situacao !== undefined && mapa.situacao !== -1 ? normalizarTextoImport(linha[mapa.situacao]) : '';
+        const cancelouF = cancelou || situacaoTxt.includes('cancel');
+        const contemplouF = contemplou || situacaoTxt.includes('contempl');
+        const recebidas = mapa.recebidas !== undefined && mapa.recebidas !== -1 ? Math.max(0, Math.min(300, parseInt(String(linha[mapa.recebidas] || '0').replace(/\D/g, ''), 10) || 0)) : 0;
+        const lojaTxt = mapa.loja !== undefined && mapa.loja !== -1 ? String(linha[mapa.loja] || '').trim() : '';
+        const lojaId = lojaTxt ? importAcharLoja(lojaTxt) : '';
+        const pessoa = consultorReal ? (usersList || []).find(u => u.nome === consultorReal) : null;
+        let motivo = '';
+        if (consultorLinhaTxt && !consultorLinha) motivo = 'Não encontrado na sua equipe';
+        else if (pessoa && !importPodeLancarPara(pessoa)) motivo = 'Fora da sua equipe';
+        else if (lojaTxt && lojaId === null) motivo = 'Loja não encontrada';
 
-        const valido = !!cliente && !!grupo && !!cota && credito > 0;
-        const chaveCota = `${grupo}|${cota}|${normalizarTextoImport(cliente)}`;
-        const duplicado = valido && (cotasExistentes.has(chaveCota) || cotasVistasNoArquivo.has(chaveCota));
+        const valido = !!cliente && !!grupo && !!cota && credito > 0 && !motivo;
+        const chaveCota = importNormCota(grupo) + '|' + importNormCota(cota);
+        const jaTem = (existentes.get(chaveCota) || []).some(s => !s.cancelada || normalizarTextoImport(s.lead) === normalizarTextoImport(cliente));
+        const duplicado = valido && (jaTem || cotasVistasNoArquivo.has(chaveCota));
         if (valido && !duplicado) cotasVistasNoArquivo.add(chaveCota);
 
         linhas.push({
           sheetIdx, blocoIdx, aba: sheet.nome,
-          consultorTexto: bloco.consultorTexto, consultorReal: bloco.consultorReal,
+          consultorTexto: consultorLinhaTxt || bloco.consultorTexto, consultorReal,
           cliente, grupo, cota, credito, cpf, contato,
           segmento, modalidade: modalidade || '50%', modalidadeIndefinida: modalidade === null,
-          seguro, cancelou, contemplou, obs, dataRaw,
+          seguro, cancelou: cancelouF, contemplou: contemplouF, obs, dataRaw, recebidas, lojaId: lojaId || '', lojaTxt, motivo,
+          existeComCancelada: !jaTem && (existentes.get(chaveCota) || []).length > 0,
           valido, duplicado
         });
       });
@@ -10485,7 +10524,11 @@ function renderPreviewImportacaoVendas(){
     { key: 'contato', label: 'Telefone (opcional)' },
     { key: 'cpf', label: 'CPF (opcional)' },
     { key: 'data', label: 'Data da venda (opcional)' },
-    { key: 'observacao', label: 'Observação (opcional)' }
+    { key: 'observacao', label: 'Observação (opcional)' },
+    { key: 'consultor', label: 'Consultor de cada linha (opcional)' },
+    { key: 'loja', label: 'Loja (opcional)' },
+    { key: 'situacao', label: 'Situação: ativa, contemplada ou cancelada (opcional)' },
+    { key: 'recebidas', label: 'Parcelas recebidas (opcional)' }
   ];
 
   const blocosMapeamento = st.sheets.map((sheet, sheetIdx) => {
@@ -10530,13 +10573,14 @@ function renderPreviewImportacaoVendas(){
   const previewRows = todasLinhas.slice(0, 15).map(l => `
     <tr style="${l.duplicado?'opacity:0.5':(!l.valido?'background:#fef2f2':(!l.consultorReal?'background:#fffbeb':''))}">
       <td>${esc(l.cliente)||'<i>(sem nome)</i>'}</td>
+      <td>${l.dataRaw ? esc(new Date(parseDataImportVendas(l.dataRaw)).toLocaleDateString('pt-BR')) : '<span class="muted">hoje</span>'}</td>
       <td>${esc(l.grupo)}/${esc(l.cota)}</td>
       <td>${l.credito ? Number(l.credito).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}) : '-'}</td>
       <td>${esc(l.segmento)}</td>
       <td>${l.modalidadeIndefinida ? '<span class="badge b-yellow">Revisar</span>' : esc(l.modalidade)}</td>
       <td>${l.seguro ? '🛡️' : '-'}${l.cancelou ? ' ⚫' : ''}${l.contemplou ? ' 🎯' : ''}</td>
       <td>${esc(l.consultorReal)||'<span class="badge b-yellow">Selecione</span>'}</td>
-      <td>${l.duplicado ? '<span class="badge b-gray">Cota já existe</span>' : (!l.valido ? '<span class="badge b-red">Faltam dados</span>' : '✓')}</td>
+      <td>${l.duplicado ? '<span class="badge b-gray">Cota já existe</span>' : (!l.valido ? `<span class="badge b-red">${esc(l.motivo || 'Faltam dados')}</span>` : '✓')}</td>
     </tr>
   `).join('');
 
@@ -10548,7 +10592,7 @@ function renderPreviewImportacaoVendas(){
     ${(st.abasIgnoradas && st.abasIgnoradas.length) ? `<p class="muted" style="font-size:12px">ℹ️ ${st.abasIgnoradas.length} aba(s) sem uma lista de vendas reconhecível foram ignoradas: ${st.abasIgnoradas.map(esc).join(', ')}.</p>` : ''}
     ${blocosMapeamento}
     <div style="overflow-x:auto;margin-top:10px;max-height:320px;overflow-y:auto">
-      <table><thead><tr><th>Cliente</th><th>Grupo/Cota</th><th>Crédito</th><th>Segmento</th><th>Modalidade</th><th>Seguro/Cancelou/Contemplou</th><th>Consultor</th><th>Status</th></tr></thead>
+      <table><thead><tr><th>Cliente</th><th>Data</th><th>Grupo/Cota</th><th>Crédito</th><th>Segmento</th><th>Modalidade</th><th>Seguro/Cancelou/Contemplou</th><th>Consultor</th><th>Status</th></tr></thead>
       <tbody>${previewRows}</tbody></table>
     </div>
     <small class="muted">🛡️ = com seguro · ⚫ = cancelou · 🎯 = contemplou</small><br>
@@ -10634,8 +10678,10 @@ function confirmarImportacaoVendas(){
     }
 
     linhasDoCliente.forEach(l => {
-      db.sales.push({
-        id: 'sale_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      const idCota = importIdDaCota(l.grupo, l.cota) + (l.existeComCancelada ? '_' + Date.now().toString(36) : '');
+      const pagas = {}; for (let k = 1; k <= (l.recebidas || 0); k++) pagas[k] = true;
+      const nova = {
+        id: idCota,
         leadId: lead.id,
         lead: lead.nome,
         responsavel: l.consultorReal,
@@ -10649,11 +10695,20 @@ function confirmarImportacaoVendas(){
         contemplada: !!l.contemplou,
         seguroPrestamista: l.seguro,
         obs: l.obs || '',
-        paidMonths: {},
+        paidMonths: pagas,
         customInstallments: {},
         date: parseDataImportVendas(l.dataRaw),
         _importId: importId
-      });
+      };
+      if (l.lojaId) nova.loja = l.lojaId;
+      // venda antiga: entra direto (sem passar pelo aceite) e na matrícula certa
+      if (typeof MODO_HIERARQUIA !== 'undefined' && MODO_HIERARQUIA && typeof hierCarimbar === 'function') {
+        if (!nova.loja) { const v = (usersList || []).find(u => u.nome === nova.responsavel); if (v) nova.loja = hierLojaPrincipal(v); }
+        hierCarimbar(nova, currentUser ? currentUser.id : null);
+        nova.aprov.importada = true;
+        if (typeof hierMatriculaLegado === 'function') hierMatriculaLegado(nova);
+      }
+      db.sales.push(nova);
       vendasCriadas++;
     });
   });
@@ -20433,6 +20488,8 @@ const ASSIST_BASE = [
   r: '1. Se acabou de acontecer, use **↺ Desfazer** (Ctrl+Z).\n2. Senão, vá em **Configurações** › **🛟 Cópias automáticas**: o CRM guarda uma cópia por dia e uma antes de cada importação. Toque em **↩ Voltar para esta** na cópia de antes do problema.\n3. No Elo online, os seus dados também estão na nuvem: entrar de novo ou usar **Conferir tudo com a nuvem** traz de volta o que estava sincronizado.', aba: 'configuracoes' },
 { id: 'backup', t: 'Como faço backup dos meus dados?', k: 'faco backup, fazer backup, como fazer backup, salvar backup, backup, copia de seguranca, salvar dados, baixar backup, exportar dados, guardar meus dados',
   r: 'Em **Configurações** › **🛟 Cópias automáticas**:\n- **💾 Baixar agora** baixa o arquivo de backup.\n- Em "Baixar o arquivo de backup sozinho", escolha **Todo dia** ou **Toda semana**.\nGuarde o arquivo fora do aparelho (Drive, e-mail, computador). As **Apresentações** têm a cópia de segurança delas, na própria aba.', aba: 'configuracoes' },
+{ id: 'vendas_antigas', t: 'Como coloco minhas vendas antigas de uma vez?', k: 'vendas antigas, importar vendas, planilha de vendas, modelo de planilha, subir vendas, lancar vendas antigas, excel de vendas, historico de vendas',
+  r: '1. Em **Consultores & Vendas**, toque em **📥 Importar Vendas**.\n2. Toque em **⬇️ Baixar modelo (Excel)** e preencha uma linha por cota (data, cliente, grupo, cota, valor, segmento, modalidade, loja, situação e parcelas já recebidas). Também serve a sua própria planilha.\n3. Se as vendas são suas, deixe **Consultor** em branco. Se você é líder, escreva o nome ou o e-mail de quem vendeu (só da sua equipe).\n4. Escolha o arquivo, confira a prévia e toque em **Importar**.\nAs vendas antigas entram direto, sem aceite. Cota que já está no CRM (mesmo grupo e cota) é pulada: não duplica nem se você e o seu líder importarem a mesma planilha.', aba: 'consultoresVendas' },
 { id: 'mesclar', t: 'Como trago os dados de outro CRM (outro backup)?', k: 'importar backup, mesclar backup, juntar crm, trazer dados de outro crm, importar e mesclar',
   r: '1. Vá em **Configurações** › **🔀 Importar e Mesclar Backup de Outro CRM**.\n2. Toque em **📥 Selecionar Backup e Mesclar** e escolha o arquivo.\nO CRM acrescenta os leads e as vendas sem apagar nada e pula os que já existem (pelo telefone, ou nome + cidade). Antes, ele guarda uma cópia automática, então dá para voltar se precisar.', aba: 'configuracoes' },
 { id: 'celular_novo', t: 'Troquei de celular, como levo meus dados?', k: 'celular novo, trocar aparelho, levar dados, novo computador, migrar',
@@ -20821,6 +20878,49 @@ const ASSIST_BASE = [
       return r;
     };
   }
+})();
+</script>
+<script id="importarAntigasScript">
+// ================== VENDAS ANTIGAS: modelo de planilha e ajudas da importação ==================
+// O modelo (Excel) já vem com as colunas certas e listas para escolher. A importação aceita também a planilha de cada um.
+(function(){
+  const MODELO = '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';
+  window.baixarModeloVendas = function(){
+    try {
+      const bin = atob(MODELO), bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+      const a = document.createElement('a'); a.href = url; a.download = 'modelo-vendas-antigas.xlsx';
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    } catch (e) { if (typeof showToast === 'function') showToast('Não consegui baixar o modelo.', 'error'); }
+  };
+  // quem eu posso lançar: eu e quem está abaixo de mim (o dono do CRM e a administração: todos)
+  window.importPodeLancarPara = function(u){
+    if (!u || !currentUser) return false;
+    if (u.id === currentUser.id) return true;
+    if (typeof MODO_HIERARQUIA === 'undefined' || !MODO_HIERARQUIA) return true;
+    try { if (typeof hierDonoVeTudo === 'function' && hierDonoVeTudo()) return true; } catch (e) {}
+    try { if (typeof ELO_ONLINE !== 'undefined' && ELO_ONLINE && typeof eloOnSouAdmin === 'function' && eloOnSouAdmin()) return true; } catch (e) {}
+    try { if (!hierTemLider(currentUser.id) && !(typeof ELO_ONLINE !== 'undefined' && ELO_ONLINE)) return true; } catch (e) {}
+    try { return hierAbaixoDe(currentUser.id).has(u.id); } catch (e) { return false; }
+  };
+  // acha a pessoa pelo nome ou pelo e-mail escrito na coluna Consultor
+  window.importAcharConsultor = function(txt){
+    const t = String(txt || '').trim(); if (!t) return null;
+    const lista = usersList || [];
+    if (t.includes('@')) { const e = t.toLowerCase(); const u = lista.find(x => String(x.email || '').trim().toLowerCase() === e); if (u) return u; }
+    const nome = typeof melhorMatchConsultorVendas === 'function' ? melhorMatchConsultorVendas(t) : null;
+    return nome ? lista.find(x => x.nome === nome) || null : null;
+  };
+  // loja escrita na planilha -> loja cadastrada (sem ligar para acento, maiúscula, traço)
+  window.importAcharLoja = function(txt){
+    const n = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const alvo = n(txt); if (!alvo) return '';
+    try { const l = (hierLojas() || []).find(x => n(x.nome) === alvo) || (hierLojas() || []).find(x => n(x.nome).includes(alvo) || alvo.includes(n(x.nome))); return l ? l.id : null; } catch (e) { return null; }
+  };
+  // grupo e cota sempre do mesmo jeito (sem zeros à esquerda, sem espaços): é assim que o CRM sabe que a cota já existe
+  window.importNormCota = s => { const t = String(s == null ? '' : s).trim().replace(/\s+/g, '').replace(/\.0+$/, ''); return /^\d+$/.test(t) ? String(+t) : t.toUpperCase(); };
+  window.importIdDaCota = (g, c) => ('imp_' + importNormCota(g) + '_' + importNormCota(c)).replace(/[^A-Za-z0-9_.:@-]/g, '').slice(0, 90);
 })();
 </script>
 </body>
