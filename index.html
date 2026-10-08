@@ -19048,6 +19048,7 @@ function proRender(){
 .pl-tabela th, .pl-tabela td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .pl-tabela th:nth-child(2), .pl-tabela td:nth-child(2) { text-align: left; }
 .pl-tabela th { color: var(--red); }
+.pl-aviso { margin: 0 0 10px; padding: 8px 12px; border-radius: 10px; background: rgba(200, 16, 46, .07); border: 1px solid rgba(200, 16, 46, .25); font-size: 13px; }
 .pl-vazio { color: var(--muted); font-size: 13px; padding: 10px 0; margin: 0; }
 .pl-nota { display: block; margin-top: 8px; font-size: 11.5px; }
 [data-theme="dark"] .pl-barra i { background: #4b5563; }
@@ -19151,8 +19152,19 @@ function proRender(){
     t.ticket = t.qtd ? t.ativa / t.qtd : 0; t.ret = (t.ativa + t.canc) ? t.ativa / (t.ativa + t.canc) : null;
     return t;
   }
+  // todas as lojas cadastradas aparecem (mesmo sem venda ainda), mais as lojas que só aparecem nas vendas
+  function todasLojas(){
+    const m = new Map();
+    try { (typeof hierLojas === 'function' ? hierLojas() : []).forEach(l => { if (l && l.id) m.set(l.id, l.nome || 'Loja'); }); } catch (e) {}
+    ((est.dados && est.dados.linhas) || []).forEach(r => { const k = r.l || '-'; if (!m.has(k)) m.set(k, r.n || 'Sem loja definida'); });
+    return m;
+  }
   function porLoja(rs, segs){
     const m = new Map();
+    todasLojas().forEach((nome, id) => {
+      if (id === '-' || (est.loja && id !== est.loja) || (est.uf && ufDe(nome) !== est.uf) || (est.regiao && REGIOES[ufDe(nome)] !== est.regiao)) return;
+      m.set(id, { id, nome, ativa: 0, canc: 0, qtd: 0, seg: {} });
+    });
     rs.forEach(r => {
       if (segs && !segs.includes(r.s)) return;
       const k = r.l || '-', o = m.get(k) || { id: k, nome: r.n || 'Sem loja definida', ativa: 0, canc: 0, qtd: 0, seg: {} };
@@ -19160,15 +19172,15 @@ function proRender(){
       if (r.c) o.canc += v; else { o.ativa += v; o.qtd += Number(r.q) || 0; o.seg[r.s] = (o.seg[r.s] || 0) + v; }
       m.set(k, o);
     });
-    return [...m.values()].filter(o => o.ativa || o.canc).sort((a, b) => b.ativa - a.ativa || a.nome.localeCompare(b.nome, 'pt-BR'));
+    return [...m.values()].filter(o => o.ativa || o.canc || o.id !== '-').sort((a, b) => b.ativa - a.ativa || a.nome.localeCompare(b.nome, 'pt-BR'));
   }
   const opcao = (v, t, sel) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(t)}</option>`;
 
   function filtrosHtml(){
     const L = est.dados ? est.dados.linhas : [];
     const anos = [...new Set([new Date().getFullYear(), est.ano].concat(est.dados ? est.dados.anos : []))].sort((a, b) => b - a);
-    const lojas = [...new Map(L.map(r => [r.l || '-', r.n || 'Sem loja definida'])).entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
-    const ufs = [...new Set(L.map(r => ufDe(r.n)).filter(Boolean))].sort();
+    const lojas = [...todasLojas().entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
+    const ufs = [...new Set(lojas.map(([, n]) => ufDe(n)).filter(Boolean))].sort();
     const regioes = [...new Set(ufs.map(u => REGIOES[u]))].sort();
     const segs = [...new Set((typeof COTA_SEGMENTOS !== 'undefined' ? COTA_SEGMENTOS : []).concat(L.map(r => r.s)).filter(Boolean))];
     const campo = (rot, chave, ops) => `<label class="pl-campo"><span>${rot}</span><select onchange="painelLojasFiltro('${chave}', this.value)">${ops}</select></label>`;
@@ -19192,7 +19204,7 @@ function proRender(){
       const lista = porLoja(rs, segs), max = Math.max(1, ...lista.map(o => o.ativa));
       const linhas = lista.map(o => { const ret = (o.ativa + o.canc) ? o.ativa / (o.ativa + o.canc) : null;
         return `<div class="pl-lin" title="${esc(o.nome)}: ${esc(curto(o.ativa))} · ${o.qtd} cota(s) · retenção ${pct(ret)}"><span class="pl-nome">${esc(o.nome)}</span>
-          <span class="pl-barra"><i class="${forte ? 'forte' : ''}" style="width:${Math.max(2, Math.round(o.ativa / max * 100))}%"></i><b>${esc(curto(o.ativa))}</b></span><span class="pl-pct">${pct(ret)}</span></div>`; }).join('');
+          <span class="pl-barra"><i class="${forte ? 'forte' : ''}" style="width:${o.ativa ? Math.max(2, Math.round(o.ativa / max * 100)) : 0}%"></i><b>${esc(curto(o.ativa))}</b></span><span class="pl-pct">${pct(ret)}</span></div>`; }).join('');
       return `<div class="pl-rank"><h3>${tit}</h3><div class="pl-rank-lista">${linhas || '<p class="pl-vazio">Sem vendas neste filtro.</p>'}</div></div>`;
     }).join('');
   }
@@ -19246,7 +19258,8 @@ function proRender(){
     else if (!est.dados || est.dados.ano !== est.ano) corpo = '<p class="pl-vazio">Buscando os números das lojas…</p>';
     else {
       const rs = filtradas(false), t = somar(rs);
-      corpo = `<div class="pl-kpis">${kpisHtml(t)}</div>
+      const vazio = !est.dados.linhas.length ? `<p class="pl-aviso">Ainda não há vendas lançadas em ${est.ano}. As lojas já aparecem abaixo e os números entram sozinhos assim que as vendas forem lançadas no CRM.</p>` : '';
+      corpo = `${vazio}<div class="pl-kpis">${kpisHtml(t)}</div>
         <div class="pl-vistas"><button class="${est.vista === 'graficos' ? 'on' : ''}" onclick="painelLojasVista('graficos')">Gráficos</button><button class="${est.vista === 'tabelas' ? 'on' : ''}" onclick="painelLojasVista('tabelas')">Tabelas</button></div>
         ${est.vista === 'tabelas' ? tabelaHtml(rs) : `<div class="pl-ranks">${rankingHtml(rs)}</div>${linhaHtml()}`}
         <small class="muted pl-nota">Produção = vendas não canceladas · C/ Pagamento = com ao menos uma parcela marcada como recebida · Retenção (%) = produção ÷ (produção + cancelado)${est.carregando ? ' · atualizando…' : ''}</small>`;
