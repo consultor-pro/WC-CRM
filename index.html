@@ -19096,39 +19096,61 @@ function proRender(){
 .pl-topo h2 { margin: 0; }
 .pl-acoes { display: flex; gap: 6px; flex-wrap: wrap; }
 .pl-bt-filtro { display: none; }
-.pl-grade { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 14px; margin-top: 14px; }
+.pl-grade { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 14px; margin-top: 14px; }
 .pl-filtros { border: 1px solid var(--line); border-radius: 12px; padding: 12px; align-self: start; display: flex; flex-direction: column; gap: 10px; }
 .pl-filtros-cab { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; letter-spacing: .06em; }
 .pl-limpar { border: 0; background: none; color: var(--red); font-size: 12px; cursor: pointer; padding: 2px 4px; }
-.pl-campo { display: flex; flex-direction: column; gap: 4px; margin: 0; }
+.pl-campo { display: flex; flex-direction: column; gap: 4px; margin: 0; position: relative; }
+.pl-sel { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; padding: 6px 8px; font-size: 13px; text-align: left;
+  border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--muted); cursor: pointer; font-family: inherit; }
+.pl-sel em { font-style: normal; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-sel.usado { color: inherit; font-weight: 700; border-color: var(--red); }
+.pl-sel.on { border-color: var(--red); }
+.pl-sel i { font-style: normal; font-size: 11px; color: var(--muted); }
+.pl-pop { position: absolute; top: 100%; left: 0; z-index: 30; margin-top: 4px; width: max(100%, 240px); background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; box-shadow: 0 10px 28px rgba(15, 23, 42, .18); padding: 8px; color: inherit; }
+.pl-pop-busca { width: 100%; padding: 6px 8px; font-size: 13px; margin: 0 0 6px; box-sizing: border-box; }
+.pl-pop-lista { max-height: 280px; overflow-y: auto; }
+.pl-op { display: flex; align-items: center; gap: 8px; padding: 4px 4px; font-size: 13px; cursor: pointer; border-radius: 6px; margin: 0; font-weight: 400; }
+.pl-op:hover { background: rgba(200, 16, 46, .06); }
+.pl-op input { width: 15px; height: 15px; margin: 0; flex: none; accent-color: var(--red); }
+.pl-op span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-no { display: flex; align-items: center; }
+.pl-no .pl-op { flex: 1; min-width: 0; }
+.pl-seta { border: 0; background: none; color: var(--muted); width: 18px; padding: 0; cursor: pointer; font-size: 12px; flex: none; }
+.pl-seta-vazia { display: inline-block; width: 18px; flex: none; }
 .pl-campo span { font-size: 12.5px; font-weight: 700; }
 .pl-campo select { padding: 6px 8px; font-size: 13px; width: 100%; }
 .pl-corpo { min-width: 0; container-type: inline-size; }
 .pl-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .pl-kpi { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; text-align: center; min-width: 0; background: var(--card); box-shadow: 0 1px 3px rgba(15, 23, 42, .06); }
 .pl-kpi span { display: block; color: var(--red); font-weight: 800; font-size: 13.5px; }
-.pl-kpi b { display: block; font-size: clamp(14px, 1.9cqi, 20px); margin-top: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pl-kpi-total { position: relative; background: linear-gradient(160deg, #b80f2a, #8f0b20); border-color: transparent; color: #fff; }
+.pl-kpi b { display: block; font-size: clamp(13px, 1.75cqi, 20px); margin-top: 6px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-kpi-total { padding-bottom: 18px !important; position: relative; background: linear-gradient(160deg, #b80f2a, #8f0b20); border-color: transparent; color: #fff; }
 .pl-kpi-total span { color: #fff; font-size: 16px; }
-.pl-kpi-total b { font-size: clamp(20px, 2.6cqi, 30px); color: #fff; }
-.pl-kpi-total i { position: absolute; right: 9px; bottom: 6px; font-style: normal; font-weight: 800; font-size: 13px; }
-.pl-vistas { display: flex; justify-content: flex-end; gap: 8px; margin: 12px 0 10px; }
+.pl-kpi-total b { font-size: clamp(18px, 2.5cqi, 30px); color: #fff; }
+.pl-kpi-total i { position: absolute; right: 9px; bottom: 3px; font-style: normal; font-weight: 800; font-size: 13px; }
+.pl-vistas { display: flex; justify-content: flex-end; gap: 8px; margin: 12px 0 10px; flex-wrap: wrap; }
+.pl-vistas .pl-bt-tudo { margin-right: auto; }
 .pl-vistas button { border: 1px solid var(--line); background: var(--card); color: inherit; border-radius: 8px; padding: 4px 16px; font-size: 12.5px; cursor: pointer; }
 .pl-vistas button.on { background: var(--red); border-color: var(--red); color: #fff; font-weight: 700; }
-.pl-ranks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pl-ranks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.pl-ranks.pl-tudo .pl-rank-lista { max-height: none; overflow: visible; }
+.pl-ranks.pl-tudo .pl-nome { white-space: normal; overflow: visible; line-height: 1.15; }  /* ver todas: nome inteiro (bom para print) */
 .pl-rank, .pl-graf { border: 1px solid var(--line); border-radius: 12px; padding: 10px 10px 8px; background: var(--card); min-width: 0; }
-.pl-rank h3, .pl-graf h3 { margin: 0 0 8px; color: var(--red); font-size: 14.5px; text-align: center; text-shadow: none; }
+.pl-rank h3, .pl-graf h3 { margin: 0 0 8px; color: var(--red); font-size: 14px; text-align: center; text-shadow: none; }
+.pl-rank { padding: 10px 8px 8px; }
 .pl-rank-lista { max-height: 252px; overflow-y: auto; padding-right: 4px; }
-.pl-lin { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr) 34px; gap: 6px; align-items: center; font-size: 11.5px; padding: 3px 0; }
+.pl-lin { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr) 28px; gap: 5px; align-items: center; font-size: 11px; padding: 3px 0; }
 .pl-nome { text-align: right; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pl-barra { position: relative; height: 18px; display: flex; align-items: center; }
 .pl-barra i { position: absolute; left: 0; top: 0; bottom: 0; background: #b9bec6; border-radius: 2px; }
 .pl-barra i.forte { background: var(--red); opacity: .85; }
-.pl-barra b { position: relative; padding-left: 4px; white-space: nowrap; font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.pl-barra b { position: relative; padding-left: 4px; white-space: nowrap; font-size: 11px; font-variant-numeric: tabular-nums; }
 .pl-pct { color: var(--muted); font-size: 11px; }
 .pl-graf { margin-top: 10px; }
 .pl-leg { display: block; color: var(--muted); }
-.pl-leg i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--red); margin-right: 5px; vertical-align: -1px; }
+.pl-leg i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--red); margin: 0 4px 0 8px; vertical-align: -1px; }
 .pl-graf svg { width: 100%; display: block; overflow: visible; }
 .pl-graf path { fill: none; stroke: var(--red); stroke-width: 3; }
 .pl-graf circle { fill: var(--red); }
@@ -19145,16 +19167,20 @@ function proRender(){
 .pl-nota { display: block; margin-top: 8px; font-size: 11.5px; }
 [data-theme="dark"] .pl-barra i { background: #4b5563; }
 [data-theme="dark"] .pl-kpi { box-shadow: none; }
-@container (min-width: 980px) {
-  .pl-kpis { grid-template-columns: 1.5fr repeat(5, minmax(0, 1fr)); }
+@container (min-width: 700px) {
+  .pl-kpis { grid-template-columns: 1.5fr repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .pl-kpi { padding: 8px 6px; }
+  .pl-kpi span { font-size: 12.5px; }
 }
-@container (min-width: 1150px) {
-  .pl-ranks { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@container (max-width: 699px) {
+  .pl-ranks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 379px) {
+  .pl-ranks { grid-template-columns: minmax(0, 1fr); }
 }
 @container (max-width: 520px) {
   .pl-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .pl-kpi-total { grid-column: 1 / -1; }
-  .pl-ranks { grid-template-columns: minmax(0, 1fr); }
   .pl-kpi b { font-size: 17px; }
   .pl-kpi-total b { font-size: 24px; }
 }
@@ -19164,6 +19190,8 @@ function proRender(){
   .pl-filtros { display: none; }
   .pl-grade.filtros-abertos .pl-filtros { display: grid; grid-template-columns: 1fr 1fr; }
   .pl-grade.filtros-abertos .pl-filtros-cab { grid-column: 1 / -1; }
+  .pl-pop { width: min(300px, calc(100vw - 48px)); }
+  .pl-campo:nth-of-type(odd) .pl-pop { left: auto; right: 0; }
   .pl-graf .pl-val, .pl-graf .pl-mes { font-size: 11.5px; }
 }
 </style>
@@ -19172,14 +19200,19 @@ function proRender(){
 // Números de todas as lojas: produção, pagamento, cotas, ticket médio, cancelamento, ranking por segmento e produção por mês.
 // Vê quem é de Líder em treinamento para cima (e a administração); Consultor autorizado e Consultor em prévia não veem.
 // No Elo online os números vêm do banco (todas as lojas); no CRM de um aparelho só, das vendas guardadas aqui.
+// Filtros como no Power BI: caixas de marcar (várias de uma vez), busca na Unidade e data em árvore (Ano › Mês › Dia).
 (function(){
   const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
   const REGIOES = { AC: 'Norte', AP: 'Norte', AM: 'Norte', PA: 'Norte', RO: 'Norte', RR: 'Norte', TO: 'Norte',
     AL: 'Nordeste', BA: 'Nordeste', CE: 'Nordeste', MA: 'Nordeste', PB: 'Nordeste', PE: 'Nordeste', PI: 'Nordeste', RN: 'Nordeste', SE: 'Nordeste',
     DF: 'Centro-Oeste', GO: 'Centro-Oeste', MT: 'Centro-Oeste', MS: 'Centro-Oeste', ES: 'Sudeste', MG: 'Sudeste', RJ: 'Sudeste', SP: 'Sudeste', PR: 'Sul', RS: 'Sul', SC: 'Sul' };
   const GRUPOS = [['Produção Geral e Retenção', null, true], ['Produção e Retenção Imóveis', ['Imóvel']], ['Produção e Retenção Veículos', ['Veículo']], ['Produção e Retenção Serviços', ['Serviço']]];
-  const est = { ano: new Date().getFullYear(), mes: '', loja: '', uf: '', regiao: '', seg: '', status: '', pago: '', vista: 'graficos',
-    dados: null, carregando: false, erro: '', pedido: 0, quando: 0, fechado: false, filtrosAbertos: false };
+  const CORES = ['var(--red)', '#64748b', '#0f766e', '#b45309', '#7c3aed', '#0369a1'];
+  const CHAVES = ['loja', 'uf', 'regiao', 'seg', 'status', 'pago'];
+  const ANO_ATUAL = String(new Date().getFullYear());
+  const est = { datas: new Set([ANO_ATUAL]), f: {}, vista: 'graficos', tudo: false, cache: {}, anos: [], carregando: false, erro: '', pedido: 0,
+    fechado: false, filtrosAbertos: false, aberto: '', busca: {}, expand: new Set([ANO_ATUAL]), opcoes: {} };
+  CHAVES.forEach(k => { est.f[k] = new Set(); });
   try { est.fechado = localStorage.getItem('elo_painel_lojas_fechado') === '1'; } catch (e) {}
 
   function podeVer(){
@@ -19191,6 +19224,7 @@ function proRender(){
   const ufDe = nome => { const m = String(nome || '').trim().match(/[-–]\s*([A-Za-z]{2})\s*$/); const uf = m ? m[1].toUpperCase() : ''; return REGIOES[uf] ? uf : ''; };
   const pagou = s => { const p = s && s.paidMonths; return !!p && typeof p === 'object' && Object.keys(p).some(k => p[k] === true); };
   const num = v => Math.round(Number(v) || 0).toLocaleString('pt-BR');
+  const pad = n => String(n).padStart(2, '0');
   function curto(v){
     v = Number(v) || 0; const a = Math.abs(v);
     if (a >= 1e9) return (v / 1e9).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Bi';
@@ -19200,6 +19234,7 @@ function proRender(){
   }
   const pct = x => x == null ? '—' : Math.round(x * 100) + '%';
 
+  // ---------- de onde vêm os números ----------
   // vendas guardadas neste aparelho (CRM de um aparelho só)
   function fonteLocal(ano){
     const grupos = {}, anos = new Set();
@@ -19207,36 +19242,77 @@ function proRender(){
       if (!s || s.particular === true) return;
       const d = String(s.date || ''), a = +d.slice(0, 4); if (!a) return; anos.add(String(a)); if (a !== ano) return;
       const lid = (typeof hierLojaDaVenda === 'function' ? hierLojaDaVenda(s) : (s.loja || '')) || '';
-      const r = { l: lid, n: (lid && typeof hierLojaNome === 'function' && hierLojaNome(lid)) || 'Sem loja definida', m: d.slice(0, 7), s: s.segmento || 'Imóvel', c: !!s.cancelada, k: !!s.contemplada, p: pagou(s) };
+      const r = { l: lid, n: (lid && typeof hierLojaNome === 'function' && hierLojaNome(lid)) || 'Sem loja definida', m: d.slice(0, 10), s: s.segmento || 'Imóvel', c: !!s.cancelada, k: !!s.contemplada, p: pagou(s) };
       const ch = [r.l, r.m, r.s, r.c, r.k, r.p].join('|');
       const x = grupos[ch] || (grupos[ch] = Object.assign(r, { q: 0, v: 0 })); x.q++; x.v += Number(s.valor) || 0;
     });
     return Promise.resolve({ anos: [...anos].sort(), linhas: Object.values(grupos) });
   }
+  function anosDisponiveis(){
+    return [...new Set([ANO_ATUAL].concat(est.anos, Object.keys(est.cache), [...est.datas].map(k => k.slice(0, 4))))].sort((a, b) => b - a);
+  }
+  // anos que a escolha de datas pede (nada escolhido = todos)
+  function anosPedidos(){ return est.datas.size ? [...new Set([...est.datas].map(k => k.slice(0, 4)))].sort() : anosDisponiveis().slice().sort(); }
+  const temDados = () => anosPedidos().every(a => est.cache[a]);
   function buscar(forcar){
     if (!podeVer()) return;
+    const online = !!window.painelLojasFonte, fonte = window.painelLojasFonte || fonteLocal;
     // do banco: guarda por 1 minuto; deste aparelho: conta de novo sempre (é rápido e acompanha cada venda lançada)
-    if (!forcar && window.painelLojasFonte && est.dados && est.dados.ano === est.ano && Date.now() - est.quando < 60000) return;
-    const meu = ++est.pedido, fonte = window.painelLojasFonte || fonteLocal;
+    const precisa = anosPedidos().filter(a => forcar || !online || !est.cache[a] || Date.now() - est.cache[a].quando > 60000);
+    if (!precisa.length) return;
+    const meu = ++est.pedido;
     est.carregando = true; desenhar();
-    Promise.resolve().then(() => fonte(est.ano)).then(r => {
+    Promise.all(precisa.map(a => Promise.resolve().then(() => fonte(+a)).then(r => [a, r]))).then(res => {
       if (meu !== est.pedido) return;
-      est.carregando = false;
-      if (!r || r.erro) { est.erro = (r && r.erro) || 'falha'; }
-      else { est.erro = ''; est.dados = { ano: est.ano, anos: (r.anos || []).map(Number).filter(Boolean), linhas: Array.isArray(r.linhas) ? r.linhas : [] }; est.quando = Date.now(); }
+      est.carregando = false; let erro = '';
+      res.forEach(([a, r]) => {
+        if (!r || r.erro) { erro = (r && r.erro) || 'falha'; return; }
+        est.cache[a] = { linhas: Array.isArray(r.linhas) ? r.linhas : [], quando: Date.now() };
+        (r.anos || []).forEach(x => { x = String(x); if (/^\d{4}$/.test(x) && !est.anos.includes(x)) est.anos.push(x); });
+      });
+      est.erro = erro;
+      if (!erro && !est.datas.size && anosPedidos().some(a => !est.cache[a])) { buscar(false); return; }   // "todos os anos": busca os que faltam
       desenhar();
     }).catch(() => { if (meu !== est.pedido) return; est.carregando = false; est.erro = 'falha'; desenhar(); });
   }
+  function linhasTodas(){ return anosPedidos().reduce((a, ano) => a.concat(est.cache[ano] ? est.cache[ano].linhas : []), []); }
+  const temDias = () => linhasTodas().some(r => String(r.m).length >= 10);
 
-  function filtradas(semMes){
-    const L = (est.dados && est.dados.ano === est.ano) ? est.dados.linhas : [];
-    return L.filter(r => (semMes || !est.mes || String(r.m).slice(5, 7) === est.mes)
-      && (!est.loja || (r.l || '-') === est.loja)
-      && (!est.uf || ufDe(r.n) === est.uf)
-      && (!est.regiao || REGIOES[ufDe(r.n)] === est.regiao)
-      && (!est.seg || r.s === est.seg)
-      && (!est.status || (est.status === 'ativa' ? !r.c : est.status === 'cancelada' ? !!r.c : (!!r.k && !r.c)))
-      && (!est.pago || (est.pago === 'sim') === !!r.p));
+  // ---------- datas em árvore: Ano › Mês › Dia ----------
+  const diasNoMes = k => new Date(+k.slice(0, 4), +k.slice(5, 7), 0).getDate();
+  const filhos = k => k.length === 4 ? MESES.map((_, i) => k + '-' + pad(i + 1)) : (k.length === 7 && temDias() ? Array.from({ length: diasNoMes(k) }, (_, i) => k + '-' + pad(i + 1)) : []);
+  const pai = k => k.length === 10 ? k.slice(0, 7) : k.length === 7 ? k.slice(0, 4) : null;
+  function marcado(k){ for (let x = k; x; x = pai(x)) if (est.datas.has(x)) return true; return false; }
+  function parcial(k){ if (marcado(k)) return false; for (const s of est.datas) if (s.startsWith(k + '-')) return true; return false; }
+  function alternarData(k){
+    const S = est.datas;
+    if (marcado(k)) {
+      let a = k; while (!S.has(a)) a = pai(a);
+      S.delete(a);
+      for (let cur = a; cur !== k;) { const prox = filhos(cur).find(f => k === f || k.startsWith(f + '-')); filhos(cur).forEach(f => { if (f !== prox) S.add(f); }); cur = prox; }
+    } else {
+      [...S].forEach(s => { if (s.startsWith(k + '-')) S.delete(s); });
+      S.add(k);
+      for (let p = pai(k); p && filhos(p).length && filhos(p).every(f => S.has(f)); p = pai(p)) { filhos(p).forEach(f => S.delete(f)); S.add(p); }
+    }
+  }
+  function nomeData(k){
+    if (k.length === 4) return k;
+    if (k.length === 7) return MESES[+k.slice(5, 7) - 1] + ' de ' + k.slice(0, 4);
+    return k.slice(8, 10) + '/' + k.slice(5, 7) + '/' + k.slice(0, 4);
+  }
+  const dataOk = m => { if (!est.datas.size) return true; m = String(m); for (const k of est.datas) if (m.startsWith(k)) return true; return false; };
+
+  // ---------- filtros ----------
+  function statusOk(r){ const S = est.f.status; return !S.size || (S.has('ativa') && !r.c) || (S.has('cancelada') && !!r.c) || (S.has('contemplada') && !!r.k && !r.c); }
+  function pagoOk(r){ const S = est.f.pago; return !S.size || (S.has('sim') && !!r.p) || (S.has('nao') && !r.p); }
+  function lojaOk(id, nome){
+    const F = est.f;
+    return (!F.loja.size || F.loja.has(id)) && (!F.uf.size || F.uf.has(ufDe(nome))) && (!F.regiao.size || F.regiao.has(REGIOES[ufDe(nome)]));
+  }
+  function filtradas(){
+    const F = est.f;
+    return linhasTodas().filter(r => dataOk(r.m) && lojaOk(r.l || '-', r.n) && (!F.seg.size || F.seg.has(r.s)) && statusOk(r) && pagoOk(r));
   }
   function somar(rs){
     const t = { ativa: 0, qtd: 0, pago: 0, aguarda: 0, canc: 0 };
@@ -19248,15 +19324,12 @@ function proRender(){
   function todasLojas(){
     const m = new Map();
     try { (typeof hierLojas === 'function' ? hierLojas() : []).forEach(l => { if (l && l.id) m.set(l.id, l.nome || 'Loja'); }); } catch (e) {}
-    ((est.dados && est.dados.linhas) || []).forEach(r => { const k = r.l || '-'; if (!m.has(k)) m.set(k, r.n || 'Sem loja definida'); });
+    linhasTodas().forEach(r => { const k = r.l || '-'; if (!m.has(k)) m.set(k, r.n || 'Sem loja definida'); });
     return m;
   }
   function porLoja(rs, segs){
     const m = new Map();
-    todasLojas().forEach((nome, id) => {
-      if (id === '-' || (est.loja && id !== est.loja) || (est.uf && ufDe(nome) !== est.uf) || (est.regiao && REGIOES[ufDe(nome)] !== est.regiao)) return;
-      m.set(id, { id, nome, ativa: 0, canc: 0, qtd: 0, seg: {} });
-    });
+    todasLojas().forEach((nome, id) => { if (id === '-' || !lojaOk(id, nome)) return; m.set(id, { id, nome, ativa: 0, canc: 0, qtd: 0, seg: {} }); });
     rs.forEach(r => {
       if (segs && !segs.includes(r.s)) return;
       const k = r.l || '-', o = m.get(k) || { id: k, nome: r.n || 'Sem loja definida', ativa: 0, canc: 0, qtd: 0, seg: {} };
@@ -19266,26 +19339,59 @@ function proRender(){
     });
     return [...m.values()].filter(o => o.ativa || o.canc || o.id !== '-').sort((a, b) => b.ativa - a.ativa || a.nome.localeCompare(b.nome, 'pt-BR'));
   }
-  const opcao = (v, t, sel) => `<option value="${esc(v)}" ${v === sel ? 'selected' : ''}>${esc(t)}</option>`;
 
-  function filtrosHtml(){
-    const L = est.dados ? est.dados.linhas : [];
-    const anos = [...new Set([new Date().getFullYear(), est.ano].concat(est.dados ? est.dados.anos : []))].sort((a, b) => b - a);
-    const lojas = [...todasLojas().entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR'));
-    const ufs = [...new Set(lojas.map(([, n]) => ufDe(n)).filter(Boolean))].sort();
-    const regioes = [...new Set(ufs.map(u => REGIOES[u]))].sort();
-    const segs = [...new Set((typeof COTA_SEGMENTOS !== 'undefined' ? COTA_SEGMENTOS : []).concat(L.map(r => r.s)).filter(Boolean))];
-    const campo = (rot, chave, ops) => `<label class="pl-campo"><span>${rot}</span><select onchange="painelLojasFiltro('${chave}', this.value)">${ops}</select></label>`;
-    return `<div class="pl-filtros-cab"><b>FILTRO</b><button class="pl-limpar" title="Limpar filtros" onclick="painelLojasLimpar()">limpar</button></div>
-      ${campo('Ano', 'ano', anos.map(a => opcao(String(a), String(a), String(est.ano))).join(''))}
-      ${campo('Mês', 'mes', opcao('', 'Todos', est.mes) + MESES.map((m, i) => opcao(String(i + 1).padStart(2, '0'), m, est.mes)).join(''))}
-      ${campo('Unidade', 'loja', opcao('', 'Todas', est.loja) + lojas.map(([id, n]) => opcao(id, n, est.loja)).join(''))}
-      ${ufs.length ? campo('UF Unidade', 'uf', opcao('', 'Todos', est.uf) + ufs.map(u => opcao(u, u, est.uf)).join('')) : ''}
-      ${regioes.length ? campo('Região UF', 'regiao', opcao('', 'Todas', est.regiao) + regioes.map(r => opcao(r, r, est.regiao)).join('')) : ''}
-      ${campo('Segmento', 'seg', opcao('', 'Todos', est.seg) + segs.map(s => opcao(s, s, est.seg)).join(''))}
-      ${campo('Status Cota', 'status', opcao('', 'Todos', est.status) + opcao('ativa', 'Ativas', est.status) + opcao('contemplada', 'Contempladas', est.status) + opcao('cancelada', 'Canceladas', est.status))}
-      ${campo('Tem Pagamento', 'pago', opcao('', 'Todos', est.pago) + opcao('sim', 'Sim', est.pago) + opcao('nao', 'Não', est.pago))}`;
+  // opções de cada filtro de marcar
+  function opcoesDe(chave){
+    if (chave === 'loja') return [...todasLojas().entries()].sort((a, b) => a[1].localeCompare(b[1], 'pt-BR')).map(([v, t]) => ({ v, t }));
+    if (chave === 'uf') return [...new Set([...todasLojas().values()].map(ufDe).filter(Boolean))].sort().map(v => ({ v, t: v }));
+    if (chave === 'regiao') return [...new Set([...todasLojas().values()].map(n => REGIOES[ufDe(n)]).filter(Boolean))].sort().map(v => ({ v, t: v }));
+    if (chave === 'seg') return [...new Set((typeof COTA_SEGMENTOS !== 'undefined' ? COTA_SEGMENTOS : []).concat(linhasTodas().map(r => r.s)).filter(Boolean))].map(v => ({ v, t: v }));
+    if (chave === 'status') return [{ v: 'ativa', t: 'Ativas' }, { v: 'contemplada', t: 'Contempladas' }, { v: 'cancelada', t: 'Canceladas' }];
+    if (chave === 'pago') return [{ v: 'sim', t: 'Sim' }, { v: 'nao', t: 'Não' }];
+    return [];
   }
+  function rotuloFiltro(chave){
+    const S = est.f[chave]; if (!S.size) return 'Todos';
+    if (S.size === 1) { const v = [...S][0], o = opcoesDe(chave).find(x => x.v === v); return o ? o.t : v; }
+    return 'Seleções múltiplas';
+  }
+  function rotuloDatas(){ if (!est.datas.size) return 'Todos'; if (est.datas.size === 1) return nomeData([...est.datas][0]); return 'Seleções múltiplas'; }
+
+  const caixa = (marc, part, acao, texto, extra) => `<label class="pl-op"${extra || ''}><input type="checkbox" ${marc ? 'checked' : ''} ${part ? 'data-parcial="1"' : ''} onchange="${acao}"><span>${esc(texto)}</span></label>`;
+  function popData(){
+    const nos = est.opcoes.datas = [];
+    const linha = (k, nivel) => {
+      const i = nos.push(k) - 1, fs = filhos(k), aberto = est.expand.has(k);
+      let h = `<div class="pl-no" style="padding-left:${nivel * 16}px">${fs.length ? `<button class="pl-seta" onclick="painelLojasExpandir(${i})" title="${aberto ? 'Fechar' : 'Abrir'}">${aberto ? '▾' : '▸'}</button>` : '<i class="pl-seta-vazia"></i>'}${caixa(marcado(k), parcial(k), `painelLojasData(${i})`, k.length === 7 ? MESES[+k.slice(5, 7) - 1] : k.length === 10 ? k.slice(8, 10) : k)}</div>`;
+      if (fs.length && aberto) fs.forEach(f => { h += linha(f, nivel + 1); });
+      return h;
+    };
+    const anos = anosDisponiveis();
+    const tudo = anos.every(a => est.datas.has(a));
+    return `<div class="pl-pop" onclick="event.stopPropagation()"><div class="pl-pop-lista">${caixa(tudo, est.datas.size && !tudo, 'painelLojasData(-1)', 'Selecionar tudo', ' style="font-weight:700"')}${anos.map(a => linha(a, 0)).join('')}</div></div>`;
+  }
+  function popMulti(chave){
+    const ops = est.opcoes[chave] = opcoesDe(chave), S = est.f[chave];
+    const tudo = ops.length && ops.every(o => S.has(o.v));
+    const busca = chave === 'loja' || ops.length > 8;
+    return `<div class="pl-pop" onclick="event.stopPropagation()">${busca ? `<input class="pl-pop-busca" type="search" placeholder="🔎 Pesquisar" value="${esc(est.busca[chave] || '')}" oninput="painelLojasBuscar('${chave}', this.value)">` : ''}
+      <div class="pl-pop-lista">${caixa(tudo, S.size && !tudo, `painelLojasMarcar('${chave}', -1)`, 'Selecionar tudo', ' style="font-weight:700"')}
+      ${ops.map((o, i) => caixa(S.has(o.v), false, `painelLojasMarcar('${chave}', ${i})`, o.t, ` data-t="${esc(String(o.t).toLowerCase())}"`)).join('') || '<p class="pl-vazio">Nada para escolher.</p>'}</div></div>`;
+  }
+  function filtrosHtml(){
+    const campo = (rot, chave, rotulo, pop) => `<div class="pl-campo"><span>${rot}</span><button class="pl-sel ${est.aberto === chave ? 'on' : ''} ${rotulo === 'Todos' ? '' : 'usado'}" onclick="event.stopPropagation();painelLojasAbrirFiltro('${chave}')"><em>${esc(rotulo)}</em><i>${est.aberto === chave ? '▴' : '▾'}</i></button>${est.aberto === chave ? pop() : ''}</div>`;
+    const ufs = opcoesDe('uf').length, regs = opcoesDe('regiao').length;
+    return `<div class="pl-filtros-cab"><b>FILTRO</b><button class="pl-limpar" title="Limpar filtros" onclick="painelLojasLimpar()">limpar</button></div>
+      ${campo('Ano, Mês, Dia', 'datas', rotuloDatas(), popData)}
+      ${campo('Unidade', 'loja', rotuloFiltro('loja'), () => popMulti('loja'))}
+      ${ufs ? campo('UF Unidade', 'uf', rotuloFiltro('uf'), () => popMulti('uf')) : ''}
+      ${regs ? campo('Região UF', 'regiao', rotuloFiltro('regiao'), () => popMulti('regiao')) : ''}
+      ${campo('Segmento', 'seg', rotuloFiltro('seg'), () => popMulti('seg'))}
+      ${campo('Status Cota', 'status', rotuloFiltro('status'), () => popMulti('status'))}
+      ${campo('Tem Pagamento', 'pago', rotuloFiltro('pago'), () => popMulti('pago'))}`;
+  }
+
+  // ---------- quadros ----------
   function kpisHtml(t){
     const k = (tit, val, cls) => `<div class="pl-kpi ${cls || ''}"><span>${tit}</span><b>${val}</b></div>`;
     return `<div class="pl-kpi pl-kpi-total"><span>Produção Total</span><b>${num(t.ativa)}</b><i title="Retenção: quanto da produção não foi cancelado">${pct(t.ret)}</i></div>
@@ -19295,33 +19401,47 @@ function proRender(){
     return GRUPOS.map(([tit, segs, forte]) => {
       const lista = porLoja(rs, segs), max = Math.max(1, ...lista.map(o => o.ativa));
       const linhas = lista.map(o => { const ret = (o.ativa + o.canc) ? o.ativa / (o.ativa + o.canc) : null;
-        return `<div class="pl-lin" title="${esc(o.nome)}: ${esc(curto(o.ativa))} · ${o.qtd} cota(s) · retenção ${pct(ret)}"><span class="pl-nome">${esc(o.nome)}</span>
+        return `<div class="pl-lin" title="${esc(o.nome)}: produção ativa ${esc(curto(o.ativa))} · ${o.qtd} cota(s) · cancelado ${esc(curto(o.canc))} · retenção ${pct(ret)}"><span class="pl-nome">${esc(o.nome)}</span>
           <span class="pl-barra"><i class="${forte ? 'forte' : ''}" style="width:${o.ativa ? Math.max(2, Math.round(o.ativa / max * 100)) : 0}%"></i><b>${esc(curto(o.ativa))}</b></span><span class="pl-pct">${pct(ret)}</span></div>`; }).join('');
       return `<div class="pl-rank"><h3>${tit}</h3><div class="pl-rank-lista">${linhas || '<p class="pl-vazio">Sem vendas neste filtro.</p>'}</div></div>`;
     }).join('');
   }
-  function linhaHtml(){
-    const rs = filtradas(true), hoje = new Date();
-    const ate = est.ano < hoje.getFullYear() ? 12 : (est.ano > hoje.getFullYear() ? 0 : hoje.getMonth() + 1);
-    const vals = Array.from({ length: 12 }, () => 0);
-    rs.forEach(r => { const i = +String(r.m).slice(5, 7) - 1; if (i >= 0 && i < 12 && !r.c) vals[i] += Number(r.v) || 0; });
-    const n = Math.max(ate, vals.reduce((u, v, i) => v ? i + 1 : u, 0), 1), ys = vals.slice(0, n);
-    const larg = ((document.querySelector('#painelLojasCard .pl-corpo') || {}).clientWidth || 1000) - 22;
-    const W = Math.max(300, Math.round(larg)), H = W < 600 ? 200 : 250, pe = 34, pd = 34, ps = 30, pi = 32, max = Math.max(1, ...ys);
-    const todos = W / n >= 62, maior = ys.indexOf(Math.max(...ys));
+  function linhaHtml(rs){
+    // meses que entram: os da escolha de datas (nada escolhido = de janeiro até hoje / até dezembro nos anos passados)
+    const anos = anosPedidos().filter(a => !est.datas.size || marcado(a) || parcial(a)).sort((a, b) => b - a);
+    const mesesDo = a => MESES.map((_, i) => i + 1).filter(m => {
+      const k = a + '-' + pad(m);
+      if (est.datas.size && !(marcado(k) || parcial(k))) return false;
+      return !(a === ANO_ATUAL && m > new Date().getMonth() + 1);
+    });
+    const meses = [...new Set(anos.reduce((acc, a) => acc.concat(mesesDo(a)), []))].sort((a, b) => a - b);
+    if (!meses.length) return '';
+    const soma = {}; rs.forEach(r => { if (r.c) return; const k = String(r.m).slice(0, 7); soma[k] = (soma[k] || 0) + (Number(r.v) || 0); });
+    const series = anos.slice(0, CORES.length).map((a, j) => ({ a, cor: CORES[j], ys: meses.map(m => mesesDo(a).includes(m) ? (soma[a + '-' + pad(m)] || 0) : null) }));
+    const n = meses.length, larg = ((document.querySelector('#painelLojasCard .pl-corpo') || {}).clientWidth || 1000) - 22;
+    const W = Math.max(300, Math.round(larg)), H = W < 600 ? 200 : 250, pe = 34, pd = 34, ps = 30, pi = 32;
+    const max = Math.max(1, ...series.reduce((acc, s) => acc.concat(s.ys.filter(v => v != null)), []));
     const x = i => n === 1 ? W / 2 : pe + i * (W - pe - pd) / (n - 1), y = v => ps + (1 - v / max) * (H - ps - pi);
-    const pts = ys.map((v, i) => [x(i), y(v)]);
-    let d = pts.length ? `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}` : '';
-    for (let i = 0; i < pts.length - 1; i++) {        // curva suave passando pelos pontos
-      const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+    const todos = W / n >= 62;
+    const curva = pts => {
+      let d = pts.length ? `M${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}` : '';
       const base = y(0), lim = v => Math.min(base, Math.max(ps, v));      // a curva nunca passa abaixo do zero nem acima do teto
-      const c1 = [p1[0] + (p2[0] - p0[0]) / 6, lim(p1[1] + (p2[1] - p0[1]) / 6)], c2 = [p2[0] - (p3[0] - p1[0]) / 6, lim(p2[1] - (p3[1] - p1[1]) / 6)];
-      d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
-    }
-    const marcas = pts.map((p, i) => `<g class="${est.mes && +est.mes === i + 1 ? 'pl-sel' : ''}"><circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${est.mes && +est.mes === i + 1 ? 6 : 3.5}"></circle>
-      ${todos || i === maior || (est.mes && +est.mes === i + 1) ? `<text class="pl-val" x="${p[0].toFixed(1)}" y="${(p[1] - 11).toFixed(1)}">${esc(curto(ys[i]))}</text>` : ''}<text class="pl-mes" x="${p[0].toFixed(1)}" y="${H - 8}">${W / n >= 80 ? MESES[i] : MESES[i].slice(0, 3)}</text></g>`).join('');
-    return `<div class="pl-graf"><h3>Produção por Mês e Ano</h3><small class="pl-leg"><i></i>${est.ano}</small>
-      <svg viewBox="0 0 ${W} ${H}" style="height:auto" role="img" aria-label="Produção por mês em ${est.ano}"><path d="${d}"></path>${marcas}</svg></div>`;
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] || p2;
+        const c1 = [p1[0] + (p2[0] - p0[0]) / 6, lim(p1[1] + (p2[1] - p0[1]) / 6)], c2 = [p2[0] - (p3[0] - p1[0]) / 6, lim(p2[1] - (p3[1] - p1[1]) / 6)];
+        d += ` C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
+      }
+      return d;
+    };
+    const desenhos = series.map((s, j) => {
+      const pts = s.ys.map((v, i) => v == null ? null : [x(i), y(v), v, i]).filter(Boolean);
+      const vals = pts.map(p => p[2]), maior = vals.indexOf(Math.max(...vals));
+      return `<path d="${curva(pts)}" style="stroke:${s.cor}"></path>` + pts.map((p, q) => `<g><circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="3.5" style="fill:${s.cor}"><title>${MESES[meses[p[3]] - 1]} de ${s.a}: ${curto(p[2])}</title></circle>
+        ${j === 0 && (todos || q === maior) ? `<text class="pl-val" x="${p[0].toFixed(1)}" y="${(p[1] - 11).toFixed(1)}">${esc(curto(p[2]))}</text>` : ''}</g>`).join('');
+    }).join('');
+    const rotulos = meses.map((m, i) => `<text class="pl-mes" x="${x(i).toFixed(1)}" y="${H - 8}">${W / n >= 80 ? MESES[m - 1] : MESES[m - 1].slice(0, 3)}</text>`).join('');
+    return `<div class="pl-graf"><h3>Produção por Mês e Ano</h3><small class="pl-leg">Ano ${series.map(s => `<i style="background:${s.cor}"></i>${s.a}`).join(' ')}</small>
+      <svg viewBox="0 0 ${W} ${H}" style="height:auto" role="img" aria-label="Produção por mês">${desenhos}${rotulos}</svg></div>`;
   }
   function tabelaHtml(rs){
     const lista = porLoja(rs, null);
@@ -19346,28 +19466,60 @@ function proRender(){
       <button class="tc-btn" onclick="painelLojasAbrir()">${est.fechado ? 'mostrar' : 'ocultar'}</button></div></div>`;
     if (est.fechado) { c.innerHTML = cab; return; }
     let corpo;
-    if (est.erro && (!est.dados || est.dados.ano !== est.ano)) corpo = `<p class="pl-vazio">${est.erro === 'rede' || est.erro === 'falha' ? 'Não foi possível buscar os números agora (sem internet?). Tente de novo em instantes.' : est.erro === 'sem_permissao' ? 'Este quadro é para quem é de Líder em treinamento para cima.' : est.erro === 'banco_antigo' ? 'Falta atualizar o banco: a administração precisa colar o texto de instalação novo na Supabase.' : 'Não foi possível buscar os números agora.'}</p>`;
-    else if (!est.dados || est.dados.ano !== est.ano) corpo = '<p class="pl-vazio">Buscando os números das lojas…</p>';
+    if (est.erro && !temDados()) corpo = `<p class="pl-vazio">${est.erro === 'rede' || est.erro === 'falha' ? 'Não foi possível buscar os números agora (sem internet?). Tente de novo em instantes.' : est.erro === 'sem_permissao' ? 'Este quadro é para quem é de Líder em treinamento para cima.' : est.erro === 'banco_antigo' ? 'Falta atualizar o banco: a administração precisa colar o texto de instalação novo na Supabase.' : 'Não foi possível buscar os números agora.'}</p>`;
+    else if (!temDados()) corpo = '<p class="pl-vazio">Buscando os números das lojas…</p>';
     else {
-      const rs = filtradas(false), t = somar(rs);
-      const vazio = !est.dados.linhas.length ? `<p class="pl-aviso">Ainda não há vendas lançadas em ${est.ano}. As lojas já aparecem abaixo e os números entram sozinhos assim que as vendas forem lançadas no CRM.</p>` : '';
+      const rs = filtradas(), t = somar(rs);
+      const vazio = !linhasTodas().length ? `<p class="pl-aviso">Ainda não há vendas lançadas neste período. As lojas já aparecem abaixo e os números entram sozinhos assim que as vendas forem lançadas no CRM.</p>` : '';
       corpo = `${vazio}<div class="pl-kpis">${kpisHtml(t)}</div>
-        <div class="pl-vistas"><button class="${est.vista === 'graficos' ? 'on' : ''}" onclick="painelLojasVista('graficos')">Gráficos</button><button class="${est.vista === 'tabelas' ? 'on' : ''}" onclick="painelLojasVista('tabelas')">Tabelas</button></div>
-        ${est.vista === 'tabelas' ? tabelaHtml(rs) : `<div class="pl-ranks">${rankingHtml(rs)}</div>${linhaHtml()}`}
-        <small class="muted pl-nota">Produção = vendas não canceladas · C/ Pagamento = com ao menos uma parcela marcada como recebida · Retenção (%) = produção ÷ (produção + cancelado)${est.carregando ? ' · atualizando…' : ''}</small>`;
+        <div class="pl-vistas">${est.vista === 'graficos' ? `<button class="pl-bt-tudo ${est.tudo ? 'on' : ''}" onclick="painelLojasVerTudo()" title="Mostra todas as lojas nos quadros, sem precisar rolar (bom para tirar print)">${est.tudo ? '↥ Ver menos' : '↧ Ver todas'}</button>` : ''}
+          <button class="${est.vista === 'graficos' ? 'on' : ''}" onclick="painelLojasVista('graficos')">Gráficos</button><button class="${est.vista === 'tabelas' ? 'on' : ''}" onclick="painelLojasVista('tabelas')">Tabelas</button></div>
+        ${est.vista === 'tabelas' ? tabelaHtml(rs) : `<div class="pl-ranks ${est.tudo ? 'pl-tudo' : ''}">${rankingHtml(rs)}</div>${linhaHtml(rs)}`}
+        <small class="muted pl-nota">Produção = vendas ativas (não canceladas) · Retenção (%) = quanto do total vendido continua ativo: produção ÷ (produção + cancelado) · C/ Pagamento = com ao menos uma parcela marcada como recebida${est.carregando ? ' · atualizando…' : ''}</small>`;
     }
+    // guarda a rolagem das listas e o cursor da busca (a tela é desenhada de novo a cada clique)
     const rolagem = [...c.querySelectorAll('.pl-rank-lista')].map(e => e.scrollTop);
+    const popRol = (c.querySelector('.pl-pop-lista') || {}).scrollTop || 0;
+    const buscaFoco = document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('pl-pop-busca');
     c.innerHTML = cab + `<div class="pl-grade ${est.filtrosAbertos ? 'filtros-abertos' : ''}"><aside class="pl-filtros">${filtrosHtml()}</aside><div class="pl-corpo">${corpo}</div></div>`;
     c.querySelectorAll('.pl-rank-lista').forEach((e, i) => { e.scrollTop = rolagem[i] || 0; });
+    c.querySelectorAll('input[data-parcial]').forEach(e => { e.indeterminate = true; });
+    const pl = c.querySelector('.pl-pop-lista'); if (pl) pl.scrollTop = popRol;
+    if (est.aberto && est.aberto !== 'datas') aplicarBusca(est.aberto);
+    if (buscaFoco) { const b = c.querySelector('.pl-pop-busca'); if (b) { b.focus(); const n = b.value.length; try { b.setSelectionRange(n, n); } catch (e) {} } }
   }
-  function filtrosAtivos(){ return ['mes', 'loja', 'uf', 'regiao', 'seg', 'status', 'pago'].filter(k => est[k]).length; }
+  function aplicarBusca(chave){
+    const t = String(est.busca[chave] || '').trim().toLowerCase();
+    document.querySelectorAll('#painelLojasCard .pl-pop .pl-op[data-t]').forEach(e => { e.style.display = !t || e.dataset.t.includes(t) ? '' : 'none'; });
+  }
+  function filtrosAtivos(){ return CHAVES.filter(k => est.f[k].size).length + (est.datas.size === 1 && [...est.datas][0] === ANO_ATUAL ? 0 : 1); }
 
-  window.painelLojasFiltro = function(chave, valor){
-    if (chave === 'ano') { est.ano = +valor || new Date().getFullYear(); desenhar(); buscar(true); return; }
-    est[chave] = valor; desenhar();
+  // ---------- ações ----------
+  window.painelLojasAbrirFiltro = function(chave){ est.aberto = est.aberto === chave ? '' : chave; desenhar(); };
+  window.painelLojasMarcar = function(chave, i){
+    const ops = est.opcoes[chave] || [], S = est.f[chave];
+    if (i < 0) { if (ops.every(o => S.has(o.v))) S.clear(); else ops.forEach(o => S.add(o.v)); }
+    else { const v = ops[i] && ops[i].v; if (v === undefined) return; if (S.has(v)) S.delete(v); else S.add(v); }
+    if (ops.length && ops.every(o => S.has(o.v))) S.clear();          // tudo marcado = "Todos"
+    desenhar();
   };
-  window.painelLojasLimpar = function(){ ['mes', 'loja', 'uf', 'regiao', 'seg', 'status', 'pago'].forEach(k => { est[k] = ''; }); desenhar(); };
+  window.painelLojasBuscar = function(chave, t){ est.busca[chave] = t; aplicarBusca(chave); };
+  window.painelLojasData = function(i){
+    if (i < 0) { const anos = anosDisponiveis(); if (anos.every(a => est.datas.has(a))) est.datas.clear(); else est.datas = new Set(anos); }
+    else { const k = (est.opcoes.datas || [])[i]; if (!k) return; alternarData(k); }
+    desenhar(); buscar(false);
+  };
+  window.painelLojasExpandir = function(i){ const k = (est.opcoes.datas || [])[i]; if (!k) return; if (est.expand.has(k)) est.expand.delete(k); else est.expand.add(k); desenhar(); };
+  // compatível com o jeito antigo (um valor por filtro): painelLojasFiltro('loja', 'A'), ('ano', '2025'), ('mes', '04')
+  window.painelLojasFiltro = function(chave, valor){
+    valor = valor == null ? '' : String(valor);
+    if (chave === 'ano') { est.datas = new Set([valor || ANO_ATUAL]); desenhar(); buscar(true); return; }
+    if (chave === 'mes') { const ano = ([...est.datas][0] || ANO_ATUAL).slice(0, 4); est.datas = new Set([valor ? ano + '-' + valor : ano]); desenhar(); return; }
+    if (est.f[chave]) { est.f[chave] = new Set(valor ? [valor] : []); desenhar(); }
+  };
+  window.painelLojasLimpar = function(){ CHAVES.forEach(k => est.f[k].clear()); est.datas = new Set([ANO_ATUAL]); est.busca = {}; est.aberto = ''; desenhar(); buscar(false); };
   window.painelLojasVista = function(v){ est.vista = v; desenhar(); };
+  window.painelLojasVerTudo = function(){ est.tudo = !est.tudo; desenhar(); };
   window.painelLojasFiltros = function(){ est.filtrosAbertos = !est.filtrosAbertos; desenhar(); };
   window.painelLojasAbrir = function(){
     est.fechado = !est.fechado; try { localStorage.setItem('elo_painel_lojas_fechado', est.fechado ? '1' : '0'); } catch (e) {}
@@ -19375,11 +19527,17 @@ function proRender(){
   };
   window.painelLojasAtualizar = function(forcar){ if (!podeVer()) { desenhar(); return; } desenhar(); if (!est.fechado) buscar(!!forcar); };
   window.painelLojasPodeVer = podeVer;
-  window.painelLojasEstado = () => ({ podeVer: podeVer(), carregando: est.carregando, erro: est.erro, temDados: !!est.dados, ano: est.ano });
+  window.painelLojasEstado = () => ({ podeVer: podeVer(), carregando: est.carregando, erro: est.erro, temDados: temDados(), ano: +([...est.datas][0] || ANO_ATUAL).slice(0, 4), datas: [...est.datas] });
 
+  // clicar fora fecha a lista aberta
+  document.addEventListener('click', ev => {
+    if (!est.aberto) return;
+    if (ev.target.closest && (ev.target.closest('#painelLojasCard .pl-pop') || ev.target.closest('#painelLojasCard .pl-sel'))) return;
+    est.aberto = ''; if (document.getElementById('painelLojasCard')) desenhar();
+  });
   // o gráfico de linha acompanha a largura da tela
   let tempoTela = null;
-  window.addEventListener('resize', () => { clearTimeout(tempoTela); tempoTela = setTimeout(() => { if (document.getElementById('painelLojasCard') && est.dados && !est.fechado) desenhar(); }, 250); });
+  window.addEventListener('resize', () => { clearTimeout(tempoTela); tempoTela = setTimeout(() => { if (document.getElementById('painelLojasCard') && temDados() && !est.fechado) desenhar(); }, 250); });
 
   // entra junto com o Dashboard (sem mudar nada do que o Dashboard já faz)
   const renderDashboardAntes = window.renderDashboard;
@@ -20190,8 +20348,8 @@ const ASSIST_BASE = [
   r: 'O **Dashboard** mostra: a lista **Para hoje**, total de leads, agendamentos, **cotas fechadas** e **volume vendido** no período, a **meta mensal**, o **funil de vendas**, as cotas por segmento, a evolução dos últimos 6 meses e o desempenho da equipe. Use o filtro de período (Este mês, Hoje, Personalizado ou Todo o histórico) e o de consultor.', aba: 'dashboard' },
 { id: 'meta', t: 'Como defino a minha meta mensal?', k: 'meta, meta mensal, objetivo do mes, definir meta, meta de vendas',
   r: 'No **Dashboard**, no cartão **🎯 Meta mensal de vendas**, digite o valor da meta. A barra mostra quanto você já atingiu no mês. Quem lidera também define a meta de cada pessoa em **Equipe** › **Meta e senha**.', aba: 'dashboard' },
-{ id: 'producao_lojas', so: 'lider', t: 'O que é o quadro "Produção das lojas"?', k: 'producao das lojas, ranking das lojas, qual loja vende mais, quadro das lojas, retencao, unidade',
-  r: 'No **Dashboard**, quem é de **Líder em treinamento para cima** vê os números de **todas as lojas**: produção, com pagamento, aguardando pagamento, cotas, ticket médio e cancelado, além do ranking das lojas por segmento e a produção por mês. Use os filtros (ano, mês, unidade, UF, segmento, status da cota) e o botão **Tabelas** para ver em tabela. Retenção = produção ÷ (produção + cancelado).', aba: 'dashboard' },
+{ id: 'producao_lojas', so: 'lider', t: 'O que é o quadro "Produção das lojas"?', k: 'producao das lojas, ranking das lojas, qual loja vende mais, quadro das lojas, retencao, unidade, ver todas, print do quadro, filtro de data, varias lojas',
+  r: 'No **Dashboard**, quem é de **Líder em treinamento para cima** vê os números de **todas as lojas**: produção, com pagamento, aguardando pagamento, cotas, ticket médio e cancelado, além do ranking das lojas por segmento e a produção por mês. Nos filtros dá para marcar **várias opções de uma vez** (várias lojas, segmentos, UFs…), pesquisar a loja pelo nome e escolher a data em árvore (**Ano › Mês › Dia**). Nada marcado = todos. O botão **Ver todas** mostra todas as lojas nos quatro quadros sem precisar rolar (bom para tirar print), e **Tabelas** mostra tudo em tabela. Retenção = quanto do total vendido continua ativo: produção ÷ (produção + cancelado).', aba: 'dashboard' },
 { id: 'relatorio', t: 'Como exporto um relatório para imprimir?', k: 'imprimir relatorio, imprimo o relatorio, imprimir o dashboard, relatorio, imprimir, pdf, exportar relatorio, relatorio mensal, relatorio semanal, relatorio diario, relatorio anual, folha a4',
   r: '1. No **Dashboard**, toque em **📄 Exportar relatório**.\n2. Escolha **Diário, Semanal, Mensal, Anual ou Personalizado** e a data.\n3. Toque em **Gerar relatório**.\n4. Toque em **🖨️ Imprimir / Salvar PDF**. Para ter o arquivo, escolha "Salvar como PDF" na impressão.\nPara quem lidera, o relatório traz as lojas, o ranking das lojas, o ranking de vendedores e o ranking dos membros de cada loja; para todos, traz o seu Dashboard no período.', aba: 'dashboard' },
 { id: 'semaforo', t: 'Como funciona o Semáforo & Ranking?', k: 'semaforo, ranking, cores, verde amarelo laranja vermelho, podio, desempenho',
