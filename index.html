@@ -20448,8 +20448,8 @@ const ASSIST_BASE = [
   r: '1. Em **Aniversariantes**, toque em **🎉 Enviar parabéns** na linha da pessoa.\n2. Confira o nome, a data e o texto (o texto que você deixar vira o padrão).\n3. Se quiser, toque em **🖼️ Escolher outra foto** e ajuste o tamanho, a posição (arrastando) e o giro.\n4. Toque em **📲 Enviar pelo WhatsApp** ou **📥 Baixar imagem**.\nPara membros vai a foto do cadastro; para clientes, a imagem de um presente.', aba: 'aniversarios' },
 { id: 'parabens_foto', t: 'A foto do parabéns ficou ruim ou cortada', k: 'foto ruim, foto borrada, foto cortada, ajustar foto, trocar foto do parabens, foto em baixa resolucao',
   r: 'Na janela de parabéns, toque em **🖼️ Escolher outra foto** e pegue a foto original do aparelho (ela entra na qualidade original e não fica guardada no CRM). Depois use **Tamanho**, **arraste a foto** na prévia, **↻ Girar** ou **Centralizar** até ficar perfeita no quadrado.', aba: 'aniversarios' },
-{ id: 'calculadora', t: 'Onde fica a calculadora?', k: 'calculadora, hp12c, calcular, conta, calculadora flutuante, calculadora por cima, minimizar calculadora',
-  r: 'Na aba **Calculadora** há uma calculadora comum e uma **HP12C** (para juros e prestações).\nPara usar por cima de qualquer aba (até nas Apresentações), toque no **🧮** no alto da tela (ou em **📌 Flutuante** na aba Calculadora). A janelinha ocupa no máximo 1/4 da tela: arraste pela barra de cima, mude o tamanho pelo cantinho de baixo, troque entre as duas calculadoras no topo e toque em **–** para minimizar (vira uma bolinha 🧮; toque nela para voltar). **✕** fecha.', aba: 'calculadora' },
+{ id: 'calculadora', t: 'Onde fica a calculadora?', k: 'calculadora, hp12c, calcular, conta, calculadora flutuante, calculadora por cima, minimizar calculadora, zoom na calculadora, mover calculadora, arrastar calculadora',
+  r: 'Na aba **Calculadora** há uma calculadora comum e uma **HP12C** (para juros e prestações).\nPara usar por cima de qualquer aba (até nas Apresentações), toque no **🧮** no alto da tela (ou em **📌 Flutuante** na aba Calculadora). A janelinha abre com no máximo 1/4 da tela: para mudar de lugar, segure com um dedo em qualquer parte dela e arraste; para aumentar ou diminuir, use **dois dedos** (como numa foto), o cantinho de baixo ou, no computador, **Ctrl + rodinha do mouse**; troque entre as duas calculadoras no topo e toque em **–** para minimizar (vira uma bolinha 🧮; toque nela para voltar). **✕** fecha.', aba: 'calculadora' },
 { id: 'material', t: 'O que tem no Material de Apoio?', k: 'material de apoio, scripts, roteiro, abordagem, objecoes, bdr, 5 passos, pos venda',
   r: 'Em **Material de Apoio**:\n- **💬 Scripts por Nicho**: falas e ganchos para cada nicho (dá para criar e editar).\n- **🎯 Processo BDR**.\n- **🤝 5 Passos da Venda**.\n- **💙 Pós-Venda**: o que fazer em D+0, D+3 e D+15.', aba: 'materialApoio' },
 { id: 'apresentacoes', t: 'Como uso a aba Apresentações?', k: 'apresentar pdf, apresentar para o cliente, apresentacoes, slides, apresentar pdf, tela cheia, montar apresentacao',
@@ -20934,6 +20934,8 @@ const ASSIST_BASE = [
   try { Object.assign(est, JSON.parse(localStorage.getItem(CHAVE) || '{}'), { aberto: false, min: false }); } catch (e) {}
   const guardar = () => { try { localStorage.setItem(CHAVE, JSON.stringify({ aba: est.aba, x: est.x, y: est.y, bx: est.bx, by: est.by, tam: est.tam })); } catch (e) {} };
   const LARG = { normal: 290, hp: 340 };                       // largura "de verdade" das calculadoras dentro da janelinha
+  const TAM_MIN = 0.5, TAM_MAX = 1.5;                         // zoom: de metade até 1,5 vez o tamanho padrão
+  const limitar = t => Math.min(TAM_MAX, Math.max(TAM_MIN, t));
 
   const css = document.createElement('style'); css.id = 'calcFlutEstilos';
   css.textContent = `
@@ -20941,6 +20943,8 @@ const ASSIST_BASE = [
     display: none; flex-direction: column; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; }
   #calcFlut.aberto { display: flex; }
   #calcFlut .cf-cab { display: flex; align-items: center; gap: 4px; padding: 5px 6px 5px 10px; background: #0d1117; color: #e5e7eb; cursor: move; }
+  #calcFlut .cf-corpo { cursor: grab; }
+  #calcFlut * { touch-action: none; }               /* o visor rola para o lado; sem isto o dedo rolaria o visor em vez de arrastar */
   #calcFlut .cf-arrastar { color: #6b7280; font-size: 13px; letter-spacing: -2px; margin-right: 2px; }
   #calcFlut .cf-abas { display: flex; gap: 3px; flex: 1; min-width: 0; }
   #calcFlut .cf-aba { border: 0; background: transparent; color: #9ca3af; font-size: 12px; font-weight: 700; padding: 4px 8px; border-radius: 7px; cursor: pointer; white-space: nowrap; }
@@ -20982,7 +20986,7 @@ const ASSIST_BASE = [
   function montar(){
     if (painel) return;
     painel = document.createElement('div'); painel.id = 'calcFlut'; painel.setAttribute('role', 'dialog'); painel.setAttribute('aria-label', 'Calculadora flutuante');
-    painel.innerHTML = `<div class="cf-cab" title="Arraste para mudar de lugar"><span class="cf-arrastar">⋮⋮</span>
+    painel.innerHTML = `<div class="cf-cab" title="Arraste para mudar de lugar (pode arrastar de qualquer parte). Dois dedos: zoom"><span class="cf-arrastar">⋮⋮</span>
         <div class="cf-abas"><button class="cf-aba" data-aba="normal" title="Calculadora comum">🧮<span class="cf-longo"> Calculadora</span></button><button class="cf-aba" data-aba="hp" title="HP12C">🖩<span class="cf-longo"> HP12C</span><span class="cf-curto">HP</span></button></div>
         <button class="cf-bt" data-acao="min" title="Minimizar">–</button><button class="cf-bt" data-acao="fechar" title="Fechar">✕</button></div>
       <div class="cf-corpo"><div class="cf-escala"></div></div><div class="cf-tam" title="Arraste para aumentar ou diminuir"></div>`;
@@ -20990,7 +20994,7 @@ const ASSIST_BASE = [
     painel.querySelectorAll('.cf-aba').forEach(b => b.addEventListener('click', () => { est.aba = b.dataset.aba; guardar(); mostrarAba(); }));
     painel.querySelector('[data-acao="min"]').addEventListener('click', () => calcFlutMinimizar());
     painel.querySelector('[data-acao="fechar"]').addEventListener('click', () => calcFlutFechar());
-    arrastar(painel.querySelector('.cf-cab'), painel, (x, y) => { est.x = x; est.y = y; }, true);
+    gestos(painel);                                            // um dedo arrasta (de qualquer lugar), dois dedos dão zoom
     redimensionar(painel.querySelector('.cf-tam'));
     bolha = document.createElement('button'); bolha.id = 'calcFlutBolha'; bolha.title = 'Abrir a calculadora'; bolha.textContent = '🧮';
     arrastar(bolha, bolha, (x, y) => { est.bx = x; est.by = y; }, false, () => calcFlutAbrir());
@@ -21042,7 +21046,9 @@ const ASSIST_BASE = [
     // maior escala que cabe em 1/4 da tela: (nw*s+12)*(nh*s+cab) <= area
     let sMax = 1;
     for (let s = 1; s > 0.3; s -= 0.01) { sMax = s; if ((nw * s + 12) * (nh * s + cab) <= area && nw * s + 12 <= W - 16 && nh * s + cab <= H - 16) break; }
-    const s = Math.max(0.3, sMax * Math.min(1, Math.max(0.5, est.tam || 1)));
+    // tam = 1 é o tamanho padrão (1/4 da tela); com o zoom de dois dedos pode crescer até TAM_MAX, sempre dentro da tela
+    const sCabe = Math.min((W - 28) / nw, (H - 16 - cab) / nh);
+    const s = Math.max(0.3, Math.min(sCabe, sMax * Math.min(TAM_MAX, Math.max(TAM_MIN, est.tam || 1))));
     escala.style.transform = `scale(${s})`;
     const largura = Math.round(nw * s) + 12;
     corpo.style.width = largura + 'px'; corpo.style.height = Math.round(nh * s) + 12 + 'px';
@@ -21076,13 +21082,61 @@ const ASSIST_BASE = [
     const fim = () => { if (!ini) return; const foiClique = !ini.moveu; ini = null; guardar(); if (foiClique && clique) clique(); };
     alca.addEventListener('pointerup', fim); alca.addEventListener('pointercancel', () => { ini = null; });
   }
+  // Arrastar com um dedo de qualquer lugar da calculadora (se o dedo andar, não aperta a tecla) e zoom com dois dedos.
+  // No computador: arrastar com o mouse do mesmo jeito e Ctrl + rodinha para o zoom.
+  function gestos(el){
+    const pts = new Map(); let modo = null, ini = null, suprimir = false;
+    const dist = () => { const [a, b] = [...pts.values()]; return Math.hypot(a.x - b.x, a.y - b.y) || 1; };
+    el.addEventListener('pointerdown', ev => {
+      if (ev.target.closest('.cf-tam')) return;
+      pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (pts.size === 1) {
+        suprimir = false; modo = 'talvez';
+        ini = { id: ev.pointerId, px: ev.clientX, py: ev.clientY, x: el.offsetLeft, y: el.offsetTop };
+        if (ev.target.closest('.cf-cab') && !ev.target.closest('button')) { ev.preventDefault(); }
+        ligar();
+      } else if (pts.size === 2) {
+        modo = 'pinca'; suprimir = true; ini = { d: dist(), tam: est.tam || 1 };
+      }
+    });
+    // durante o gesto, o movimento é ouvido na tela inteira (o dedo ou o mouse pode sair de cima da calculadora)
+    const mover = ev => {
+      if (!pts.has(ev.pointerId)) return;
+      pts.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+      if (modo === 'pinca' && pts.size >= 2) { est.tam = limitar(ini.tam * dist() / ini.d); ajustar(); ev.preventDefault(); return; }
+      if ((modo === 'talvez' || modo === 'mover') && ini && ev.pointerId === ini.id) {
+        const dx = ev.clientX - ini.px, dy = ev.clientY - ini.py;
+        if (modo === 'talvez' && Math.hypot(dx, dy) > 8) { modo = 'mover'; suprimir = true; }
+        if (modo === 'mover') {
+          const W = window.innerWidth, H = window.innerHeight;
+          const x = Math.min(Math.max(4, ini.x + dx), W - el.offsetWidth - 4), y = Math.min(Math.max(4, ini.y + dy), H - el.offsetHeight - 4);
+          el.style.left = x + 'px'; el.style.top = y + 'px'; est.x = x; est.y = y; ev.preventDefault();
+        }
+      }
+    };
+    const fim = ev => {
+      if (!pts.has(ev.pointerId)) return;
+      pts.delete(ev.pointerId);
+      if (!pts.size) { if (modo === 'mover' || modo === 'pinca' || modo === 'parado') guardar(); modo = null; ini = null; desligar(); }
+      else if (modo === 'pinca') modo = 'parado';             // tirou um dos dois dedos: não vira arrasto nem aperta tecla
+    };
+    let ligado = false;
+    function ligar(){ if (ligado) return; ligado = true; window.addEventListener('pointermove', mover, true); window.addEventListener('pointerup', fim, true); window.addEventListener('pointercancel', fim, true); }
+    function desligar(){ ligado = false; window.removeEventListener('pointermove', mover, true); window.removeEventListener('pointerup', fim, true); window.removeEventListener('pointercancel', fim, true); }
+    // depois de arrastar ou dar zoom, o "toque" que sobra não aperta nenhuma tecla
+    el.addEventListener('click', ev => { if (suprimir) { ev.stopPropagation(); ev.preventDefault(); suprimir = false; } }, true);
+    el.addEventListener('wheel', ev => {
+      if (!ev.ctrlKey) return;
+      ev.preventDefault(); est.tam = limitar((est.tam || 1) * (ev.deltaY < 0 ? 1.08 : 0.93)); ajustar(); guardar();
+    }, { passive: false });
+  }
   function redimensionar(alca){
     let ini = null;
     alca.addEventListener('pointerdown', ev => { ini = { px: ev.clientX, py: ev.clientY, tam: est.tam || 1, w: painel.offsetWidth }; try { alca.setPointerCapture(ev.pointerId); } catch (e) {} ev.preventDefault(); ev.stopPropagation(); });
     alca.addEventListener('pointermove', ev => {
       if (!ini) return;
       const d = ((ev.clientX - ini.px) + (ev.clientY - ini.py)) / 2;
-      est.tam = Math.min(1, Math.max(0.5, ini.tam * (1 + d / Math.max(160, ini.w)))); ajustar();
+      est.tam = limitar(ini.tam * (1 + d / Math.max(160, ini.w))); ajustar();
     });
     alca.addEventListener('pointerup', () => { ini = null; guardar(); });
   }
