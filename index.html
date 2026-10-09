@@ -3391,89 +3391,142 @@ async function eloNuvemSessao() {
   } catch (e) { return null; }
 }
 
-async function enviarParaNuvem() {
-  if (!supabaseClient) return;
+// ===== SINCRONIZAÇÃO QUE JUNTA (não sobrescreve) =====
+// Antes: cada aparelho mandava a "foto" inteira do CRM e a última foto apagava o que o outro aparelho tinha feito.
+// Agora: antes de mandar, o aparelho busca a foto da nuvem e JUNTA as duas, registro por registro (lead, venda,
+// agenda...) e até campo por campo. Ele guarda a "última foto combinada" (base) para saber o que mudou de cada lado:
+//  - mudou só aqui -> vale o daqui; mudou só no outro aparelho -> vale o de lá; mudou nos dois -> junta os campos
+//    (no mesmo campo, vale o deste aparelho); apagado de um lado e intocado do outro -> fica apagado.
+// A gravação só vale se ninguém gravou no meio do caminho (senão busca de novo e junta outra vez).
+const KEY_NUVEM_BASE = `crm_nuvem_base_${EQUIPE_ID}`, KEY_NUVEM_BASE_TS = `crm_nuvem_base_ts_${EQUIPE_ID}`;
+let nuvemRodando = null, nuvemDeNovo = false;
+function enviarParaNuvem(){ return sincronizarNuvem(); }
+function carregarDaNuvem(){ return sincronizarNuvem(); }
+function sincronizarNuvem(){
+  if (!supabaseClient || window.__dbEsperandoIdb) return Promise.resolve();
+  if (nuvemRodando) { nuvemDeNovo = true; return nuvemRodando; }
+  nuvemRodando = (async () => {
+    try { for (let i = 0; i < 4; i++) { if ((await nuvemUmaVez()) !== 'de_novo') break; } }
+    finally { nuvemRodando = null; if (nuvemDeNovo) { nuvemDeNovo = false; setTimeout(sincronizarNuvem, 300); } }
+  })();
+  return nuvemRodando;
+}
+const nuvemMesmoInstante = (a, b) => !!a && !!b && new Date(a).getTime() === new Date(b).getTime();
+async function nuvemGuardarBase(texto, ts){
+  try { await idbSet(KEY_NUVEM_BASE, texto); localStorage.setItem(KEY_NUVEM_BASE_TS, String(ts)); } catch (e) {}
+}
+async function nuvemUmaVez(){
   if (!(await eloNuvemSessao())) { atualizarBadgeNuvem('☁️ Nuvem desconectada (dados só neste aparelho)'); return; }
   try {
-    const agora = marcarModificacaoLocal();
-    const dados = { db, usersList, brand, notifications, infoPosts };
-    const { error } = await supabaseClient.from('crm_snapshot').upsert({
-      equipe_id: EQUIPE_ID_NUVEM,
-      dados,
-      updated_at: new Date(agora).toISOString()
-    });
+    const local = { db, usersList, brand, notifications, infoPosts };
+    const localTxt = JSON.stringify(local);
+    const baseTs0 = localStorage.getItem(KEY_NUVEM_BASE_TS);
+    // primeiro só a hora da última gravação (leve): se ninguém mexeu na nuvem e nada mudou aqui, não baixa nada
+    if (baseTs0) {
+      const { data: h, error: eh } = await supabaseClient.from('crm_snapshot').select('updated_at').eq('equipe_id', EQUIPE_ID_NUVEM).maybeSingle();
+      if (eh) throw eh;
+      if (h && nuvemMesmoInstante(baseTs0, h.updated_at)) {
+        let b0 = null; try { b0 = await idbGet(KEY_NUVEM_BASE); } catch (e) {}
+        if (b0 === localTxt) { atualizarBadgeNuvem('☁️ Sincronizado com a Nuvem'); return; }
+      }
+    }
+    const { data, error } = await supabaseClient.from('crm_snapshot').select('dados, updated_at').eq('equipe_id', EQUIPE_ID_NUVEM).maybeSingle();
     if (error) throw error;
+    if (!data) {
+      // ainda não há nada na nuvem: manda o que tem aqui
+      const ts = new Date().toISOString();
+      const { error: e2 } = await supabaseClient.from('crm_snapshot').insert({ equipe_id: EQUIPE_ID_NUVEM, dados: local, updated_at: ts });
+      if (e2) { if (String(e2.code) === '23505') return 'de_novo'; throw e2; }   // outro aparelho criou ao mesmo tempo
+      await nuvemGuardarBase(localTxt, ts);
+      atualizarBadgeNuvem('☁️ Sincronizado com a Nuvem'); return;
+    }
+    const nuvemTs = data.updated_at, nuvem = data.dados || {};
+    const baseTs = localStorage.getItem(KEY_NUVEM_BASE_TS);
+    let baseTxt = null; if (baseTs) { try { baseTxt = await idbGet(KEY_NUVEM_BASE); } catch (e) {} }
+    let final;
+    if (baseTxt && nuvemMesmoInstante(baseTs, nuvemTs)) {
+      // ninguém mexeu na nuvem desde a última vez
+      if (baseTxt === localTxt) { atualizarBadgeNuvem('☁️ Sincronizado com a Nuvem'); return; }
+      final = local;
+    } else {
+      final = nuvemJuntar(baseTxt ? JSON.parse(baseTxt) : undefined, JSON.parse(localTxt), nuvem);
+    }
+    const finalTxt = JSON.stringify(final);
+    if (finalTxt !== localTxt) nuvemAplicar(JSON.parse(finalTxt));
+    if (finalTxt === JSON.stringify(nuvem)) { await nuvemGuardarBase(finalTxt, nuvemTs); atualizarBadgeNuvem('☁️ Atualizado com dados da Nuvem'); return; }
+    const ts = new Date(Math.max(Date.now(), new Date(nuvemTs).getTime() + 1)).toISOString();
+    const { data: gravou, error: e3 } = await supabaseClient.from('crm_snapshot').update({ dados: JSON.parse(finalTxt), updated_at: ts })
+      .eq('equipe_id', EQUIPE_ID_NUVEM).eq('updated_at', nuvemTs).select('updated_at');
+    if (e3) throw e3;
+    if (!gravou || !gravou.length) return 'de_novo';          // outro aparelho gravou neste meio-tempo: busca e junta de novo
+    await nuvemGuardarBase(finalTxt, gravou[0].updated_at || ts);
+    try { localStorage.setItem(KEY_ULTIMA_MODIFICACAO, String(new Date(gravou[0].updated_at || ts).getTime())); } catch (e) {}
     atualizarBadgeNuvem('☁️ Sincronizado com a Nuvem');
   } catch (err) {
     console.warn('Falha ao sincronizar com a nuvem:', err);
     atualizarBadgeNuvem('⚠️ Sem sincronizar (offline ou nuvem indisponível)');
   }
 }
-
-async function carregarDaNuvem() {
-  if (!supabaseClient) return;
-  if (!(await eloNuvemSessao())) { atualizarBadgeNuvem('☁️ Nuvem desconectada (dados só neste aparelho)'); return; }
-  try {
-    const { data, error } = await supabaseClient
-      .from('crm_snapshot')
-      .select('dados, updated_at')
-      .eq('equipe_id', EQUIPE_ID_NUVEM)
-      .maybeSingle();
-    if (error) throw error;
-
-    if (!data) {
-      // Ainda não existe nada salvo na nuvem pra essa equipe — manda o que tem localmente.
-      await enviarParaNuvem();
-      return;
-    }
-
-    const timestampNuvem = new Date(data.updated_at).getTime();
-    const timestampLocal = Number(localStorage.getItem(KEY_ULTIMA_MODIFICACAO) || 0);
-
-    if (timestampNuvem > timestampLocal) {
-      // A nuvem tem uma versão mais nova (editada em outro aparelho) -> traz pra cá.
-      const nuvem = data.dados || {};
-      if (nuvem.db) db = nuvem.db;
-      if (nuvem.usersList) usersList = nuvem.usersList;
-      if (nuvem.brand) brand = nuvem.brand;
-      if (nuvem.notifications) notifications = nuvem.notifications;
-      if (nuvem.infoPosts) infoPosts = nuvem.infoPosts;
-
-      persistirChave(KEY_DB, JSON.stringify(db), db);
-      persistirChave(KEY_USERS, JSON.stringify(usersList), usersList);
-      persistirChave(KEY_BRAND, JSON.stringify(brand), brand);
-      persistirChave(KEY_NOTIFS, JSON.stringify(notifications), notifications);
-      persistirChave(KEY_INFOS, JSON.stringify(infoPosts), infoPosts);
-      localStorage.setItem(KEY_ULTIMA_MODIFICACAO, String(timestampNuvem));
-      reiniciarBaseDoHistorico(true);
-      if (typeof hierMarcarLegado === 'function') hierMarcarLegado();
-
-      // Ressincroniza o usuário logado com a lista que acabou de vir da nuvem
-      // (senão o currentUser fica com dados velhos e permissões desatualizadas).
-      if (currentUser && Array.isArray(usersList)) {
-        const atualizado = usersList.find(u =>
-          u.id === currentUser.id ||
-          (u.email && currentUser.email && u.email.toLowerCase() === currentUser.email.toLowerCase())
-        );
-        if (atualizado) {
-          currentUser = atualizado;
-          localStorage.setItem(`crm_active_user_${EQUIPE_ID}`, JSON.stringify(currentUser));
-        }
-      }
-      senhasProtegerSessao();
-
-      renderAll();
-      if (typeof updateUserInterface === 'function' && currentUser) updateUserInterface();
-      atualizarBadgeNuvem('☁️ Atualizado com dados da Nuvem');
-    } else {
-      // O que está aqui é igual ou mais novo -> garante que a nuvem fica igualzinha.
-      await enviarParaNuvem();
-    }
-  } catch (err) {
-    console.warn('Falha ao carregar da nuvem:', err);
-    atualizarBadgeNuvem('⚠️ Nuvem indisponível (usando dados locais)');
+// põe na tela o que veio junto da nuvem
+function nuvemAplicar(final){
+  if (final.db) db = final.db;
+  if (final.usersList) usersList = final.usersList;
+  if (final.brand) brand = final.brand;
+  if (final.notifications) notifications = final.notifications;
+  if (final.infoPosts) infoPosts = final.infoPosts;
+  persistirChave(KEY_DB, JSON.stringify(db), db);
+  persistirChave(KEY_USERS, JSON.stringify(usersList), usersList);
+  persistirChave(KEY_BRAND, JSON.stringify(brand), brand);
+  persistirChave(KEY_NOTIFS, JSON.stringify(notifications), notifications);
+  persistirChave(KEY_INFOS, JSON.stringify(infoPosts), infoPosts);
+  reiniciarBaseDoHistorico(true);
+  if (typeof hierMarcarLegado === 'function') hierMarcarLegado();
+  if (currentUser && Array.isArray(usersList)) {
+    const atualizado = usersList.find(u => u.id === currentUser.id || (u.email && currentUser.email && u.email.toLowerCase() === currentUser.email.toLowerCase()));
+    if (atualizado) { currentUser = atualizado; try { localStorage.setItem(`crm_active_user_${EQUIPE_ID}`, JSON.stringify(currentUser)); } catch (e) {} }
   }
+  senhasProtegerSessao();
+  try { renderAll(); if (typeof updateUserInterface === 'function' && currentUser) updateUserInterface(); } catch (e) {}
 }
+// ---- juntar duas fotos a partir da última foto combinada (base) ----
+function nuvemJuntar(base, local, nuvem){
+  const out = {};
+  ['db', 'usersList', 'brand', 'notifications', 'infoPosts'].forEach(k => {
+    const v = nuvemJuntarValor(base ? base[k] : undefined, local[k], nuvem[k], !base);
+    if (v !== undefined) out[k] = v;
+  });
+  return out;
+}
+function nuvemIgual(a, b){ return a === b || JSON.stringify(a) === JSON.stringify(b); }
+const nuvemObj = x => !!x && typeof x === 'object' && !Array.isArray(x);
+const nuvemTemIds = l => Array.isArray(l) && l.length > 0 && l.every(x => nuvemObj(x) && x.id !== undefined && x.id !== null);
+function nuvemJuntarValor(b, l, c, semBase){
+  if (nuvemIgual(l, c)) return l;
+  if (b === undefined) { if (l === undefined) return c; if (c === undefined) return l; }   // novo de um lado só
+  else { if (nuvemIgual(l, b)) return c; if (nuvemIgual(c, b)) return l; }               // mudou só de um lado
+  // mudou dos dois lados
+  if (Array.isArray(l) && Array.isArray(c) && (nuvemTemIds(l) || !l.length) && (nuvemTemIds(c) || !c.length) && (l.length || c.length)) {
+    const B = new Map((nuvemTemIds(b) ? b : []).map(x => [String(x.id), x]));
+    const L = new Map(l.map(x => [String(x.id), x])), C = new Map(c.map(x => [String(x.id), x]));
+    const ids = [...L.keys()].concat([...C.keys()].filter(k => !L.has(k)));
+    const lista = [];
+    ids.forEach(k => {
+      const v = nuvemJuntarValor(B.has(k) ? B.get(k) : (semBase ? undefined : undefined), L.get(k), C.get(k), semBase);
+      if (v !== undefined) lista.push(v);
+    });
+    return lista;
+  }
+  if (nuvemObj(l) && nuvemObj(c)) {
+    const o = {}, chaves = [...new Set(Object.keys(l).concat(Object.keys(c)))];
+    chaves.forEach(k => { const v = nuvemJuntarValor(nuvemObj(b) ? b[k] : undefined, l[k], c[k], semBase); if (v !== undefined) o[k] = v; });
+    return o;
+  }
+  return l;                                                    // o mesmo campo mudou nos dois: vale o deste aparelho
+}
+// confere a nuvem de tempos em tempos e quando o aparelho volta (tela acesa ou internet de volta)
+setInterval(() => { if (currentUser && !document.hidden) sincronizarNuvem(); }, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && currentUser) sincronizarNuvem(); });
+window.addEventListener('online', () => { if (currentUser) sincronizarNuvem(); });
 
 const MODO_HIERARQUIA = true;
 const HIER_TESTE = false; // só a cópia de teste tem o atalho "entrar como" na tela de login
