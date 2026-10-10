@@ -21260,5 +21260,54 @@ const ASSIST_BASE = [
   setTimeout(botoes, 1500);
 })();
 </script>
+<script id="visorAjusteScript">
+// ===== MOSTRADOR DAS CALCULADORAS QUE DIMINUI O NÚMERO PARA CABER =====
+// Quando a conta fica comprida, as letras do mostrador (calculadora comum e HP 12C, inclusive na flutuante)
+// vão diminuindo até tudo caber (até a metade do tamanho normal, para continuar fácil de ler).
+// Se nem assim couber, o número continua nesse tamanho e passa para a linha de baixo (nunca some).
+(function () {
+  const IDS = ['calcDisplay', 'hpDisplay'];
+  const css = document.createElement('style');
+  css.textContent = `#calcDisplay, #hpDisplay { overflow: hidden !important; text-overflow: clip; }
+  #calcDisplay.visor-quebra, #hpDisplay.visor-quebra { white-space: normal !important; word-break: break-all; line-height: 1.15; }`;
+  document.head.appendChild(css);
+
+  function ajustar(el) {
+    if (!el || !el.isConnected) return;
+    el.style.fontSize = ''; el.classList.remove('visor-quebra');
+    const largura = el.clientWidth;
+    if (!largura) return;                             // calculadora escondida: ajusta quando aparecer
+    const base = parseFloat(getComputedStyle(el).fontSize) || 28;
+    if (el.scrollWidth <= largura + 1) return;        // já cabe no tamanho normal
+    const MENOR = Math.max(13, base * 0.5);
+    // busca o maior tamanho que cabe (entre a metade e o tamanho normal)
+    let lo = MENOR, hi = base;
+    for (let i = 0; i < 8; i++) {
+      const meio = (lo + hi) / 2;
+      el.style.fontSize = meio + 'px';
+      if (el.scrollWidth <= largura + 1) lo = meio; else hi = meio;
+    }
+    el.style.fontSize = Math.floor(lo * 10) / 10 + 'px';
+    if (el.scrollWidth > largura + 1) el.classList.add('visor-quebra');   // número enorme: continua em mais linhas
+  }
+  const ajustarTodos = () => IDS.forEach(id => ajustar(document.getElementById(id)));
+  window.visorAjustar = ajustarTodos;
+
+  function ligar() {
+    IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || el.__visorLigado) return;
+      el.__visorLigado = true;
+      new MutationObserver(() => ajustar(el)).observe(el, { childList: true, characterData: true, subtree: true });
+      if (window.ResizeObserver) new ResizeObserver(() => { if (!el.__visorMedindo) { el.__visorMedindo = true; requestAnimationFrame(() => { ajustar(el); el.__visorMedindo = false; }); } }).observe(el.parentElement || el);
+      ajustar(el);
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar); else ligar();
+  window.addEventListener('resize', ajustarTodos);
+  // ao abrir a aba da calculadora ou a calculadora flutuante (o mostrador estava escondido)
+  document.addEventListener('click', () => setTimeout(ajustarTodos, 60), true);
+})();
+</script>
 </body>
 </html>
