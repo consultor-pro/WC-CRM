@@ -20493,6 +20493,8 @@ const ASSIST_BASE = [
   r: 'No **Simulador**, toque em **🎞️ Virar apresentação**. A simulação vira slides na aba **Apresentações**, prontos para mostrar em tela cheia.', aba: 'simulador' },
 
 // ===================== PROSPECÇÃO =====================
+{ id: 'leads_lote', t: 'Como cadastro vários contatos de uma vez (indicações do WhatsApp)?', k: 'varios contatos, cadastrar varios leads, indicacoes em lote, lista de contatos, contatos do whatsapp, importar contatos do celular, agenda do celular, vcf, colar lista de nomes e telefones, 20 indicacoes, cadastro em massa',
+  r: '1. Em **Leads & Carteira**, toque em **📲 Vários contatos** (ou, no **+ Novo Lead**, em "Cadastrar vários de uma vez").\n2. Escolha de onde vêm os contatos:\n- **📇 Da agenda do celular** (Android/Chrome): marque todos os contatos que você salvou e confirme.\n- **📋 Colar uma lista**: copie a mensagem do WhatsApp com os nomes e telefones e cole. Pode ser um por linha, do jeito que veio.\n- **📎 Arquivo de contatos** (.vcf): no iPhone, app Contatos › Listas › segure a lista › Exportar.\n3. Confira a lista: dá para corrigir nome e telefone e desmarcar quem não quer. Quem já está no CRM fica de fora.\n4. Escolha **uma vez só** o responsável, a origem (Indicação, networking, Pessoal...), quem indicou, a etapa e a temperatura.\n5. Toque em **Cadastrar**. Errou? Em **📥 Importar Planilha** › Importações recentes, toque em **↩️ Desfazer**.', aba: 'leads' },
 { id: 'prospeccao', t: 'Como funciona a Prospecção de empresas?', k: 'prospeccao, buscar empresas, google maps, lista de empresas, prospectar',
   r: '1. Vá em **Prospecção** e, uma vez só, coloque a sua **chave do Google** (botão "Colocar a chave e ver o passo a passo").\n2. Escreva o que procura (ex.: "imobiliária") e onde (cidade ou bairro) e toque em **Buscar**.\n3. Guarde as empresas na **Minha lista**, com a situação e as suas anotações.\n4. Quando uma empresa virar contato, transforme em lead.', aba: 'prospeccao' },
 { id: 'prospeccao_chave', t: 'Como crio a chave do Google para a Prospecção?', k: 'chave do google, api key, places api, chave de api, google cloud, como pegar a chave, onde consigo a chave, chave da prospeccao, AIza',
@@ -21307,6 +21309,321 @@ const ASSIST_BASE = [
   window.addEventListener('resize', ajustarTodos);
   // ao abrir a aba da calculadora ou a calculadora flutuante (o mostrador estava escondido)
   document.addEventListener('click', () => setTimeout(ajustarTodos, 60), true);
+})();
+</script>
+<script id="indicacoesLoteScript">
+// ===== VÁRIOS CONTATOS DE UMA VEZ (indicações recebidas pelo WhatsApp) =====
+// Três jeitos de trazer os contatos, todos caem na mesma tela de conferência:
+//  1) Escolher da agenda do celular (Android/Chrome: seleciona vários contatos de uma vez)
+//  2) Colar uma lista (do WhatsApp, bloco de notas...): o CRM acha o nome e o telefone de cada linha
+//  3) Arquivo de contatos (.vcf), que o iPhone e o Android exportam
+// Antes de cadastrar, escolhe uma vez só: responsável, origem (indicação, networking, pessoal...),
+// quem indicou, etapa e temperatura. Telefones que já existem no CRM ficam de fora.
+(function () {
+  const est = { lista: [], aba: 'colar' };
+  const temAgenda = () => 'contacts' in navigator && 'ContactsManager' in window;
+  const css = document.createElement('style');
+  css.textContent = `
+  .il-fontes { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:8px; margin:10px 0 12px; }
+  .il-fonte { border:1.5px solid var(--border,#e5e7eb); border-radius:12px; padding:10px 12px; background:var(--card,#fff); cursor:pointer; text-align:left; font:inherit; color:inherit; }
+  .il-fonte b { display:block; font-size:14px; } .il-fonte small { color:var(--muted,#64748b); font-size:12px; }
+  .il-fonte.on { border-color:var(--red,#c8102e); box-shadow:0 0 0 3px rgba(200,16,46,.12); }
+  .il-fonte[disabled] { opacity:.55; cursor:not-allowed; }
+  #ilTexto { width:100%; min-height:140px; font-family:inherit; font-size:14px; }
+  .il-comum { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:8px 10px; padding:10px; border-radius:12px; background:var(--bg-soft,#f8fafc); border:1px solid var(--border,#e5e7eb); margin:10px 0; }
+  .il-comum .field { margin:0; }
+  .il-lista { max-height:46vh; overflow:auto; border:1px solid var(--border,#e5e7eb); border-radius:12px; }
+  .il-linha { display:grid; grid-template-columns:28px minmax(0,1.3fr) minmax(0,1fr) auto; gap:8px; align-items:center; padding:7px 10px; border-bottom:1px solid var(--border,#eef2f7); }
+  .il-linha:last-child { border-bottom:0; }
+  .il-linha input[type=text], .il-linha input[type=tel] { width:100%; min-width:0; padding:6px 8px; font-size:14px; }
+  .il-linha.fora { opacity:.6; }
+  .il-chip { font-size:11px; font-weight:800; border-radius:999px; padding:2px 8px; white-space:nowrap; }
+  .il-chip.ok { background:#dcfce7; color:#166534; } .il-chip.dup { background:#fee2e2; color:#991b1b; } .il-chip.av { background:#fef3c7; color:#92400e; }
+  .il-topo-lista { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; margin:6px 0; font-size:13px; }
+  @media (max-width:560px) {
+    .il-linha { grid-template-columns:26px minmax(0,1fr) auto; }
+    .il-linha .il-tel { grid-column:2 / 4; }
+  }`;
+  document.head.appendChild(css);
+
+  // ---------- leitura dos contatos ----------
+  const soDigitos = t => String(t || '').replace(/\D/g, '');
+  function formatarTel(t, dddPadrao) {
+    let d = soDigitos(t);
+    if (d.length >= 12 && d.startsWith('55')) d = d.slice(2);
+    d = d.replace(/^0+/, '');
+    if ((d.length === 8 || d.length === 9) && dddPadrao) d = soDigitos(dddPadrao).slice(0, 2) + d;
+    if (d.length === 11) return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+    if (d.length === 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return String(t || '').trim();
+  }
+  const RE_TEL = /(?:\+?\s*55[\s.-]*)?(?:\(?\s*0?\d{2}\s*\)?[\s.-]*)?(?:9[\s.-]?)?\d{4}[\s.-]?\d{4}/g;
+  function limparNome(t) {
+    let s = String(t || '');
+    // mensagem copiada do WhatsApp: "[11:20, 13/10/2026] Quem mandou: texto" ou "13/10/2026 11:20 - Quem mandou: texto"
+    const prefixo = s.match(/^\s*(\[[^\]]*\]|\d{1,2}\/\d{1,2}(\/\d{2,4})?,?\s+\d{1,2}:\d{2}\s*-)\s*/);
+    if (prefixo) { s = s.slice(prefixo[0].length); s = s.replace(/^[^:]{1,40}:\s*/, ''); }
+    return s
+      .replace(/\b(tel(efone)?|cel(ular)?|whats(app)?|fone|zap|contato|nome)\s*[:.-]?\s*/gi, '')
+      .replace(/[•·*_~|;,:\-–—()\[\]]+/g, ' ')
+      .replace(/^\s*\d+\s*[.)-]?\s+/, '')                      // numeração "1." "2)"
+      .replace(/\s{2,}/g, ' ').trim();
+  }
+  function lerTexto(txt) {
+    const out = []; let nomePendente = '';
+    String(txt || '').split(/\r?\n/).forEach(linha => {
+      const l = linha.trim(); if (!l) return;
+      const tels = l.match(RE_TEL) || [];
+      const tel = tels.find(t => soDigitos(t).length >= 8);
+      if (!tel) {                                              // linha só com o nome: o telefone vem na linha de baixo
+        const n = limparNome(l); if (n && /[a-zA-ZÀ-ú]/.test(n)) nomePendente = n; return;
+      }
+      let nome = limparNome(l.replace(tel, ' '));
+      if (!/[a-zA-ZÀ-ú]/.test(nome)) nome = '';
+      if (!nome && nomePendente) nome = nomePendente;
+      nomePendente = '';
+      out.push({ nome, tel });
+    });
+    return out;
+  }
+  function decodQP(s) {
+    try { return decodeURIComponent(s.replace(/=\r?\n/g, '').replace(/=([0-9A-F]{2})/gi, '%$1')); } catch (e) { return s; }
+  }
+  function lerVcf(txt) {
+    const out = [];
+    String(txt || '').replace(/\r?\n[ \t]/g, '').split(/BEGIN:VCARD/i).slice(1).forEach(bloco => {
+      let nome = '', nomeN = '', tel = '', telCel = '';
+      bloco.split(/\r?\n/).forEach(l => {
+        const i = l.indexOf(':'); if (i < 0) return;
+        const chave = l.slice(0, i).toUpperCase(); let valor = l.slice(i + 1).trim();
+        if (/QUOTED-PRINTABLE/.test(chave)) valor = decodQP(valor);
+        if (/^FN\b|^ITEM\d+\.FN\b/.test(chave)) nome = valor;
+        else if (/^N\b/.test(chave)) { const p = valor.split(';'); nomeN = [p[1], p[2], p[0]].filter(Boolean).join(' '); }
+        else if (/(^|\.)TEL\b/.test(chave)) { if (!tel) tel = valor; if (!telCel && /CELL|MOBILE|IPHONE/.test(chave)) telCel = valor; }
+      });
+      nome = (nome || nomeN).replace(/\\,/g, ',').replace(/\\;/g, ';').trim();
+      if (nome || tel) out.push({ nome, tel: telCel || tel });
+    });
+    return out;
+  }
+
+  // ---------- quem pode ser responsável (mesma regra do cadastro de lead) ----------
+  function responsaveis() {
+    try {
+      const subs = getSubordinateUserNames(currentUser?.id);
+      return usersList.filter(u => MODO_HIERARQUIA ? (hierDonoVeTudo() || u.id === currentUser.id) : (canCurrentUserViewAllLeads() || subs.includes(u.nome)));
+    } catch (e) { return currentUser ? [currentUser] : []; }
+  }
+
+  // ---------- telas ----------
+  window.abrirContatosEmLote = function () {
+    est.lista = []; est.aba = temAgenda() ? 'agenda' : 'colar';
+    desenharEntrada();
+  };
+  function desenharEntrada() {
+    const ag = temAgenda();
+    openModal(`
+      <div class="between"><h2>📲 Vários contatos de uma vez</h2><button class="btn" onclick="closeModal()">✕</button></div>
+      <p class="muted" style="margin:4px 0 0;font-size:13px">Recebeu indicações pelo WhatsApp? Traga todos os contatos de uma vez. Depois você confere a lista e escolhe o responsável e a origem.</p>
+      <div class="il-fontes">
+        <button class="il-fonte ${est.aba === 'agenda' ? 'on' : ''}" ${ag ? '' : 'disabled'} onclick="ilAba('agenda')"><b>📇 Da agenda do celular</b><small>${ag ? 'Marque vários contatos salvos no celular' : 'Funciona no Android (Chrome). No iPhone, use Colar ou Arquivo.'}</small></button>
+        <button class="il-fonte ${est.aba === 'colar' ? 'on' : ''}" onclick="ilAba('colar')"><b>📋 Colar uma lista</b><small>Copie a mensagem do WhatsApp e cole aqui</small></button>
+        <button class="il-fonte ${est.aba === 'arquivo' ? 'on' : ''}" onclick="ilAba('arquivo')"><b>📎 Arquivo de contatos</b><small>Arquivo .vcf exportado do celular</small></button>
+      </div>
+      <div id="ilFonteCorpo">${corpoFonte()}</div>
+      ${typeof renderHistoricoImportacoesHtml === 'function' ? renderHistoricoImportacoesHtml('leads') : ''}
+    `);
+  }
+  function corpoFonte() {
+    if (est.aba === 'agenda') return `
+      <p style="font-size:13px;margin:0 0 10px">Toque no botão, marque todos os contatos que você recebeu e confirme.</p>
+      <button class="btn primary" onclick="ilDaAgenda()">📇 Abrir a agenda e escolher</button>`;
+    if (est.aba === 'arquivo') return `
+      <p style="font-size:13px;margin:0 0 8px"><b>iPhone:</b> app Contatos › Listas › segure a lista › Exportar. <b>Android:</b> app Contatos › selecione vários › Compartilhar. Depois escolha o arquivo aqui.</p>
+      <input type="file" id="ilArquivo" accept=".vcf,text/vcard,text/x-vcard,.txt,.csv" multiple onchange="ilDoArquivo(this)">`;
+    return `
+      <textarea id="ilTexto" placeholder="Cole aqui. Um contato por linha, do jeito que veio. Exemplos:\nMaria Souza 14 99876-5432\nJoão (14) 3322-1100\nAna\n+55 14 98888-7777"></textarea>
+      <div class="row" style="margin-top:8px"><button class="btn primary" onclick="ilDoTexto()">Ler contatos</button></div>`;
+  }
+  window.ilAba = function (a) { if (a === 'agenda' && !temAgenda()) return; est.aba = a; desenharEntrada(); };
+  window.ilDoTexto = function () {
+    const r = lerTexto(document.getElementById('ilTexto')?.value);
+    if (!r.length) return showToast('⚠️ Não encontrei nenhum telefone no texto. Confira se cada contato tem o número com DDD.');
+    conferir(r);
+  };
+  window.ilDoArquivo = async function (inp) {
+    const arqs = [...(inp.files || [])]; let r = [];
+    for (const f of arqs) { const t = await f.text(); r = r.concat(/BEGIN:VCARD/i.test(t) ? lerVcf(t) : lerTexto(t)); }
+    if (!r.length) return showToast('⚠️ Não encontrei contatos nesse arquivo.');
+    conferir(r);
+  };
+  window.ilDaAgenda = async function () {
+    try {
+      const sel = await navigator.contacts.select(['name', 'tel'], { multiple: true });
+      const r = []; (sel || []).forEach(c => r.push({ nome: (c.name || [])[0] || '', tel: (c.tel || [])[0] || '' }));
+      if (!r.length) return;
+      conferir(r);
+    } catch (e) { showToast('⚠️ Não foi possível abrir a agenda. Use a opção Colar ou Arquivo.'); }
+  };
+
+  function classificar() {
+    const vistos = new Map();
+    est.lista.forEach(c => {
+      c.telF = formatarTel(c.tel, est.ddd);
+      const d = soDigitos(c.telF); const k = typeof chaveTelefone === 'function' ? chaveTelefone(c.telF) : d;
+      c.existente = (k && typeof leadComMesmoTelefone === 'function') ? leadComMesmoTelefone(c.telF, null) : null;
+      c.semDDD = d.length > 0 && d.length < 10;
+      c.invalido = d.length < 8;
+      c.repetido = !!(k && vistos.has(k)); if (k && !vistos.has(k)) vistos.set(k, c);
+      c.valido = !!c.nome && !c.existente && !c.repetido && !c.invalido && !c.semDDD;
+      c.marcado = c.valido && !c.desmarcado;
+    });
+  }
+  function conferir(lista) {
+    est.lista = lista.map(c => ({ nome: String(c.nome || '').trim(), tel: String(c.tel || '').trim() }));
+    est.ddd = est.ddd || '';
+    classificar();
+    desenharConferencia();
+  }
+  function chip(c) {
+    if (c.existente) return `<span class="il-chip dup" title="Já é o lead ${esc(c.existente.nome)}">já cadastrado</span>`;
+    if (c.repetido) return '<span class="il-chip dup">repetido na lista</span>';
+    if (c.invalido) return '<span class="il-chip av">telefone incompleto</span>';
+    if (c.semDDD) return '<span class="il-chip av">sem DDD</span>';
+    if (!c.nome) return '<span class="il-chip av">sem nome</span>';
+    return '<span class="il-chip ok">novo</span>';
+  }
+  function desenharConferencia() {
+    const resp = responsaveis();
+    const meuNome = currentUser?.nome;
+    const origens = (typeof ORIGENS_LEAD !== 'undefined' ? ORIGENS_LEAD : ['Indicação', 'networking', 'Pessoal']).filter(o => o !== 'Importação de planilha');
+    const etapas = typeof stages !== 'undefined' ? stages : ['Prospecção'];
+    const algumSemDDD = est.lista.some(c => c.semDDD);
+    openModal(`
+      <div class="between"><h2>📲 Conferir ${est.lista.length} contato(s)</h2><button class="btn" onclick="closeModal()">✕</button></div>
+      <div class="il-comum">
+        <div class="field"><label>Responsável</label><select id="ilResp">${resp.map(u => `<option ${u.nome === meuNome ? 'selected' : ''}>${esc(u.nome)}</option>`).join('')}</select></div>
+        <div class="field"><label>Origem</label><select id="ilOrigem" onchange="ilOrigemMudou()">${origens.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('')}</select></div>
+        <div class="field" id="ilIndCampo"><label>Quem indicou?</label>
+          <input id="ilIndicador" list="ilIndicadores" placeholder="Nome do cliente que indicou">
+          <datalist id="ilIndicadores">${(db.indicadores || []).map(i => `<option value="${esc(i.nome)}">`).join('')}</datalist></div>
+        <div class="field"><label>Etapa do funil</label><select id="ilEtapa">${etapas.map(s => `<option ${s === 'Prospecção' ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
+        <div class="field"><label>Temperatura</label><select id="ilScore"><option value="Quente">🔥 Quente</option><option value="Morno" selected>⚡ Morno</option><option value="Frio">❄️ Frio</option></select></div>
+        <div class="field"><label>Cidade (opcional)</label><input id="ilCidade" placeholder="Para todos da lista"></div>
+        <div class="field"><label>Visibilidade</label><select id="ilPublico"><option value="true">👥 Público</option><option value="false">🔒 Privado</option></select></div>
+        ${algumSemDDD ? `<div class="field"><label>DDD para quem veio sem DDD</label><input id="ilDDD" inputmode="numeric" maxlength="2" placeholder="ex.: 14" value="${esc(est.ddd || '')}" onchange="ilAplicarDDD(this.value)"></div>` : ''}
+      </div>
+      <div class="il-topo-lista"><span id="ilContagem"></span>
+        <span class="row" style="gap:6px"><button class="btn" style="padding:4px 10px" onclick="ilMarcarTodos(true)">Marcar todos</button><button class="btn" style="padding:4px 10px" onclick="ilMarcarTodos(false)">Desmarcar</button><button class="btn" style="padding:4px 10px" onclick="abrirContatosEmLote()">↩ Voltar</button></span></div>
+      <div class="il-lista" id="ilLista">${linhasHtml()}</div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">Dá para corrigir o nome e o telefone aqui mesmo. Quem já está cadastrado no CRM fica de fora.</p>
+      <div class="row" style="margin-top:10px"><button class="btn primary" id="ilConfirmar" onclick="ilCadastrar()">Cadastrar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>
+    `);
+    ilOrigemMudou(); contar();
+  }
+  function linhasHtml() {
+    return est.lista.map((c, i) => `<div class="il-linha ${c.marcado ? '' : 'fora'}" id="ilL${i}">
+      <input type="checkbox" ${c.marcado ? 'checked' : ''} ${c.existente || c.repetido ? 'disabled' : ''} onchange="ilMarcar(${i}, this.checked)" aria-label="Incluir">
+      <input type="text" value="${esc(c.nome)}" placeholder="Nome" oninput="ilEditar(${i}, 'nome', this.value)">
+      <input type="tel" class="il-tel" value="${esc(c.telF)}" placeholder="Telefone com DDD" onchange="ilEditar(${i}, 'tel', this.value)">
+      <span id="ilC${i}">${chip(c)}</span></div>`).join('');
+  }
+  function contar() {
+    const n = est.lista.filter(c => c.marcado).length, fora = est.lista.filter(c => c.existente || c.repetido).length;
+    const el = document.getElementById('ilContagem'); if (el) el.innerHTML = `<b>${n}</b> para cadastrar${fora ? ` · ${fora} já no CRM ou repetido(s)` : ''}`;
+    const b = document.getElementById('ilConfirmar'); if (b) { b.textContent = `Cadastrar ${n} contato(s)`; b.disabled = !n; }
+  }
+  window.ilOrigemMudou = function () {
+    const o = document.getElementById('ilOrigem')?.value; const c = document.getElementById('ilIndCampo');
+    if (c) c.style.display = o === 'Indicação' ? '' : 'none';
+  };
+  window.ilMarcar = function (i, v) {
+    const c = est.lista[i]; if (!c) return;
+    if (v && !c.valido) { showToast('⚠️ Complete o nome e o telefone com DDD antes de marcar.'); document.querySelector(`#ilL${i} input[type=checkbox]`).checked = false; return; }
+    c.desmarcado = !v; c.marcado = v; document.getElementById('ilL' + i)?.classList.toggle('fora', !v); contar();
+  };
+  window.ilMarcarTodos = function (v) {
+    est.lista.forEach(c => { c.desmarcado = !v; c.marcado = v && c.valido; });
+    document.getElementById('ilLista').innerHTML = linhasHtml(); contar();
+  };
+  window.ilEditar = function (i, campo, valor) {
+    const c = est.lista[i]; if (!c) return;
+    if (campo === 'nome') { c.nome = valor.trim(); }
+    else { c.tel = valor; }
+    classificar();
+    est.lista.forEach((x, j) => { const ch = document.getElementById('ilC' + j); if (ch) ch.innerHTML = chip(x); const cb = document.querySelector(`#ilL${j} input[type=checkbox]`); if (cb) { cb.checked = x.marcado; cb.disabled = !!(x.existente || x.repetido); } document.getElementById('ilL' + j)?.classList.toggle('fora', !x.marcado); });
+    if (campo === 'tel') { const inp = document.querySelector(`#ilL${i} .il-tel`); if (inp) inp.value = c.telF; }
+    contar();
+  };
+  window.ilAplicarDDD = function (v) {
+    est.ddd = soDigitos(v).slice(0, 2);
+    classificar();
+    document.getElementById('ilLista').innerHTML = linhasHtml(); contar();
+  };
+
+  window.ilCadastrar = function () {
+    const escolhidos = est.lista.filter(c => c.marcado && c.valido);
+    if (!escolhidos.length) return;
+    const responsavel = document.getElementById('ilResp')?.value || currentUser.nome;
+    const origem = document.getElementById('ilOrigem')?.value || 'Indicação';
+    let indicador = origem === 'Indicação' ? (document.getElementById('ilIndicador')?.value || '').trim() : '';
+    if (indicador && typeof registrarOuObterIndicador === 'function') indicador = registrarOuObterIndicador(indicador);
+    const etapa = document.getElementById('ilEtapa')?.value || 'Prospecção';
+    const score = document.getElementById('ilScore')?.value || 'Morno';
+    const cidade = (document.getElementById('ilCidade')?.value || '').trim();
+    const publico = document.getElementById('ilPublico')?.value !== 'false';
+    try { registrarHistoricoPrincipal(); } catch (e) {}
+    const importId = crypto.randomUUID(), agora = new Date();
+    const nota = `📲 Cadastrado junto com outros ${escolhidos.length - 1} contato(s)${indicador ? `, indicação de ${indicador}` : ''}.`;
+    escolhidos.forEach(c => {
+      db.leads.push({
+        id: crypto.randomUUID(), created: agora.toISOString(), createdBy: currentUser.id, createdByName: currentUser.nome,
+        comments: [{ id: 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), author: currentUser.nome || currentUser.email,
+          date: agora.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }), text: nota }],
+        nome: c.nome, tel: c.telF, nasc: '', cidade, prof: '', responsavel, origem, indicador,
+        scoreCategory: score, stage: etapa, isPublic: publico, tags: [], _importId: importId,
+      });
+    });
+    db.contacts = (db.contacts || 0) + escolhidos.length;
+    if (!db.importHistory) db.importHistory = [];
+    db.importHistory.unshift({ importId, date: agora.toISOString(), tipo: 'leads', atribuirPara: responsavel, total: escolhidos.length, comoVenda: 0 });
+    db.importHistory = db.importHistory.slice(0, 10);
+    save(); closeModal();
+    try { renderLeads(); } catch (e) {}
+    try { if (typeof populateIndicadorSelects === 'function') populateIndicadorSelects(); } catch (e) {}
+    showToast(`✅ ${escolhidos.length} contato(s) cadastrado(s) para ${responsavel}${indicador ? ` (indicação de ${indicador})` : ''}.`);
+  };
+
+  // ---------- botões: na barra de Leads e dentro do "+ Novo Lead" ----------
+  function botaoNaBarra() {
+    const barra = document.getElementById('leadsBarra');
+    if (!barra || document.getElementById('btnContatosLote')) return;
+    const b = document.createElement('button');
+    b.className = 'btn'; b.id = 'btnContatosLote'; b.type = 'button';
+    b.textContent = '📲 Vários contatos'; b.title = 'Cadastrar vários contatos de uma vez (indicações do WhatsApp)';
+    b.onclick = () => abrirContatosEmLote();
+    const ref = [...barra.querySelectorAll('button')].find(x => /Importar Planilha/.test(x.textContent));
+    barra.insertBefore(b, ref || barra.firstChild);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', botaoNaBarra); else botaoNaBarra();
+  setTimeout(botaoNaBarra, 1500);
+  const abrirOriginal = window.openLead;
+  if (typeof abrirOriginal === 'function') {
+    window.openLead = function (id) {
+      const r = abrirOriginal.apply(this, arguments);
+      if (!id) {
+        const h = document.querySelector('#modalContent h2');
+        if (h && !document.getElementById('ilAtalho')) {
+          const p = document.createElement('div'); p.id = 'ilAtalho';
+          p.style.cssText = 'margin:6px 0 2px;padding:8px 10px;border-radius:10px;background:var(--bg-soft,#f1f5f9);font-size:13px';
+          p.innerHTML = 'Recebeu várias indicações? <a href="javascript:void(0)" style="font-weight:800" onclick="abrirContatosEmLote()">📲 Cadastrar vários de uma vez</a>';
+          h.closest('.between')?.insertAdjacentElement('afterend', p);
+        }
+      }
+      return r;
+    };
+  }
+  window.__ilTeste = { lerTexto, lerVcf, formatarTel };
 })();
 </script>
 </body>
