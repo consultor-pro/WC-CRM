@@ -22035,7 +22035,7 @@ const ASSIST_BASE = [
 // Atalhos no computador: P caneta, H marca-texto, E borracha, N navegar, Ctrl+Z desfazer, Ctrl+Y refazer.
 (function () {
   const CORES = ['#e11d48', '#f97316', '#facc15', '#22c55e', '#0ea5e9', '#2563eb', '#a855f7', '#111827', '#ffffff'];
-  const ESP = [['fino', 3], ['médio', 6], ['grosso', 11]];
+  const ESP = [['extra fino', 2], ['fino', 4], ['médio', 7], ['grosso', 12]];
   const css = document.createElement('style');
   css.textContent = `
   #aprTintaCv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; touch-action: none; }
@@ -22071,7 +22071,7 @@ const ASSIST_BASE = [
     const r = mostrarOriginal.apply(this, arguments);
     const sh = APR.show; if (!sh) return r;
     const salvo = (APR.indice && APR.indice.tinta) || {};
-    sh.tinta = { ferr: null, cor: salvo.cor || CORES[0], esp: salvo.esp || 6, folhas: {}, desenhando: null };
+    sh.tinta = { ferr: null, cor: salvo.cor || CORES[0], esp: ESP.some(e => e[1] === salvo.esp) ? salvo.esp : 4, folhas: {}, desenhando: null };
     const area = document.getElementById('aprShowArea');
     const cv = document.createElement('canvas'); cv.id = 'aprTintaCv'; area.appendChild(cv);
     cv.addEventListener('pointerdown', aperta); cv.addEventListener('pointermove', move);
@@ -22105,7 +22105,7 @@ const ASSIST_BASE = [
       `<div class="cores">${CORES.map(c => `<button class="cor ${c === t.cor ? 'ativo' : ''}" data-cor="${c}" title="Cor" style="background:${c};width:18px;height:18px"></button>`).join('')}</div>` +
       `<label class="livre" title="Escolher outra cor"><input type="color" id="aprTintaCorLivre" value="${t.cor}"><span></span></label>` +
       '<div class="sep"></div>' +
-      ESP.map(([n, v]) => bt('esp' + v, `<i style="width:${4 + v * 1.4}px;height:${4 + v * 1.4}px"></i>`, 'Espessura ' + n, t.esp === v, `class="esp ${t.esp === v ? 'ativo' : ''}"`)).join('') +
+      ESP.map(([n, v]) => bt('esp' + v, `<i style="width:${3 + v * 1.3}px;height:${3 + v * 1.3}px"></i>`, 'Espessura ' + n, t.esp === v, `class="esp ${t.esp === v ? 'ativo' : ''}"`)).join('') +
       '<div class="sep"></div>' +
       bt('desfazer', '↶', 'Desfazer (Ctrl+Z)', false, f.feitos.length ? '' : 'disabled') +
       bt('refazer', '↷', 'Refazer (Ctrl+Y)', false, f.refazer.length ? '' : 'disabled') +
@@ -22160,7 +22160,7 @@ const ASSIST_BASE = [
     if (t.desenhando) return;
     const p = paraSlide(ev);
     if (t.ferr === 'borracha') { t.desenhando = { borracha: true, id: ev.pointerId, apagados: [] }; apagarPerto(p); return; }
-    const tr = { ferr: t.ferr, cor: t.cor, esp: t.ferr === 'marca' ? t.esp * 3.4 : t.esp, pts: [p] };
+    const tr = { ferr: t.ferr, cor: t.cor, esp: t.ferr === 'marca' ? t.esp * 2.4 : t.esp, pts: [p] };
     t.desenhando = { tr, id: ev.pointerId };
     redesenhar();
   }
