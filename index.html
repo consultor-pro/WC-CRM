@@ -21626,5 +21626,57 @@ const ASSIST_BASE = [
   window.__ilTeste = { lerTexto, lerVcf, formatarTel };
 })();
 </script>
+<script id="larguraAjusteScript">
+// ===== TUDO NA LARGURA DA TELA (sem precisar arrastar para o lado) =====
+// 1) A área principal nunca fica mais larga que a tela: se algo for comprido demais, ele se ajusta
+//    (ou rola só dentro da própria tabela), em vez de empurrar a página inteira para o lado.
+// 2) Na aba Leads, a barra de botões e filtros quebra em linhas e a tabela cabe inteira:
+//    o nome do cliente pode ocupar duas linhas e, em telas menores, os botões viram ícones.
+(function () {
+  const css = document.createElement('style');
+  css.id = 'larguraAjusteCss';
+  css.textContent = `
+  @media (min-width: 769px) {
+    .app > .main { min-width: 0; }
+    .main .between { flex-wrap: wrap; row-gap: 10px; }
+    #leadsBarra { flex: 1 1 560px; justify-content: flex-end; }
+    #leadsBarra > select { max-width: 200px; flex: 0 1 auto; }
+    #leadsBarra > input { flex: 1 1 200px; min-width: 160px; max-width: 320px !important; }
+    #leadTable td:first-child { white-space: normal; max-width: 300px; min-width: 170px; overflow: visible; overflow-wrap: anywhere; }
+    #leadTable td:first-child .tc-sub { display: inline; }
+    /* Gastos: as 12 colunas de meses um pouco mais estreitas, para caber inteiro em telas grandes */
+    #gastos .excel-table th[style*="min-width:100px"] { min-width: 86px !important; }
+    #gastos .excel-table th.col-fixed { min-width: 166px !important; }
+    #gastos .excel-table td.col-fixed input[type=text] { width: 150px !important; }
+  }
+  /* telas médias: os botões da tabela de leads viram ícones (o nome aparece ao passar o mouse) */
+  @media (min-width: 769px) and (max-width: 1500px) {
+    #leadTable td:first-child { max-width: 240px; }
+    #leadTable .tc-btn { font-size: 0 !important; padding: 2px 7px; margin-right: 3px; }
+    #leadTable .tc-btn::before { font-size: 13px; line-height: 1.5; }
+    #leadTable .tc-btn[onclick^="openSaleModal"]::before { content: '💰'; }
+    #leadTable .tc-btn[onclick^="openLead("]::before { content: '✏️'; }
+    #leadTable .tc-btn[onclick^="deleteLead"]::before { content: '🗑️'; }
+    #leadTable .tc-btn[onclick^="openLeadCommentsModal"]::before { content: '📝 ' attr(data-n); font-size: 12.5px; }
+    .tabela-compacta th, .tabela-compacta td { padding-left: 7px; padding-right: 7px; }
+  }`;
+  document.head.appendChild(css);
+  // dicas (título) nos botões que viram ícone, e o número de notas para o ícone 📝
+  function rotular() {
+    document.querySelectorAll('#leadTable .tc-btn').forEach(b => {
+      if (b.dataset.rot) return; b.dataset.rot = 1;
+      const t = b.textContent.trim(); if (!b.title) b.title = t;
+      const m = t.match(/\((\d+)\)/); if (m) b.dataset.n = m[1];
+    });
+  }
+  const alvo = () => document.getElementById('leadTable');
+  function ligar() {
+    const t = alvo(); if (!t || t.__rotLigado) return; t.__rotLigado = true;
+    new MutationObserver(rotular).observe(t, { childList: true }); rotular();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar); else ligar();
+  setTimeout(ligar, 1500);
+})();
+</script>
 </body>
 </html>
