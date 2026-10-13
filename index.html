@@ -17190,7 +17190,7 @@ function aprEdSlide(){
   const { deck, i } = APR.ed; const s = deck.slides[i]; const palco = document.getElementById('aprEdSlide');
   palco.innerHTML = aprSlideHtml(s, deck.tema, true); aprEncaixar(palco, 0.92); aprAjustarTexto(palco.firstElementChild);
   document.getElementById('aprEdLayout').value = s.layout || 'texto';
-  const usaImg = s.layout === 'imgdir' || s.layout === 'imagem';
+  const usaImg = ['imgdir', 'imagem', 'grafico', 'capaimg'].includes(s.layout);
   document.getElementById('aprEdBtImg').style.display = usaImg ? '' : 'none';
   document.getElementById('aprEdBtSemImg').style.display = usaImg && s.img ? '' : 'none';
   const aj = document.getElementById('aprEdImgAjuste');
@@ -20493,6 +20493,10 @@ const ASSIST_BASE = [
   r: 'No **Simulador**, toque em **🎞️ Virar apresentação**. A simulação vira slides na aba **Apresentações**, prontos para mostrar em tela cheia.', aba: 'simulador' },
 
 // ===================== PROSPECÇÃO =====================
+{ id: 'apresentacao_simulacao', t: 'Como faço uma apresentação da simulação com gráficos e fotos?', k: 'virar apresentacao, apresentacao da simulacao, slides da simulacao, graficos, apresentacao com imagens, valor futuro na apresentacao, venda da carta slides, financiamento x consorcio slides',
+  r: '1. No **Simulador**, preencha a simulação (e, se quiser, as abas Valor Futuro, Venda da Carta, Aplicação, Financiamento e Financiamento x Consórcio).\n2. Toque em **🎞️ Virar apresentação**.\n3. Marque o que entra: plano e parcela, caminhos para a contemplação, valor futuro, venda da carta, consórcio x financiamento, SAC x PRICE, aplicação e vantagens.\n4. Escolha as cores (o tema **Vivo** é o padrão) e toque em **Criar apresentação**.\nOs slides vêm com fotos da modalidade, gráficos e desenhos. Tudo fica editável: textos, imagens, tema e ordem. Depois toque em **Apresentar**.', aba: 'simulador' },
+{ id: 'apresentacao_canetas', t: 'Como uso caneta e marca-texto na hora de apresentar?', k: 'caneta, marca texto, riscar o slide, desenhar na apresentacao, borracha, desfazer risco, anotar no pdf, rabiscar, destacar',
+  r: '1. Na apresentação (slides ou PDF), toque em **✏️** na barra de baixo.\n2. Escolha **🖊️ Caneta** ou **🖍️ Marca-texto**, a **cor** (ou a paleta colorida para qualquer cor) e a **espessura**.\n3. Risque com o dedo, a caneta ou o mouse.\n- **🧽 Borracha**: toque no risco para apagar.\n- **↶ Desfazer** e **↷ Refazer** (no computador: Ctrl+Z e Ctrl+Y).\n- **🗑️** apaga os riscos do slide.\n- **✋** volta a navegar (trocar slide, zoom e laser).\nCada slide guarda os seus riscos enquanto a apresentação estiver aberta. Atalhos: P caneta, H marca-texto, E borracha, N navegar.', aba: 'apresentacoes' },
 { id: 'leads_lote', t: 'Como cadastro vários contatos de uma vez (indicações do WhatsApp)?', k: 'varios contatos, cadastrar varios leads, indicacoes em lote, lista de contatos, contatos do whatsapp, importar contatos do celular, agenda do celular, vcf, colar lista de nomes e telefones, 20 indicacoes, cadastro em massa',
   r: '1. Em **Leads & Carteira**, toque em **📲 Vários contatos** (ou, no **+ Novo Lead**, em "Cadastrar vários de uma vez").\n2. Escolha de onde vêm os contatos:\n- **📇 Da agenda do celular** (Android/Chrome): marque todos os contatos que você salvou e confirme.\n- **📋 Colar uma lista**: copie a mensagem do WhatsApp com os nomes e telefones e cole. Pode ser um por linha, do jeito que veio.\n- **📎 Arquivo de contatos** (.vcf): no iPhone, app Contatos › Listas › segure a lista › Exportar.\n3. Confira a lista: dá para corrigir nome e telefone e desmarcar quem não quer. Quem já está no CRM fica de fora.\n4. Escolha **uma vez só** o responsável, a origem (Indicação, networking, Pessoal...), quem indicou, a etapa e a temperatura.\n5. Toque em **Cadastrar**. Errou? Em **📥 Importar Planilha** › Importações recentes, toque em **↩️ Desfazer**.', aba: 'leads' },
 { id: 'prospeccao', t: 'Como funciona a Prospecção de empresas?', k: 'prospeccao, buscar empresas, google maps, lista de empresas, prospectar',
@@ -21676,6 +21680,546 @@ const ASSIST_BASE = [
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar); else ligar();
   setTimeout(ligar, 1500);
+})();
+</script>
+<script id="apresentacaoRicaScript">
+// ===== APRESENTAÇÃO DA SIMULAÇÃO COM FOTOS, GRÁFICOS E DESENHOS =====
+// "🎞️ Virar apresentação" agora pergunta o que entra (plano, contemplação, valor futuro, venda da carta,
+// consórcio x financiamento, SAC x PRICE, aplicação) e monta slides com fotos da modalidade,
+// gráficos e desenhos explicativos. Tudo continua editável na aba Apresentações (texto, imagem, tema).
+(function () {
+  // ---------- novos modelos de slide e tema ----------
+  try {
+    APR_LAYOUTS.push(['grafico', 'Gráfico ou desenho'], ['capaimg', 'Capa com foto']);
+    APR_TEMAS.unshift(['vivo', 'Vivo']);
+  } catch (e) {}
+  const css = document.createElement('style');
+  css.textContent = `
+  .apr-slide.l-grafico { padding: 40px 70px 30px 96px; display: flex; flex-direction: column; }
+  .apr-slide.l-grafico .s-titulo { font-size: 46px; max-height: 118px; flex: none; }
+  .apr-slide.l-grafico .s-img { flex: 1; min-height: 0; margin: 16px 0 12px; background-color: transparent; opacity: 1; }
+  .apr-slide.l-grafico .s-texto { font-size: 24px; max-height: 92px; flex: none; }
+  .apr-slide.l-grafico .s-texto ul { display: flex; flex-wrap: wrap; gap: 4px 34px; }
+  .apr-slide.l-capaimg { display: flex; flex-direction: column; justify-content: center; padding: 70px 620px 70px 118px; }
+  .apr-slide.l-capaimg .s-titulo { font-size: 70px; max-height: 340px; }
+  .apr-slide.l-capaimg .s-texto { font-size: 30px; margin-top: 26px; max-height: 210px; }
+  .apr-slide.l-capaimg .s-img { position: absolute; top: 0; right: 0; bottom: 0; width: 580px; clip-path: polygon(17% 0, 100% 0, 100% 100%, 0 100%); opacity: 1; }
+  .apr-slide.t-vivo { background: radial-gradient(circle at 88% 8%, rgba(200,16,46,.10) 0, transparent 34%), linear-gradient(160deg, #ffffff 0%, #fff8f4 55%, #ffeedd 100%); color: #3a0a12; }
+  .apr-slide.t-vivo .s-faixa { background: linear-gradient(180deg, #c8102e, #f59e0b); }
+  .apr-slide.t-vivo .s-titulo { color: #8a0f22; }
+  .apr-slide.t-vivo .s-texto { color: #4b3236; }
+  .apr-slide.t-vivo.l-destaque .s-texto { color: #8a0f22; }
+  .ar-opcoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; margin: 10px 0; }
+  .ar-op { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; cursor: pointer; }
+  .ar-op input { width: auto; margin-top: 3px; transform: scale(1.15); }
+  .ar-op b { display: block; font-size: 14px; } .ar-op small { color: var(--muted); font-size: 12px; }
+  .ar-op.off { opacity: .55; }`;
+  document.head.appendChild(css);
+
+  const htmlOriginal = aprSlideHtml;
+  aprSlideHtml = function (s, tema, editar) {
+    if (!s || (s.layout !== 'grafico' && s.layout !== 'capaimg')) return htmlOriginal(s, tema, editar);
+    const lay = s.layout;
+    const ed = (campo, dica) => editar ? ` contenteditable="${APR_EDITAVEL}" spellcheck="false" data-campo="${campo}" data-dica="${dica}"` : '';
+    const titulo = `<div class="s-titulo apr-auto"${ed('titulo', lay === 'capaimg' ? 'Título da apresentação' : 'Título do slide')}>${esc(s.titulo || '')}</div>`;
+    const texto = `<div class="s-texto apr-auto"${ed('texto', lay === 'capaimg' ? 'Subtítulo' : 'Texto curto (opcional). Comece com "- " para tópicos')}>${editar ? esc(s.texto || '') : aprTextoHtml(s.texto)}</div>`;
+    const img = `<div class="s-img${s.img ? ' tem' : ''}">${s.img ? `<div class="s-img-in" style="background-image:url('${aprUrlImagem(s.img)}');background-size:${s.imgModo === 'caber' ? 'contain' : 'cover'};transform:${aprImgTransform(s)}"></div>` : (editar ? 'Sem imagem: use "Escolher imagem"' : '')}</div>`;
+    const t = APR_TEMAS.some(x => x[0] === tema) ? tema : 'claro';
+    return `<div class="apr-slide t-${t} l-${lay}"><div class="s-faixa"></div>${lay === 'capaimg' ? titulo + texto + img : titulo + img + ((s.texto || editar) ? texto : '')}</div>`;
+  };
+
+  // ---------- desenho (canvas) ----------
+  const CW = 2200, CH = 940;
+  const COR = { vermelho: '#c8102e', vinho: '#7a0e1f', ouro: '#e3a33b', verde: '#16a34a', azul: '#2563eb', cinza: '#64748b', escuro: '#0f172a', claro: '#e2e8f0', roxo: '#7c3aed' };
+  const FONTE = 'Inter, "Segoe UI", system-ui, sans-serif';
+  const R = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  const Rc = v => { v = Number(v || 0); const a = Math.abs(v);
+    if (a >= 1e6) return 'R$ ' + (v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' mi';
+    if (a >= 1e3) return 'R$ ' + Math.round(v / 1e3).toLocaleString('pt-BR') + ' mil';
+    return R(v); };
+  const Rv = v => Math.abs(Number(v || 0)) < 100000 ? R(v) : Rc(v);
+  function tela(w = CW, h = CH) {
+    const c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d');
+    x.fillStyle = '#ffffff'; x.shadowColor = 'rgba(15,23,42,.10)'; x.shadowBlur = 24; x.shadowOffsetY = 6;
+    rr(x, 14, 10, w - 28, h - 30, 34); x.fill(); x.shadowColor = 'transparent';
+    return [c, x];
+  }
+  function rr(x, a, b, w, h, r) { r = Math.min(r, w / 2, h / 2); x.beginPath(); x.moveTo(a + r, b); x.arcTo(a + w, b, a + w, b + h, r); x.arcTo(a + w, b + h, a, b + h, r); x.arcTo(a, b + h, a, b, r); x.arcTo(a, b, a + w, b, r); x.closePath(); }
+  function txt(x, s, a, b, tam, cor, peso = 600, alinha = 'left', base = 'alphabetic') { x.font = `${peso} ${tam}px ${FONTE}`; x.fillStyle = cor; x.textAlign = alinha; x.textBaseline = base; x.fillText(s, a, b); }
+  const png = c => c.toDataURL('image/png');
+
+  // ícones simples (desenhados), centrados em (cx, cy) com tamanho t
+  const ICONE = {
+    pessoas(x, cx, cy, t, cor) { x.fillStyle = cor; [[-0.32, 0.8], [0.32, 0.8], [0, 1]].forEach(([dx, e]) => { const r = t * 0.13 * e;
+      x.beginPath(); x.arc(cx + dx * t, cy - t * 0.12, r, 0, 7); x.fill();
+      x.beginPath(); x.ellipse(cx + dx * t, cy + t * 0.26, r * 1.8, r * 1.5, 0, Math.PI, 0); x.fill(); }); },
+    calendario(x, cx, cy, t, cor) { x.fillStyle = cor; rr(x, cx - t * .36, cy - t * .3, t * .72, t * .62, t * .08); x.fill();
+      x.fillStyle = '#fff'; rr(x, cx - t * .3, cy - t * .12, t * .6, t * .38, t * .04); x.fill();
+      x.fillStyle = cor; for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { x.fillRect(cx - t * .24 + i * t * .18, cy - t * .06 + j * t * .16, t * .1, t * .1); }
+      x.fillRect(cx - t * .2, cy - t * .4, t * .06, t * .16); x.fillRect(cx + t * .14, cy - t * .4, t * .06, t * .16); },
+    trofeu(x, cx, cy, t, cor) { x.fillStyle = cor; x.beginPath(); x.moveTo(cx - t * .26, cy - t * .34); x.lineTo(cx + t * .26, cy - t * .34);
+      x.quadraticCurveTo(cx + t * .26, cy + t * .06, cx, cy + t * .1); x.quadraticCurveTo(cx - t * .26, cy + t * .06, cx - t * .26, cy - t * .34); x.fill();
+      x.lineWidth = t * .05; x.strokeStyle = cor; x.beginPath(); x.arc(cx - t * .28, cy - t * .2, t * .1, Math.PI * .5, Math.PI * 1.5); x.stroke(); x.beginPath(); x.arc(cx + t * .28, cy - t * .2, t * .1, -Math.PI * .5, Math.PI * .5); x.stroke();
+      x.fillRect(cx - t * .04, cy + t * .08, t * .08, t * .16); rr(x, cx - t * .18, cy + t * .24, t * .36, t * .1, t * .03); x.fill(); },
+    casa(x, cx, cy, t, cor) { x.fillStyle = cor; x.beginPath(); x.moveTo(cx - t * .42, cy - t * .02); x.lineTo(cx, cy - t * .4); x.lineTo(cx + t * .42, cy - t * .02); x.closePath(); x.fill();
+      x.fillRect(cx - t * .32, cy - t * .04, t * .64, t * .38); x.fillStyle = '#fff'; x.fillRect(cx - t * .07, cy + t * .1, t * .14, t * .24); x.fillRect(cx + t * .13, cy + t * .02, t * .1, t * .1); },
+    carro(x, cx, cy, t, cor) { x.fillStyle = cor; rr(x, cx - t * .44, cy - t * .06, t * .88, t * .24, t * .08); x.fill();
+      x.beginPath(); x.moveTo(cx - t * .26, cy - t * .06); x.lineTo(cx - t * .14, cy - t * .26); x.lineTo(cx + t * .16, cy - t * .26); x.lineTo(cx + t * .3, cy - t * .06); x.fill();
+      x.fillStyle = '#fff'; x.fillRect(cx - t * .12, cy - t * .21, t * .11, t * .12); x.fillRect(cx + t * .02, cy - t * .21, t * .12, t * .12);
+      [-0.24, 0.24].forEach(d => { x.fillStyle = '#1f2937'; x.beginPath(); x.arc(cx + d * t, cy + t * .18, t * .1, 0, 7); x.fill(); x.fillStyle = '#cbd5e1'; x.beginPath(); x.arc(cx + d * t, cy + t * .18, t * .04, 0, 7); x.fill(); }); },
+    ferramenta(x, cx, cy, t, cor) { x.save(); x.translate(cx, cy); x.rotate(-Math.PI / 4); x.fillStyle = cor; rr(x, -t * .05, -t * .1, t * .1, t * .5, t * .04); x.fill();
+      x.beginPath(); x.arc(0, -t * .22, t * .16, 0, 7); x.fill(); x.fillStyle = '#fff'; x.fillRect(-t * .05, -t * .42, t * .1, t * .16); x.restore(); },
+    caixa(x, cx, cy, t, cor) { x.fillStyle = cor; x.beginPath(); x.moveTo(cx, cy - t * .36); x.lineTo(cx + t * .38, cy - t * .16); x.lineTo(cx, cy + t * .02); x.lineTo(cx - t * .38, cy - t * .16); x.fill();
+      x.globalAlpha = .85; x.beginPath(); x.moveTo(cx - t * .38, cy - t * .16); x.lineTo(cx, cy + t * .02); x.lineTo(cx, cy + t * .4); x.lineTo(cx - t * .38, cy + t * .2); x.fill();
+      x.globalAlpha = .7; x.beginPath(); x.moveTo(cx + t * .38, cy - t * .16); x.lineTo(cx, cy + t * .02); x.lineTo(cx, cy + t * .4); x.lineTo(cx + t * .38, cy + t * .2); x.fill(); x.globalAlpha = 1; },
+    moedas(x, cx, cy, t, cor) { for (let i = 0; i < 4; i++) { x.fillStyle = i % 2 ? '#f5c35b' : cor; x.beginPath(); x.ellipse(cx, cy + t * .22 - i * t * .13, t * .3, t * .1, 0, 0, 7); x.fill(); x.strokeStyle = 'rgba(0,0,0,.15)'; x.lineWidth = 2; x.stroke(); }
+      txt(x, '$', cx, cy - t * .2, t * .2, '#fff', 800, 'center', 'middle'); },
+    chave(x, cx, cy, t, cor) { x.strokeStyle = cor; x.fillStyle = cor; x.lineWidth = t * .1; x.beginPath(); x.arc(cx - t * .18, cy, t * .16, 0, 7); x.stroke();
+      x.fillRect(cx - t * .02, cy - t * .05, t * .46, t * .1); x.fillRect(cx + t * .28, cy, t * .07, t * .16); x.fillRect(cx + t * .16, cy, t * .07, t * .12); },
+    escudo(x, cx, cy, t, cor) { x.fillStyle = cor; x.beginPath(); x.moveTo(cx, cy - t * .4); x.lineTo(cx + t * .32, cy - t * .26); x.quadraticCurveTo(cx + t * .3, cy + t * .22, cx, cy + t * .4); x.quadraticCurveTo(cx - t * .3, cy + t * .22, cx - t * .32, cy - t * .26); x.fill();
+      x.strokeStyle = '#fff'; x.lineWidth = t * .07; x.lineCap = 'round'; x.beginPath(); x.moveTo(cx - t * .12, cy); x.lineTo(cx - t * .02, cy + t * .1); x.lineTo(cx + t * .15, cy - t * .1); x.stroke(); },
+    subida(x, cx, cy, t, cor) { x.strokeStyle = cor; x.lineWidth = t * .09; x.lineCap = 'round'; x.lineJoin = 'round'; x.beginPath(); x.moveTo(cx - t * .38, cy + t * .26); x.lineTo(cx - t * .1, cy - t * .02); x.lineTo(cx + t * .06, cy + t * .12); x.lineTo(cx + t * .36, cy - t * .22); x.stroke();
+      x.fillStyle = cor; x.beginPath(); x.moveTo(cx + t * .42, cy - t * .3); x.lineTo(cx + t * .2, cy - t * .26); x.lineTo(cx + t * .38, cy - t * .08); x.fill(); },
+    cofre(x, cx, cy, t, cor) { x.fillStyle = cor; x.beginPath(); x.ellipse(cx, cy + t * .04, t * .38, t * .28, 0, 0, 7); x.fill();
+      x.fillRect(cx - t * .26, cy + t * .18, t * .1, t * .16); x.fillRect(cx + t * .16, cy + t * .18, t * .1, t * .16); x.beginPath(); x.arc(cx + t * .36, cy, t * .1, 0, 7); x.fill();
+      x.fillStyle = '#fff'; x.fillRect(cx - t * .1, cy - t * .2, t * .2, t * .04); x.beginPath(); x.arc(cx + t * .14, cy - t * .06, t * .03, 0, 7); x.fill(); },
+  };
+  const iconeBem = m => ({ imovel: 'casa', veiculo: 'carro', servico: 'ferramenta', bens: 'caixa' })[m] || 'chave';
+  function bolinha(x, cx, cy, r, fundo, icone, corIcone) { x.fillStyle = fundo; x.beginPath(); x.arc(cx, cy, r, 0, 7); x.fill(); ICONE[icone](x, cx, cy, r * 1.25, corIcone); }
+
+  // 1) Como funciona o consórcio (desenho em 4 passos)
+  function desenhoComoFunciona(sim) {
+    const [c, x] = tela();
+    const passos = [['pessoas', 'Grupo', 'mesmo objetivo'], ['calendario', 'Parcelas', 'sem juros'],
+                    ['trofeu', 'Contemplação', 'sorteio ou lance'], [iconeBem(sim.modalidade), 'Crédito', 'compra à vista']];
+    const y = 420, xs = passos.map((_, i) => 300 + i * 533);
+    x.strokeStyle = '#f1c4cb'; x.lineWidth = 10; x.setLineDash([22, 18]); x.beginPath(); x.moveTo(xs[0], y); x.lineTo(xs[3], y); x.stroke(); x.setLineDash([]);
+    passos.forEach((p, i) => {
+      const cx = xs[i]; x.fillStyle = 'rgba(200,16,46,.08)'; x.beginPath(); x.arc(cx, y, 205, 0, 7); x.fill();
+      bolinha(x, cx, y, 150, i === 3 ? COR.vermelho : '#fff', p[0], i === 3 ? '#fff' : COR.vermelho);
+      x.strokeStyle = COR.vermelho; x.lineWidth = 6; x.beginPath(); x.arc(cx, y, 150, 0, 7); x.stroke();
+      x.fillStyle = COR.vinho; x.beginPath(); x.arc(cx - 108, y - 108, 36, 0, 7); x.fill(); txt(x, String(i + 1), cx - 108, y - 106, 40, '#fff', 800, 'center', 'middle');
+      txt(x, p[1], cx, y + 250, 56, COR.escuro, 800, 'center'); txt(x, p[2], cx, y + 314, 42, COR.cinza, 600, 'center');
+      if (i < 3) { x.fillStyle = COR.vermelho; const ax = cx + 266; x.beginPath(); x.moveTo(ax - 20, y - 26); x.lineTo(ax + 22, y); x.lineTo(ax - 20, y + 26); x.fill(); }
+    });
+    return png(c);
+  }
+  // 2) Para onde vai a parcela (rosca)
+  function graficoComposicao(sim) {
+    const [c, x] = tela();
+    const taxa = sim.credito * sim.taxaAdmin, seguro = (sim.valorSeguro || 0) * sim.prazo;
+    const partes = [['Crédito (vira o seu bem)', sim.credito, COR.vermelho], ['Taxa de administração', taxa, COR.ouro]];
+    if (seguro > 1) partes.push(['Seguro de vida', seguro, COR.azul]);
+    const total = partes.reduce((a, p) => a + p[1], 0), cx = 560, cy = 470, r = 330;
+    let ang = -Math.PI / 2;
+    partes.forEach(p => { const a = p[1] / total * Math.PI * 2; x.fillStyle = p[2]; x.beginPath(); x.moveTo(cx, cy); x.arc(cx, cy, r, ang, ang + a); x.closePath(); x.fill(); ang += a; });
+    x.fillStyle = '#fff'; x.beginPath(); x.arc(cx, cy, r * .6, 0, 7); x.fill();
+    txt(x, Math.round(sim.credito / total * 100) + '%', cx, cy + 10, 96, COR.vermelho, 800, 'center', 'middle');
+    txt(x, 'vira crédito', cx, cy + 88, 34, COR.cinza, 600, 'center', 'middle');
+    let y = 230;
+    partes.forEach(p => { x.fillStyle = p[2]; rr(x, 1060, y - 36, 48, 48, 12); x.fill();
+      txt(x, p[0], 1140, y, 50, COR.escuro, 700); txt(x, R(p[1]) + '  ·  ' + (p[1] / total * 100).toFixed(1).replace('.', ',') + '%', 1140, y + 62, 44, COR.cinza, 600); y += 180; });
+    txt(x, 'Total do plano: ' + R(total) + ' em ' + sim.prazo + ' meses', 1060, y + 20, 44, COR.vinho, 800);
+    return png(c);
+  }
+  // 3) Caminhos para a contemplação (barras: crédito recebido e quanto sai do bolso)
+  function graficoCenarios(sim) {
+    const [c, x] = tela();
+    const cen = [['tradicional', 'Sorteio'], ['fixo', 'Lance fixo'], ['limitado', 'Lance limitado'], ['livre', 'Lance livre']]
+      .map(([k, n]) => Object.assign({ n }, cenarioExport(k, sim))).filter((v, i) => i === 0 || v.bolso || v.embutido);
+    const max = Math.max(...cen.map(v => v.creditoLiquido + (v.bolso || 0)), 1), x0 = 500, larg = 1020, alt = 104, gap = (CH - 230) / cen.length;
+    [['Crédito que você recebe', COR.vermelho, 120], ['Do seu bolso (lance)', COR.ouro, 760], ['Usado da própria carta', '#94a3b8', 1340]].forEach(([t, cr, px]) => {
+      x.fillStyle = cr; rr(x, px, 62, 40, 40, 10); x.fill(); txt(x, t, px + 56, 96, 40, COR.escuro, 700); });
+    cen.forEach((v, i) => {
+      const y = 160 + i * gap + (gap - alt) / 2;
+      txt(x, v.n, x0 - 30, y + alt / 2 + 16, 46, COR.escuro, 800, 'right');
+      const wc = v.creditoLiquido / max * larg, wb = (v.bolso || 0) / max * larg, we = (v.embutido || 0) / max * larg;
+      x.fillStyle = COR.vermelho; rr(x, x0, y, Math.max(wc, 8), alt, 16); x.fill();
+      if (we) { x.fillStyle = '#cbd5e1'; rr(x, x0 + wc + 6, y + 14, we, alt - 28, 10); x.fill(); }
+      if (wb) { x.fillStyle = COR.ouro; rr(x, x0 + wc + we + 12, y + 14, wb, alt - 28, 10); x.fill(); }
+      txt(x, Rv(v.creditoLiquido), x0 + 26, y + alt / 2 + 16, 44, '#fff', 800);
+      const p = v.parcela > 1 ? 'parcela: ' + R(v.parcela) : 'plano quitado';
+      txt(x, p, CW - 70, y + alt / 2 + 16, 40, COR.vinho, 700, 'right');
+    });
+    return png(c);
+  }
+  // 4) Valor futuro: crédito rendendo até o fim do plano
+  function graficoValorFuturo(sim) {
+    const n = Math.max(1, sim.mesesRendendo || 1), fim = sim.valorFinalFundo || 0, ini = Math.max(1, fim - (sim.rendimentoPuro || 0));
+    const pontos = Array.from({ length: n + 1 }, (_, i) => ini * Math.pow(fim / ini, i / n));
+    return graficoArea(pontos, [{ y: ini, rot: 'Crédito no início: ' + Rc(ini) }], 'Rendimento: + ' + R(sim.rendimentoPuro), 'meses rendendo', COR.verde, null);
+  }
+  function graficoArea(serie, linhas, destaque, legX, cor, serie2, nome1, nome2) {
+    const [c, x] = tela();
+    const L = 260, T = 140, W2 = CW - 380, H2 = CH - 300, todos = serie.concat(serie2 || []);
+    const max = Math.max(...todos) * 1.08, min = Math.min(0, ...todos), sx = i => L + i / (serie.length - 1) * W2, sy = v => T + H2 - (v - min) / (max - min) * H2;
+    x.strokeStyle = '#eef2f7'; x.lineWidth = 2;
+    for (let k = 0; k <= 4; k++) { const v = min + (max - min) * k / 4, y = sy(v); x.beginPath(); x.moveTo(L, y); x.lineTo(L + W2, y); x.stroke(); txt(x, Rv(v), L - 20, y + 14, 34, COR.cinza, 600, 'right'); }
+    const desenhar = (s, cr, alfa) => {
+      x.beginPath(); x.moveTo(sx(0), sy(min)); s.forEach((v, i) => x.lineTo(sx(i), sy(v))); x.lineTo(sx(s.length - 1), sy(min)); x.closePath();
+      const g = x.createLinearGradient(0, T, 0, T + H2); g.addColorStop(0, cr + alfa); g.addColorStop(1, cr + '08'); x.fillStyle = g; x.fill();
+      x.beginPath(); s.forEach((v, i) => i ? x.lineTo(sx(i), sy(v)) : x.moveTo(sx(i), sy(v))); x.strokeStyle = cr; x.lineWidth = 8; x.stroke();
+      x.fillStyle = cr; x.beginPath(); x.arc(sx(s.length - 1), sy(s[s.length - 1]), 16, 0, 7); x.fill();
+    };
+    if (serie2) desenhar(serie2, '#64748b', '40');
+    desenhar(serie, cor, '55');
+    (linhas || []).forEach(l => { x.setLineDash([14, 12]); x.strokeStyle = '#94a3b8'; x.lineWidth = 3; x.beginPath(); x.moveTo(L, sy(l.y)); x.lineTo(L + W2, sy(l.y)); x.stroke(); x.setLineDash([]); txt(x, l.rot, L + W2 * 0.35, sy(l.y) + 48, 38, COR.cinza, 700); });
+    const ult = serie[serie.length - 1]; txt(x, Rv(ult), sx(serie.length - 1) - 30, sy(ult) - 30, 54, cor, 800, 'right');
+    txt(x, 'hoje', L, T + H2 + 56, 34, COR.cinza, 600, 'center'); txt(x, String(serie.length - 1) + ' ' + legX, L + W2, T + H2 + 56, 34, COR.cinza, 600, 'right');
+    let lx = L; [[nome1, cor], [nome2, '#64748b']].forEach(([n, cr]) => { if (!n) return; x.fillStyle = cr; rr(x, lx, 50, 42, 42, 10); x.fill(); txt(x, n, lx + 58, 84, 38, COR.escuro, 700); x.font = `700 38px ${FONTE}`; lx += 58 + x.measureText(n).width + 70; });
+    if (destaque) { x.font = `800 46px ${FONTE}`; const w = x.measureText(destaque).width + 64; x.fillStyle = cor; const px = nome1 ? L + W2 - w : L, py = nome1 ? T + H2 - 120 : 44; rr(x, px, py, w, 80, 40); x.fill(); txt(x, destaque, px + w / 2, py + 54, 46, '#fff', 800, 'center'); }
+    return png(c);
+  }
+  // 5) Venda da carta: o que pagou x o que recebe
+  function graficoVenda(sim) {
+    const [c, x] = tela();
+    const barras = [['Você pagou até a contemplação', sim.totalPagoAteContemplar, '#94a3b8'], ['Você recebe na venda', sim.valorVenda, COR.vermelho], ['Seu lucro', sim.lucroVenda, COR.verde]];
+    const max = Math.max(...barras.map(b => Math.abs(b[1] || 0)), 1), base = CH - 190, H2 = base - 150, lw = 380;
+    barras.forEach((b, i) => {
+      const cx = 420 + i * 680, h = Math.abs(b[1] || 0) / max * H2;
+      x.fillStyle = b[2]; rr(x, cx - lw / 2, base - h, lw, h, 24); x.fill();
+      txt(x, Rv(b[1]), cx, base - h - 26, 58, b[2] === '#94a3b8' ? COR.escuro : b[2], 800, 'center');
+      txt(x, b[0], cx, base + 66, 42, COR.escuro, 700, 'center');
+      if (i < 2) { x.fillStyle = '#cbd5e1'; const ax = cx + 340; x.beginPath(); x.moveTo(ax - 26, base - 210); x.lineTo(ax + 26, base - 180); x.lineTo(ax - 26, base - 150); x.fill(); }
+    });
+    ICONE.moedas(x, CW - 210, 170, 170, COR.ouro);
+    return png(c);
+  }
+  // 6) Consórcio x Financiamento (barras lado a lado)
+  function graficoComparativo(cp) {
+    const [c, x] = tela();
+    const grupos = [['Parcela', cp.cpParcelaIntegral, cp.cfParcela], ['Custo total', cp.cpCustoEfetivoTotal, cp.cfCustoEfetivoTotal]];
+    grupos.forEach((g, gi) => {
+      const ox = 160 + gi * 1020, base = CH - 170, H2 = base - 190, max = Math.max(g[1], g[2], 1);
+      txt(x, g[0], ox + 400, 100, 52, COR.escuro, 800, 'center');
+      [[g[1], COR.vermelho, 'Consórcio'], [g[2], COR.escuro, 'Financiamento']].forEach((b, k) => {
+        const bx = ox + 120 + k * 380, h = b[0] / max * H2;
+        x.fillStyle = b[1]; rr(x, bx, base - h, 290, h, 22); x.fill();
+        txt(x, Rv(b[0]), bx + 145, base - h - 22, 50, b[1], 800, 'center'); txt(x, b[2], bx + 145, base + 60, 40, COR.cinza, 700, 'center');
+      });
+    });
+    const eco = cp.cfCustoEfetivoTotal - cp.cpCustoEfetivoTotal;
+    if (eco > 0) { const s = 'Economia de ' + R(eco) + ' no consórcio'; x.font = `800 42px ${FONTE}`; const w = x.measureText(s).width + 70; x.fillStyle = COR.verde; rr(x, CW / 2 - w / 2, CH - 110 + 26, w, 70, 35); x.fill(); txt(x, s, CW / 2, CH - 110 + 74, 42, '#fff', 800, 'center'); }
+    return png(c);
+  }
+  // 7) SAC x PRICE: parcela mês a mês
+  function graficoSacPrice() {
+    const sac = (finDadosCalculados.SAC || []).map(l => l.encargo), price = (finDadosCalculados.PRICE || []).map(l => l.encargo);
+    const passo = Math.max(1, Math.floor(sac.length / 120)), amostra = a => a.filter((_, i) => i % passo === 0);
+    return graficoArea(amostra(sac), [], null, 'parcelas', COR.azul, amostra(price), 'SAC (parcela começa alta e cai)', 'PRICE (parcela fixa)');
+  }
+  // 8) Aplicação: dinheiro guardado x montante
+  function graficoAplicacao(ap) {
+    const inv = [], mont = []; let m = 0;
+    for (let i = 0; i <= ap.prazo; i++) { if (i) m = m * (1 + ap.juros) + ap.aporte; inv.push(ap.aporte * i); mont.push(m); }
+    return graficoArea(mont, [], 'Juros ganhos: + ' + R(mont[mont.length - 1] - inv[inv.length - 1]), 'meses', COR.roxo, inv, 'Montante com juros', 'O que você guardou');
+  }
+  // 9) Vantagens (desenho)
+  function desenhoVantagens() {
+    const [c, x] = tela();
+    const v = [['escudo', 'Sem juros', 'só taxa de adm.'], ['cofre', 'Sem entrada', 'começa já'], ['moedas', 'À vista', 'mais desconto'], ['subida', 'Patrimônio', 'com planejamento']];
+    v.forEach((p, i) => { const cx = 300 + i * 533, cy = 360;
+      x.fillStyle = '#fff4f5'; rr(x, cx - 230, 110, 460, 700, 40); x.fill();
+      bolinha(x, cx, cy, 140, COR.vermelho, p[0], '#fff');
+      txt(x, p[1], cx, cy + 250, 58, COR.escuro, 800, 'center'); txt(x, p[2], cx, cy + 316, 42, COR.cinza, 600, 'center'); });
+    return png(c);
+  }
+
+  // ---------- fotos já guardadas no CRM ----------
+  function foto(nome) { try { return eval(nome); } catch (e) { return ''; } }
+  function fotosDa(mod) {
+    const lista = { imovel: ['PUB_IMG_CASA_MADEIRA_POR_DO_SOL_B64', 'PUB_IMG_MANSAO_BRANCA_PISCINA_B64', 'PUB_IMG_CASA_BEGE_DOIS_ANDARES_B64', 'PUB_IMG_IMOVEL_B64', 'PUB_IMG_CASA_MADEIRA_JARDIM_B64'],
+      veiculo: ['PUB_IMG_CARRO_SKYLINE_B64', 'PUB_IMG_VEICULO_B64', 'PUB_IMG_CARRO_TUNEL_B64', 'PUB_IMG_FROTA_VEICULOS_B64'],
+      servico: ['PUB_IMG_ESTETICA1_B64', 'PUB_IMG_SERVICO_B64', 'PUB_IMG_ESTETICA2_B64'], bens: ['PUB_IMG_BENS_B64', 'PUB_IMG_FROTA_VEICULOS_B64'] }[mod] || ['PUB_IMG_IMOVEL_B64'];
+    return lista.map(foto).filter(Boolean);
+  }
+
+  // ---------- o que dá para incluir ----------
+  function aplicacaoAtual() {
+    const aporte = parseSimNumber(document.getElementById('invAporte')?.value) || 0, prazo = parseInt(document.getElementById('invPrazo')?.value) || 0;
+    const juros = (parseSimNumber(document.getElementById('invJuros')?.value) || 0) / 100;
+    return { aporte, prazo, juros, ok: aporte > 0 && prazo > 0 && juros > 0 };
+  }
+  function secoes(sim) {
+    let fin = false; try { if (!(finDadosCalculados.SAC || []).length && typeof calcularFinanciamento === 'function') calcularFinanciamento(); fin = (finDadosCalculados.SAC || []).length > 0; } catch (e) {}
+    let cp = null; try { cp = calcularComparativo(); } catch (e) {}
+    return [
+      ['plano', 'Plano e parcela', 'como funciona, a parcela e para onde vai o dinheiro', true],
+      ['contemplacao', 'Caminhos para a contemplação', 'sorteio e lances com gráfico', true],
+      ['futuro', 'Valor futuro', 'o crédito rendendo até o fim do plano', (sim.valorFinalFundo || 0) > 0],
+      ['venda', 'Venda da carta', 'quanto pagou, quanto recebe e o lucro', (sim.valorVenda || 0) > 0],
+      ['comparativo', 'Consórcio x Financiamento', 'parcela e custo total lado a lado', !!(cp && cp.cpCredito && cp.cfCredito)],
+      ['financiamento', 'Financiamento SAC x PRICE', 'parcelas mês a mês do financiamento', fin],
+      ['aplicacao', 'Aplicação (juros compostos)', 'guardar dinheiro todo mês x montante', aplicacaoAtual().ok],
+      ['vantagens', 'Vantagens do consórcio', 'desenho com os principais benefícios', true],
+    ];
+  }
+
+  aprSimulacaoEmSlides = async function () {
+    if (!currentUser) return;
+    if (typeof calcularSimulacao === 'function' && (!ultimaSimulacao || !ultimaSimulacao.credito)) calcularSimulacao();
+    const sim = ultimaSimulacao || {};
+    if (!sim.credito || !sim.prazo) { showToast('Preencha o valor do crédito no simulador antes de criar a apresentação.', 'warn'); return; }
+    const lista = secoes(sim);
+    openModal(`
+      <div class="between"><h2>🎞️ Montar apresentação</h2><button class="btn" onclick="closeModal()">✕</button></div>
+      <p class="muted" style="margin:4px 0 0;font-size:13px">Escolha o que entra. Os números vêm do que está preenchido em cada aba do Simulador. Tudo fica editável depois.</p>
+      <div class="ar-opcoes">${lista.map(([k, n, d, ok]) => `<label class="ar-op ${ok ? '' : 'off'}"><input type="checkbox" value="${k}" ${ok ? 'checked' : 'disabled'}><span><b>${n}</b><small>${ok ? d : 'preencha essa aba do Simulador para incluir'}</small></span></label>`).join('')}</div>
+      <div class="row" style="align-items:center;gap:10px"><label style="margin:0">Cores</label>
+        <select id="arTema" style="width:auto;margin:0">${APR_TEMAS.map(t => `<option value="${t[0]}" ${t[0] === 'vivo' ? 'selected' : ''}>${t[1]}</option>`).join('')}</select></div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="arGerar" onclick="aprRicaGerar()">Criar apresentação</button><button class="btn" onclick="closeModal()">Cancelar</button></div>`);
+  };
+
+  window.aprRicaGerar = async function () {
+    const escolhas = new Set([...document.querySelectorAll('.ar-opcoes input:checked')].map(i => i.value));
+    const tema = document.getElementById('arTema')?.value || 'vivo';
+    const bt = document.getElementById('arGerar'); if (bt) { bt.disabled = true; bt.textContent = 'Montando os slides...'; }
+    await new Promise(r => setTimeout(r, 30));
+    try {
+      const deck = montarDeck(escolhas, tema);
+      await aprCarregar(); await aprGravarDeck(deck);
+      closeModal(); aprEditarDeck(deck);
+      showToast('Apresentação criada com ' + deck.slides.length + ' slides. Ajuste o que quiser e toque em Apresentar.');
+    } catch (e) { console.error(e); showToast('Não consegui montar a apresentação: ' + (e && e.message || e), 'error'); if (bt) { bt.disabled = false; bt.textContent = 'Criar apresentação'; } }
+  };
+
+  function montarDeck(escolhas, tema) {
+    const sim = ultimaSimulacao, R2 = v => fmtBRExport(v), pct = pctSelecionadoExport(), parcela = parcelaPercentualExport(sim, pct), manual = camposManuaisExport();
+    const modalidade = nomeModalidadeExport(sim.modalidade), fotos = fotosDa(sim.modalidade), F = i => fotos[i % Math.max(1, fotos.length)] || '';
+    const taxaTotal = (sim.taxaAdmin * 100).toFixed(1).replace('.', ','), taxaMes = ((sim.taxaAdmin / sim.prazo) * 100).toFixed(2).replace('.', ',');
+    const g = (titulo, img, texto) => ({ layout: 'grafico', titulo, texto: texto || '', img, imgModo: 'caber', imgZoom: 100, imgX: 0, imgY: 0 });
+    const slides = [{ layout: 'capaimg', titulo: 'Consórcio de ' + modalidade, texto: 'Crédito de ' + R2(sim.credito) + ' em ' + sim.prazo + ' meses', img: F(0), imgModo: 'cobrir' }];
+    if (escolhas.has('plano')) {
+      slides.push(g('Como funciona o consórcio', desenhoComoFunciona(sim), '- Você entra num grupo e paga parcelas sem juros\n- Todo mês tem contemplação por sorteio e por lance'));
+      slides.push({ layout: 'destaque', titulo: pct < 100 ? 'Parcela reduzida (' + pct + '%)' : 'Sua parcela mensal', texto: R2(parcela) });
+      slides.push({ layout: 'imgdir', titulo: 'Como é o seu plano', img: F(1), imgModo: 'cobrir', texto: [
+        '- Crédito: ' + R2(sim.credito), '- Prazo: ' + sim.prazo + ' meses',
+        '- Taxa de administração: ' + taxaTotal + '% no plano (' + taxaMes + '% ao mês)',
+        '- Parcela cheia: ' + R2(sim.parcelaCheia || parcelaPercentualExport(sim, 100)),
+        pct < 100 ? '- Parcela reduzida (' + pct + '%): ' + R2(parcela) : '',
+        '- Reajuste anual pelo ' + (sim.indiceReajuste || 'índice do grupo'), '- Sem juros e sem entrada'].filter(Boolean).join('\n') });
+      slides.push(g('Para onde vai o seu dinheiro', graficoComposicao(sim), '- A maior parte da parcela volta para você em forma de crédito'));
+    }
+    if (escolhas.has('contemplacao')) {
+      const liv = cenarioExport('livre', sim), fix = cenarioExport('fixo', sim);
+      slides.push(g('Caminhos para a contemplação', graficoCenarios(sim), [
+        '- Sorteio: recebe o crédito inteiro de ' + R2(sim.credito),
+        fix.embutido ? '- Lance fixo: usa ' + R2(fix.embutido) + ' da própria carta' : '',
+        liv.bolso ? '- Lance livre: ' + R2(liv.bolso) + ' do bolso' : ''].filter(Boolean).join('\n')));
+    }
+    if (escolhas.has('futuro')) slides.push(g('Seu crédito pode render', graficoValorFuturo(sim),
+      '- Contemplado, o crédito rende ' + (sim.mesesRendendo || 0) + ' meses até usar: chega a ' + R2(sim.valorFinalFundo)));
+    if (escolhas.has('venda')) slides.push(g('E se você vender a carta?', graficoVenda(sim),
+      '- Com ' + (sim.agio * 100 || 0).toFixed(0) + '% de ágio sobre o crédito atualizado, o lucro estimado é de ' + R2(sim.lucroVenda)));
+    if (escolhas.has('comparativo')) { const cp = calcularComparativo(); const eco = cp.cfCustoEfetivoTotal - cp.cpCustoEfetivoTotal;
+      slides.push(g('Consórcio x Financiamento (' + cp.modLabel + ')', graficoComparativo(cp),
+        '- Financiamento: entrada de ' + R2(cp.cfEntradaValor) + ' e juros de ' + cp.cfTaxaAA.toFixed(2).replace('.', ',') + '% a.a.' + (eco > 0 ? '\n- No consórcio você economiza ' + R2(eco) : ''))); }
+    if (escolhas.has('financiamento')) { const s = finDadosCalculados.SAC, p = finDadosCalculados.PRICE, soma = a => a.reduce((t, l) => t + l.encargo, 0);
+      slides.push(g('Financiamento: quanto se paga de verdade', graficoSacPrice(),
+        '- Total pago no SAC: ' + R2(soma(s)) + '\n- Total pago no PRICE: ' + R2(soma(p)))); }
+    if (escolhas.has('aplicacao')) { const ap = aplicacaoAtual();
+      slides.push(g('Guardar dinheiro todo mês', graficoAplicacao(ap), '- ' + R2(ap.aporte) + ' por mês, durante ' + ap.prazo + ' meses, a ' + (ap.juros * 100).toFixed(2).replace('.', ',') + '% ao mês')); }
+    if (escolhas.has('vantagens')) slides.push(g('Por que o consórcio', desenhoVantagens(), ''));
+    if (manual.observacao || manual.vagas) slides.push({ layout: 'destaque', titulo: manual.vagas || '', texto: manual.observacao || manual.vagas });
+    slides.push({ layout: 'capaimg', titulo: 'Vamos dar o próximo passo?', texto: [currentUser.nome || '', fmtTelBR(currentUser.tel) || ''].filter(Boolean).join('\n'), img: F(2), imgModo: 'cobrir' });
+    return { id: aprId(), titulo: 'Simulação ' + modalidade + ' ' + R2(sim.credito) + ' - ' + new Date().toLocaleDateString('pt-BR'), tema, slides };
+  }
+  window.__aprRica = { desenhoComoFunciona, graficoComposicao, graficoCenarios, graficoValorFuturo, graficoVenda, graficoComparativo, graficoSacPrice, graficoAplicacao, desenhoVantagens };
+})();
+</script>
+<script id="tintaApresentacaoScript">
+// ===== CANETAS NA HORA DE APRESENTAR (slides e PDF) =====
+// Botão ✏️ na barra da apresentação abre as ferramentas: caneta e marca-texto na cor que quiser,
+// espessura, borracha (apaga o risco que tocar), desfazer, refazer e limpar o slide.
+// O desenho acompanha o zoom e fica guardado em cada slide/página enquanto a apresentação estiver aberta.
+// Atalhos no computador: P caneta, H marca-texto, E borracha, N navegar, Ctrl+Z desfazer, Ctrl+Y refazer.
+(function () {
+  const CORES = ['#e11d48', '#f97316', '#facc15', '#22c55e', '#0ea5e9', '#2563eb', '#a855f7', '#111827', '#ffffff'];
+  const ESP = [['fino', 3], ['médio', 6], ['grosso', 11]];
+  const css = document.createElement('style');
+  css.textContent = `
+  #aprTintaCv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; touch-action: none; }
+  #aprTintaCv.ativo { pointer-events: auto; cursor: crosshair; }
+  #aprTintaCv.borracha { cursor: cell; }
+  .apr-tinta { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 5; display: none; flex-direction: column; gap: 6px;
+    background: rgba(15,23,42,.86); border-radius: 16px; padding: 8px 6px; box-shadow: 0 8px 26px rgba(0,0,0,.35); max-height: calc(100% - 20px); overflow-y: auto; }
+  .apr-tinta.aberta { display: flex; }
+  .apr-tinta button { width: 44px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: #fff; font-size: 19px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
+  .apr-tinta button:hover { background: rgba(255,255,255,.14); }
+  .apr-tinta button.ativo { background: #fff; color: #0f172a; }
+  .apr-tinta button:disabled { opacity: .35; cursor: default; }
+  .apr-tinta .sep { height: 1px; background: rgba(255,255,255,.18); margin: 2px 4px; }
+  .apr-tinta .cores { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 2px 4px; }
+  .apr-tinta .cor { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); cursor: pointer; padding: 0; }
+  .apr-tinta .cor.ativo { border-color: #fff; box-shadow: 0 0 0 2px #fff; }
+  .apr-tinta label.livre { width: 44px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 11px; font-weight: 700; border-radius: 8px; }
+  .apr-tinta label.livre input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .apr-tinta label.livre span { width: 22px; height: 22px; border-radius: 6px; background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); border: 2px solid #fff; }
+  .apr-tinta .esp i { display: block; border-radius: 50%; background: currentColor; }
+  #aprShowTintaBt.ligado { background: rgba(255,255,255,.3); }
+  @media (max-width: 760px) { .apr-tinta button { width: 40px; height: 36px; font-size: 17px; } }
+  @media (max-height: 560px) { .apr-tinta { display: none; flex-direction: row; flex-wrap: wrap; width: 98px; align-content: flex-start; }
+    .apr-tinta.aberta { display: flex; } .apr-tinta .sep { width: 100%; } .apr-tinta .cores { grid-template-columns: repeat(4, 1fr); width: 100%; } }`;
+  document.head.appendChild(css);
+
+  const T = () => APR.show && APR.show.tinta;
+  function folha(i) { const t = T(); if (!t.folhas[i]) t.folhas[i] = { tracos: [], feitos: [], refazer: [] }; return t.folhas[i]; }
+
+  // ---------- liga junto com a apresentação ----------
+  const mostrarOriginal = aprMostrar;
+  aprMostrar = function (op) {
+    const r = mostrarOriginal.apply(this, arguments);
+    const sh = APR.show; if (!sh) return r;
+    const salvo = (APR.indice && APR.indice.tinta) || {};
+    sh.tinta = { ferr: null, cor: salvo.cor || CORES[0], esp: salvo.esp || 6, folhas: {}, desenhando: null };
+    const area = document.getElementById('aprShowArea');
+    const cv = document.createElement('canvas'); cv.id = 'aprTintaCv'; area.appendChild(cv);
+    cv.addEventListener('pointerdown', aperta); cv.addEventListener('pointermove', move);
+    cv.addEventListener('pointerup', solta); cv.addEventListener('pointercancel', solta);
+    const ctrl = document.getElementById('aprShowCtrl');
+    if (ctrl) {
+      const b = document.createElement('button'); b.id = 'aprShowTintaBt'; b.title = 'Canetas: caneta, marca-texto, borracha, desfazer'; b.textContent = '✏️';
+      b.onclick = () => abrirBarra(); const ref = [...ctrl.querySelectorAll('button')].find(x => x.textContent === '⛶'); ctrl.insertBefore(b, ref || null);
+    }
+    const barra = document.createElement('div'); barra.className = 'apr-tinta'; barra.id = 'aprTintaBarra';
+    document.getElementById('aprTelaShow').appendChild(barra);
+    desenharBarra(); return r;
+  };
+  function abrirBarra(forcar) {
+    const b = document.getElementById('aprTintaBarra'); if (!b) return;
+    const abrir = forcar !== undefined ? forcar : !b.classList.contains('aberta');
+    b.classList.toggle('aberta', abrir);
+    if (abrir && !T().ferr) ferramenta('caneta'); if (!abrir) ferramenta(null);
+    document.getElementById('aprShowTintaBt')?.classList.toggle('ligado', abrir);
+  }
+  function desenharBarra() {
+    const t = T(), b = document.getElementById('aprTintaBarra'); if (!t || !b) return;
+    const f = folha(APR.show.i);
+    const bt = (id, ic, dica, ativo, extra = '') => `<button data-a="${id}" title="${dica}" class="${ativo ? 'ativo' : ''}" ${extra}>${ic}</button>`;
+    b.innerHTML =
+      bt('navegar', '✋', 'Navegar (trocar slide e dar zoom)', !t.ferr) +
+      bt('caneta', '🖊️', 'Caneta (P)', t.ferr === 'caneta') +
+      bt('marca', '🖍️', 'Marca-texto (H)', t.ferr === 'marca') +
+      bt('borracha', '🧽', 'Borracha: toque no risco para apagar (E)', t.ferr === 'borracha') +
+      '<div class="sep"></div>' +
+      `<div class="cores">${CORES.map(c => `<button class="cor ${c === t.cor ? 'ativo' : ''}" data-cor="${c}" title="Cor" style="background:${c};width:18px;height:18px"></button>`).join('')}</div>` +
+      `<label class="livre" title="Escolher outra cor"><input type="color" id="aprTintaCorLivre" value="${t.cor}"><span></span></label>` +
+      '<div class="sep"></div>' +
+      ESP.map(([n, v]) => bt('esp' + v, `<i style="width:${4 + v * 1.4}px;height:${4 + v * 1.4}px"></i>`, 'Espessura ' + n, t.esp === v, `class="esp ${t.esp === v ? 'ativo' : ''}"`)).join('') +
+      '<div class="sep"></div>' +
+      bt('desfazer', '↶', 'Desfazer (Ctrl+Z)', false, f.feitos.length ? '' : 'disabled') +
+      bt('refazer', '↷', 'Refazer (Ctrl+Y)', false, f.refazer.length ? '' : 'disabled') +
+      bt('limpar', '🗑️', 'Apagar todos os riscos deste slide', false, f.tracos.length ? '' : 'disabled') +
+      bt('fechar', '✕', 'Fechar as canetas');
+    b.querySelectorAll('[data-a]').forEach(x => x.onclick = ev => { ev.stopPropagation(); acao(x.dataset.a); });
+    b.querySelectorAll('[data-cor]').forEach(x => x.onclick = ev => { ev.stopPropagation(); mudarCor(x.dataset.cor); });
+    const livre = b.querySelector('#aprTintaCorLivre'); if (livre) livre.oninput = () => mudarCor(livre.value, true);
+    b.querySelectorAll('[data-a^="esp"]').forEach(x => { x.className = 'esp' + (Number(x.dataset.a.slice(3)) === t.esp ? ' ativo' : ''); });
+  }
+  function guardarPref() { const t = T(); if (APR.indice) { APR.indice.tinta = { cor: t.cor, esp: t.esp }; try { aprGravarIndice(); } catch (e) {} } }
+  function mudarCor(c, semRedesenhar) { const t = T(); t.cor = c; if (!t.ferr || t.ferr === 'borracha') ferramenta('caneta'); guardarPref(); if (!semRedesenhar) desenharBarra(); else document.querySelectorAll('.apr-tinta .cor').forEach(x => x.classList.toggle('ativo', x.dataset.cor === c)); }
+  function ferramenta(f) {
+    const t = T(); if (!t) return; t.ferr = f;
+    const cv = document.getElementById('aprTintaCv'); if (cv) { cv.classList.toggle('ativo', !!f); cv.classList.toggle('borracha', f === 'borracha'); }
+    if (f && APR.show.laser) aprShowLaser(false);
+    desenharBarra();
+  }
+  function acao(a) {
+    const t = T(), f = folha(APR.show.i);
+    if (a === 'navegar') ferramenta(null);
+    else if (a === 'caneta' || a === 'marca' || a === 'borracha') ferramenta(a);
+    else if (a.startsWith('esp')) { t.esp = Number(a.slice(3)); if (!t.ferr || t.ferr === 'borracha') ferramenta('caneta'); guardarPref(); desenharBarra(); }
+    else if (a === 'desfazer') desfazer();
+    else if (a === 'refazer') refazer();
+    else if (a === 'limpar') { if (!f.tracos.length) return; f.feitos.push({ tipo: 'apagar', tracos: f.tracos.slice() }); f.tracos = []; f.refazer = []; redesenhar(); desenharBarra(); }
+    else if (a === 'fechar') abrirBarra(false);
+  }
+  function desfazer() {
+    const f = folha(APR.show.i), op = f.feitos.pop(); if (!op) return;
+    if (op.tipo === 'add') f.tracos = f.tracos.filter(x => x !== op.traco);
+    else f.tracos = f.tracos.concat(op.tracos);
+    f.refazer.push(op); redesenhar(); desenharBarra();
+  }
+  function refazer() {
+    const f = folha(APR.show.i), op = f.refazer.pop(); if (!op) return;
+    if (op.tipo === 'add') f.tracos.push(op.traco);
+    else f.tracos = f.tracos.filter(x => !op.tracos.includes(x));
+    f.feitos.push(op); redesenhar(); desenharBarra();
+  }
+
+  // ---------- coordenadas: o risco "gruda" no slide, mesmo com zoom ----------
+  function paraSlide(ev) {
+    const sh = APR.show, a = document.getElementById('aprShowArea'), r = a.getBoundingClientRect();
+    const px = ev.clientX - r.left, py = ev.clientY - r.top, z = sh.z || 1;
+    return { u: (px - (sh.z > 1 ? sh.zx : 0)) / z / a.clientWidth, v: (py - (sh.z > 1 ? sh.zy : 0)) / z / a.clientHeight };
+  }
+  function paraTela(p, W, H) { const sh = APR.show, z = sh.z || 1; return [p.u * W * z + (z > 1 ? sh.zx : 0), p.v * H * z + (z > 1 ? sh.zy : 0)]; }
+  function aperta(ev) {
+    const t = T(); if (!t || !t.ferr) return; ev.preventDefault(); ev.stopPropagation();
+    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) {}
+    if (t.desenhando) return;
+    const p = paraSlide(ev);
+    if (t.ferr === 'borracha') { t.desenhando = { borracha: true, id: ev.pointerId, apagados: [] }; apagarPerto(p); return; }
+    const tr = { ferr: t.ferr, cor: t.cor, esp: t.ferr === 'marca' ? t.esp * 3.4 : t.esp, pts: [p] };
+    t.desenhando = { tr, id: ev.pointerId };
+    redesenhar();
+  }
+  function move(ev) {
+    const t = T(); if (!t || !t.desenhando || ev.pointerId !== t.desenhando.id) return; ev.preventDefault();
+    const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
+    if (t.desenhando.borracha) { evs.forEach(e => apagarPerto(paraSlide(e))); return; }
+    evs.forEach(e => t.desenhando.tr.pts.push(paraSlide(e)));
+    if (!t.quadro) t.quadro = requestAnimationFrame(() => { t.quadro = 0; redesenhar(); });
+  }
+  function solta(ev) {
+    const t = T(); if (!t || !t.desenhando || ev.pointerId !== t.desenhando.id) return;
+    const d = t.desenhando; t.desenhando = null; const f = folha(APR.show.i);
+    if (d.borracha) { if (d.apagados.length) { f.feitos.push({ tipo: 'apagar', tracos: d.apagados }); f.refazer = []; desenharBarra(); } return; }
+    if (d.tr.pts.length === 1) d.tr.pts.push({ u: d.tr.pts[0].u + 0.0005, v: d.tr.pts[0].v });   // um toque vira um ponto
+    f.tracos.push(d.tr); f.feitos.push({ tipo: 'add', traco: d.tr }); f.refazer = [];
+    redesenhar(); desenharBarra();
+  }
+  function apagarPerto(p) {
+    const t = T(), f = folha(APR.show.i), a = document.getElementById('aprShowArea'), W = a.clientWidth, H = a.clientHeight, raio = 16 / (APR.show.z || 1);
+    const antes = f.tracos.length;
+    f.tracos = f.tracos.filter(tr => {
+      const perto = tr.pts.some(q => Math.hypot((q.u - p.u) * W, (q.v - p.v) * H) < raio + tr.esp / 2);
+      if (perto) t.desenhando.apagados.push(tr); return !perto;
+    });
+    if (f.tracos.length !== antes) redesenhar();
+  }
+  function redesenhar() {
+    const sh = APR.show, t = T(); if (!sh || !t) return;
+    const cv = document.getElementById('aprTintaCv'), a = document.getElementById('aprShowArea'); if (!cv || !a) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2), W = a.clientWidth, H = a.clientHeight;
+    if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+    const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
+    const lista = (folha(sh.i).tracos || []).concat(t.desenhando && t.desenhando.tr ? [t.desenhando.tr] : []);
+    const z = sh.z || 1;
+    // marca-texto por baixo, caneta por cima
+    lista.filter(tr => tr.ferr === 'marca').concat(lista.filter(tr => tr.ferr !== 'marca')).forEach(tr => {
+      x.save(); x.lineCap = tr.ferr === 'marca' ? 'butt' : 'round'; x.lineJoin = 'round'; x.strokeStyle = tr.cor; x.lineWidth = tr.esp * z * (W / 1280 + 0.35);
+      x.globalAlpha = tr.ferr === 'marca' ? 0.38 : 1; if (tr.ferr === 'marca') x.globalCompositeOperation = 'multiply';
+      x.beginPath(); tr.pts.forEach((p, i) => { const [sx, sy] = paraTela(p, W, H); if (i) x.lineTo(sx, sy); else x.moveTo(sx, sy); }); x.stroke(); x.restore();
+    });
+  }
+  // redesenha quando muda o zoom, o slide ou o tamanho da tela
+  const zoomOriginal = aprShowAplicarZoom;
+  aprShowAplicarZoom = function () { const r = zoomOriginal.apply(this, arguments); redesenhar(); return r; };
+  const desenharOriginal = aprShowDesenhar;
+  aprShowDesenhar = function () { const r = desenharOriginal.apply(this, arguments); if (T()) { T().desenhando = null; redesenhar(); desenharBarra(); } return r; };
+  window.addEventListener('resize', () => setTimeout(redesenhar, 200));
+
+  // atalhos de teclado (antes dos atalhos da apresentação)
+  window.addEventListener('keydown', ev => {
+    const t = T(); if (!t) return; const k = (ev.key || '').toLowerCase();
+    if ((ev.ctrlKey || ev.metaKey) && k === 'z' && !ev.shiftKey) { ev.preventDefault(); ev.stopImmediatePropagation(); desfazer(); return; }
+    if ((ev.ctrlKey || ev.metaKey) && (k === 'y' || (k === 'z' && ev.shiftKey))) { ev.preventDefault(); ev.stopImmediatePropagation(); refazer(); return; }
+    if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
+    const mapa = { p: 'caneta', h: 'marca', e: 'borracha', n: null };
+    if (k in mapa) { ev.preventDefault(); ev.stopImmediatePropagation(); if (mapa[k]) { abrirBarra(true); ferramenta(mapa[k]); } else ferramenta(null); }
+  }, true);
+  window.__tinta = { acao, ferramenta, abrirBarra, folha };
 })();
 </script>
 </body>
