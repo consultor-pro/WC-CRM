@@ -22587,5 +22587,87 @@ const ASSIST_BASE = [
   };
 })();
 </script>
+<script id="capaSlidesScript">
+// ===== CAPA DAS APRESENTAÇÕES DE SLIDES =====
+// Na lista de apresentações (aba Apresentações › Slides), a miniatura mostra o primeiro slide de verdade,
+// com foto, gráfico, cores e textos, como já acontece com os PDFs. A foto da capa é guardada em tamanho
+// pequeno junto com o resumo (para a lista continuar leve). Apresentações antigas ganham a capa sozinhas
+// na primeira vez que a lista é aberta.
+(function () {
+  const VERSAO = 2;
+  // reduz a imagem do slide para uma miniatura leve
+  function miniImagem(dataUrl, lado) {
+    return new Promise(ok => {
+      if (!dataUrl) return ok('');
+      const img = new Image();
+      img.onload = () => {
+        try {
+          const f = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+          const c = document.createElement('canvas'); c.width = Math.max(1, Math.round(img.naturalWidth * f)); c.height = Math.max(1, Math.round(img.naturalHeight * f));
+          const x = c.getContext('2d'); const png = /^data:image\/png/.test(dataUrl);
+          if (!png) { x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); }
+          x.drawImage(img, 0, 0, c.width, c.height);
+          ok(png ? c.toDataURL('image/png') : c.toDataURL('image/jpeg', 0.8));
+        } catch (e) { ok(''); }
+      };
+      img.onerror = () => ok('');
+      img.src = dataUrl;
+    });
+  }
+  async function capaDoDeck(deck) {
+    const s = (deck && deck.slides && deck.slides[0]) || {};
+    const capa = { layout: s.layout, titulo: s.titulo, texto: s.texto, v: VERSAO };
+    ['imgModo', 'imgZoom', 'imgX', 'imgY', 'cor', 'fundo'].forEach(k => { if (s[k] !== undefined) capa[k] = s[k]; });
+    if (s.img) { const m = await miniImagem(s.img, 640); if (m) capa.img = m; }
+    return capa;
+  }
+  // ao salvar a apresentação, a capa passa a levar a foto/gráfico do primeiro slide
+  const gravarOriginal = aprGravarDeck;
+  aprGravarDeck = async function (deck) {
+    const r = await gravarOriginal.apply(this, arguments);
+    try {
+      const ind = await aprCarregar(); const it = ind.slides.find(x => x.id === deck.id);
+      if (it) { it.capa = await capaDoDeck(deck); await aprGravarIndice(); }
+    } catch (e) {}
+    return r;
+  };
+  // apresentações antigas: monta a capa uma única vez
+  let atualizando = false;
+  async function completarAntigas() {
+    if (atualizando) return false; atualizando = true; let mudou = false;
+    try {
+      const ind = await aprCarregar();
+      for (const it of ind.slides) {
+        if (it.capa && it.capa.v === VERSAO) continue;
+        const deck = await aprLerDeck(it.id).catch(() => null);
+        if (deck && deck.slides && deck.slides.length) { it.capa = await capaDoDeck(deck); mudou = true; }
+        else { it.capa = Object.assign({}, it.capa || {}, { v: VERSAO }); mudou = true; }
+      }
+      if (mudou) await aprGravarIndice();
+    } catch (e) {} finally { atualizando = false; }
+    return mudou;
+  }
+  // a miniatura acompanha o tamanho do cartão (mesmo se a lista foi desenhada com a aba escondida)
+  function escalar(cx) {
+    cx.querySelectorAll('.apr-mini > .apr-mini-slide').forEach(m => {
+      const w = m.parentElement.clientWidth; if (!w) return;
+      const nova = 'scale(' + (w / 1280) + ')';
+      if (m.style.transform !== nova) { m.style.transform = nova; try { aprAjustarTexto(m.firstElementChild); } catch (e) {} }
+    });
+  }
+  let obs = null;
+  const renderOriginal = aprRender;
+  aprRender = async function () {
+    const r = await renderOriginal.apply(this, arguments);
+    const cx = document.getElementById('aprLista');
+    if (cx) {
+      escalar(cx);
+      if (window.ResizeObserver) { if (!obs) obs = new ResizeObserver(() => escalar(document.getElementById('aprLista') || document.body)); obs.disconnect(); obs.observe(cx); }
+    }
+    if (APR.sub === 'slides' && await completarAntigas()) return renderOriginal.apply(this, arguments).then(() => { const c = document.getElementById('aprLista'); if (c) escalar(c); });
+    return r;
+  };
+})();
+</script>
 </body>
 </html>
