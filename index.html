@@ -20398,7 +20398,7 @@ const ASSIST_BASE = [
 { id: 'exportar_leads', t: 'Como exporto meus leads para o Excel?', k: 'baixar meus leads, baixar clientes, baixar contatos, exportar leads, baixar planilha, excel da carteira, exportar selecao, relatorio de clientes',
   r: 'Em **Leads & Carteira**:\n- **💾 Exportar Planilha Excel**: a carteira completa, com cota, parcela, valor e datas.\n- **📤 Exportar seleção**: só os contatos que você escolher (com filtros e marcação).', aba: 'leads' },
 { id: 'nota_mao', t: 'Como faço uma nota à mão para o cliente?', k: 'nota a mao, desenhar, rabiscar, caneta, escrever a mao, anotacao desenhada',
-  r: 'No cadastro do cliente (Editar), toque em **✍️ Nota à mão**. Dá para escrever com canetas e cores, mudar o papel e salvar a nota ligada ao cliente, inclusive em PDF ou enviar pelo WhatsApp. As notas também ficam em **Apresentações** › Notas.' },
+  r: 'No cadastro do cliente (Editar), toque em **✍️ Nota à mão** (ou em **Apresentações** › Notas › **+ Nova nota**). Na primeira vez você escolhe o modelo das canetas: **estilo Samsung Notes** ou **estilo iPad** (dá para trocar depois no botão **⇄**). Escreva com caneta, tinteiro, lápis, pincel ou marca-texto, mude o papel e salve a nota ligada ao cliente, em PDF ou pelo WhatsApp.' },
 { id: 'transferir_lead', so: 'lider', t: 'Como passo um lead para outra pessoa da equipe?', k: 'transferir lead, mudar responsavel, passar cliente para outro, trocar dono do lead',
   r: '1. Abra o lead (**Editar**).\n2. Troque o **Responsável** pela pessoa da equipe.\n3. Toque em **Salvar Lead**.', aba: 'leads' },
 
@@ -20490,13 +20490,31 @@ const ASSIST_BASE = [
 { id: 'sim_outros', t: 'O que são Valor Futuro, Venda da Carta, Aplicação e Financiamento?', k: 'valor futuro, venda da carta, aplicacao juros, financiamento, sac, price, financiamento x consorcio, comparativo',
   r: 'São as outras simulações do **Simulador**:\n- **📈 Valor Futuro**: quanto o crédito vale no futuro com o reajuste.\n- **💰 Venda da Carta**: o lucro ao vender a carta contemplada.\n- **🏦 Aplicação**: comparação com o dinheiro aplicado a juros.\n- **🏠 Financiamento (SAC/PRICE)**: a tabela de um financiamento.\n- **⚖️ Financiamento x Consórcio**: o comparativo entre os dois.', aba: 'simulador' },
 { id: 'sim_apresentacao', t: 'Como transformo a simulação em apresentação?', k: 'virar apresentacao, simulacao em slide, apresentar simulacao',
-  r: 'No **Simulador**, toque em **🎞️ Virar apresentação**. A simulação vira slides na aba **Apresentações**, prontos para mostrar em tela cheia.', aba: 'simulador' },
-
-// ===================== PROSPECÇÃO =====================
+  r: 'No **Simulador**, toque em **🎞️ Virar apresentação**, marque o que entra (plano, contemplação, valor futuro, venda da carta, comparativo, financiamento, aplicação, vantagens), escolha as cores e toque em **Criar apresentação**. Os slides vêm com fotos, gráficos e desenhos e ficam na aba **Apresentações**, prontos para mostrar em tela cheia.', aba: 'simulador' },
 { id: 'apresentacao_simulacao', t: 'Como faço uma apresentação da simulação com gráficos e fotos?', k: 'virar apresentacao, apresentacao da simulacao, slides da simulacao, graficos, apresentacao com imagens, valor futuro na apresentacao, venda da carta slides, financiamento x consorcio slides',
   r: '1. No **Simulador**, preencha a simulação (e, se quiser, as abas Valor Futuro, Venda da Carta, Aplicação, Financiamento e Financiamento x Consórcio).\n2. Toque em **🎞️ Virar apresentação**.\n3. Marque o que entra: plano e parcela, caminhos para a contemplação, valor futuro, venda da carta, consórcio x financiamento, SAC x PRICE, aplicação e vantagens.\n4. Escolha as cores (o tema **Vivo** é o padrão) e toque em **Criar apresentação**.\nOs slides vêm com fotos da modalidade, gráficos e desenhos. Tudo fica editável: textos, imagens, tema e ordem. Depois toque em **Apresentar**.', aba: 'simulador' },
-{ id: 'apresentacao_canetas', t: 'Como uso caneta e marca-texto (estilo Samsung Notes ou iPad)?', k: 'caneta, marca texto, riscar o slide, desenhar na apresentacao, borracha, desfazer risco, anotar no pdf, rabiscar, destacar, samsung notes, ipad, estilo das canetas, trocar modelo das canetas, lapis, tinteiro, pincel',
+{ id: 'apresentacao_canetas', t: 'Como uso caneta e marca-texto (estilo Samsung Notes ou iPad)?', k: 'caneta, marca texto, riscar o slide, desenhar na apresentacao, borracha, desfazer risco, anotar no pdf, rabiscar, destacar, samsung notes, ipad, lapis, tinteiro, pincel',
   r: 'As canetas funcionam nas **Notas à mão** e na **apresentação** (slides e PDF). Na apresentação, toque em **✏️** na barra de baixo.\nNa primeira vez você escolhe o modelo:\n- **Estilo Samsung Notes**: barra no alto. Toque de novo na caneta para escolher o tipo (caneta, tinteiro, lápis, pincel, marca-texto), a espessura, a cor e "Endireitar as linhas".\n- **Estilo iPad**: canetas em pé numa bandeja embaixo. Toque de novo na caneta para a espessura; a bolinha ao lado escolhe a cor.\nNos dois: **borracha** (apaga só por onde passar), **↶ desfazer**, **↷ refazer** e **✋** para mover/navegar. Para trocar de modelo, toque em **⇄**. Com S Pen ou Apple Pencil, a pressão muda a largura do traço.\nNa apresentação, cada slide guarda os riscos enquanto ela estiver aberta. Atalhos no computador: P caneta, H marca-texto, E borracha, N navegar, Ctrl+Z e Ctrl+Y.', aba: 'apresentacoes' },
+{ id: 'canetas_trocar', t: 'Como troco as canetas do estilo Samsung para o iPad (ou o contrário)?', k: 'trocar estilo das canetas, mudar o estilo das canetas, estilo das canetas, mudar de samsung para ipad, mudar de ipad para samsung, modelo das canetas, mudar barra das canetas, voltar para samsung, voltar para ipad, trocar modelo',
+  r: 'Toque no botão **⇄** na barra das canetas:\n- **Estilo Samsung Notes** (barra no alto): o **⇄** fica no fim da barra, depois de desfazer e refazer.\n- **Estilo iPad** (bandeja embaixo): o **⇄** fica à direita, depois da bolinha de cor e da mãozinha.\nVale para as **Notas à mão** e para as canetas da **apresentação** (botão ✏️). A escolha fica salva neste aparelho.', aba: 'apresentacoes' },
+{ id: 'nota_infinita', t: 'Como faço uma nota infinita, sem margem?', k: 'nota infinita, sem margem, folha infinita, folha sem fim, sem borda, papel inteiro, quadro infinito, nota do ipad, rolar para baixo',
+  r: 'Na nota infinita o papel ocupa a tela toda, sem borda, e vai crescendo para baixo conforme você escreve ou rola.\n- No **estilo iPad**, toda nota nova já começa infinita.\n- Em qualquer estilo: na nota, toque em **Folha** › **Formato** › **Infinita (sem margem)**.\nPara rolar, use dois dedos, a **✋** ou a rodinha do mouse. Ao baixar a imagem ou o PDF, a página vai até um pouco abaixo do que foi escrito.', aba: 'apresentacoes' },
+{ id: 'canetas_tipos', t: 'Qual a diferença entre caneta, tinteiro, lápis, pincel e marca-texto?', k: 'tipos de caneta, tinteiro, lapis, pincel, marca texto, borracha, pressao da caneta, s pen, apple pencil, espessura, traco grosso, traco fino',
+  r: '- **Caneta**: traço firme e uniforme.\n- **Tinteiro**: o traço engrossa e afina como caneta-tinteiro.\n- **Lápis**: traço mais claro, para rascunho.\n- **Pincel**: traço largo que varia bastante.\n- **Marca-texto**: faixa transparente que destaca sem esconder o que está por baixo.\n- **Borracha**: apaga só por onde passar.\nCom **S Pen** ou **Apple Pencil**, apertar mais deixa o traço mais grosso. No dedo, traço rápido fica mais fino.\n**Espessura**: no estilo Samsung, toque de novo na caneta e use − / +; no estilo iPad, toque de novo na caneta e escolha uma das 5 bolinhas.', aba: 'apresentacoes' },
+{ id: 'canetas_endireitar', t: 'Como faço linhas retas e formas certinhas com a caneta?', k: 'linha reta, endireitar as linhas, formas, circulo perfeito, quadrado, retangulo, triangulo, desenhar reto',
+  r: 'Nas **Notas à mão**, desenhe a linha ou a forma e **segure parado no fim do traço**: ela vira uma linha reta, círculo, retângulo ou triângulo certinho.\nPara ligar ou desligar: toque de novo na caneta e use a chave **Endireitar as linhas e formas**.', aba: 'apresentacoes' },
+{ id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
+  r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
+{ id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
+  r: 'Abra a apresentação em **Apresentações** e escolha o slide na lista ao lado.\n- **Textos**: toque no texto do slide e escreva.\n- **Tipo do slide**: Capa, Título e texto, Texto e imagem, Imagem inteira, Frase em destaque, **Gráfico ou desenho** e **Capa com foto**.\n- **Imagem**: use "Escolher imagem"; dá para aumentar, diminuir e arrastar a imagem dentro do slide.\n- **Cores**: o seletor de tema no alto (o **Vivo** é o das apresentações da simulação).\n- Use as setas para mudar a ordem e a lixeira para excluir o slide.', aba: 'apresentacoes' },
+{ id: 'calculadora_visor', t: 'Os números não cabem no visor da calculadora', k: 'numero nao cabe, visor da calculadora, numero cortado, numero grande na calculadora, nao aparece o numero inteiro',
+  r: 'O visor diminui o tamanho dos números sozinho para caber tudo (na calculadora comum, na HP12C e na flutuante). Se a conta for enorme, ela continua na linha de baixo. Ao apertar **C**, o tamanho volta ao normal. Se não acontecer, feche e abra o CRM para pegar a versão nova.', aba: 'calculadora' },
+{ id: 'tela_cortada', t: 'Preciso arrastar a tela para o lado para ver tudo', k: 'tela cortada, arrastar para o lado, nao aparece tudo, rolar para o lado, tela maior que o monitor, campo de busca sumiu',
+  r: 'O CRM se ajusta à largura da tela: as barras de botões descem para uma segunda linha e a tabela de leads cabe inteira (em telas menores os botões viram ícones).\n1. Se ainda estiver cortado, **feche e abra o CRM** para pegar a versão nova.\n2. No computador, confira o zoom do navegador: **Ctrl + 0** volta ao tamanho normal.\nAs planilhas do **Cálculo de Comissão** e de **Consultores & Vendas** têm muitas colunas e rolam para o lado de propósito, só dentro da planilha.' },
+{ id: 'leads_icones', t: 'O que são os ícones 💰 ✏️ 🗑️ 📝 na lista de leads?', k: 'icones da lista de leads, botoes viraram icones, botao de venda sumiu, editar lead icone, notas icone',
+  r: 'Em telas menores, os botões da tabela de leads viram ícones para tudo caber:\n- **📝 número**: notas do cliente (o número é quantas notas ele tem);\n- **💰**: lançar venda;\n- **✏️**: editar o cadastro;\n- **🗑️**: excluir.\nPassando o mouse em cima aparece o nome de cada botão.', aba: 'leads' },
+{ id: 'dois_aparelhos', so: 'local', t: 'Mexi no CRM em dois aparelhos. Perco alguma coisa?', k: 'dois aparelhos, celular e computador, perdi dados, sincronizar, nuvem sobrescreveu, mexi sem internet',
+  r: 'Não. Quando o aparelho sincroniza com a nuvem, ele **junta** o que foi feito nos dois, registro por registro (leads, vendas, agenda...).\n- Mudou só num aparelho: vale essa mudança.\n- Mudou o mesmo registro nos dois: os campos são juntados; se for **o mesmo campo**, vale o do aparelho que sincronizou por último.\n- Apagou num aparelho e o outro não mexeu: fica apagado.\nO CRM confere a nuvem a cada minuto e quando a internet volta.' },
 { id: 'leads_lote', t: 'Como cadastro vários contatos de uma vez (indicações do WhatsApp)?', k: 'varios contatos, cadastrar varios leads, indicacoes em lote, lista de contatos, contatos do whatsapp, importar contatos do celular, agenda do celular, vcf, colar lista de nomes e telefones, 20 indicacoes, cadastro em massa',
   r: '1. Em **Leads & Carteira**, toque em **📲 Vários contatos** (ou, no **+ Novo Lead**, em "Cadastrar vários de uma vez").\n2. Escolha de onde vêm os contatos:\n- **📇 Da agenda do celular** (Android/Chrome): marque todos os contatos que você salvou e confirme.\n- **📋 Colar uma lista**: copie a mensagem do WhatsApp com os nomes e telefones e cole. Pode ser um por linha, do jeito que veio.\n- **📎 Arquivo de contatos** (.vcf): no iPhone, app Contatos › Listas › segure a lista › Exportar.\n3. Confira a lista: dá para corrigir nome e telefone e desmarcar quem não quer. Quem já está no CRM fica de fora.\n4. Escolha **uma vez só** o responsável, a origem (Indicação, networking, Pessoal...), quem indicou, a etapa e a temperatura.\n5. Toque em **Cadastrar**. Errou? Em **📥 Importar Planilha** › Importações recentes, toque em **↩️ Desfazer**.', aba: 'leads' },
 { id: 'prospeccao', t: 'Como funciona a Prospecção de empresas?', k: 'prospeccao, buscar empresas, google maps, lista de empresas, prospectar',
@@ -20520,7 +20538,7 @@ const ASSIST_BASE = [
 { id: 'material', t: 'O que tem no Material de Apoio?', k: 'material de apoio, scripts, roteiro, abordagem, objecoes, bdr, 5 passos, pos venda',
   r: 'Em **Material de Apoio**:\n- **💬 Scripts por Nicho**: falas e ganchos para cada nicho (dá para criar e editar).\n- **🎯 Processo BDR**.\n- **🤝 5 Passos da Venda**.\n- **💙 Pós-Venda**: o que fazer em D+0, D+3 e D+15.', aba: 'materialApoio' },
 { id: 'apresentacoes', t: 'Como uso a aba Apresentações?', k: 'apresentar pdf, apresentar para o cliente, apresentacoes, slides, apresentar pdf, tela cheia, montar apresentacao',
-  r: 'Em **Apresentações** você:\n- monta **Slides** e apresenta em tela cheia;\n- apresenta **PDFs** página a página;\n- escreve **Notas** à mão (canetas, cores, papel, zoom).\nTudo fica guardado **só neste aparelho**. Use **Cópia de segurança** para levar a outro aparelho ou se proteger se o navegador for limpo.', aba: 'apresentacoes' },
+  r: 'Em **Apresentações** você:\n- monta **Slides** (com fotos, gráficos e desenhos) e apresenta em tela cheia;\n- apresenta **PDFs** página a página;\n- escreve **Notas** à mão.\nNa hora de apresentar, o **✏️** liga as canetas para riscar o slide ou o PDF.\nTudo fica guardado **só neste aparelho**. Use **Cópia de segurança** para levar a outro aparelho ou se proteger se o navegador for limpo.', aba: 'apresentacoes' },
 { id: 'informacoes', t: 'Como publico um comunicado para a equipe?', k: 'informacoes, mural, comunicado, publicar aviso, arquivos para equipe, nova publicacao',
   r: '1. Vá em **Informações & Arquivos**.\n2. Toque em **+ Nova Publicação**.\n3. Escreva título, texto, link (se tiver) e anexe o arquivo.\n4. Toque em **Publicar no Mural**.\nQuem organiza o mural pode **arrastar** as publicações pela alça ⠿ para mudar a ordem.', aba: 'informacoes' },
 { id: 'gastos', t: 'Como controlo meus gastos pessoais?', k: 'gastos, despesas, receitas, financas pessoais, controle financeiro, saldo',
@@ -22261,7 +22279,7 @@ const ASSIST_BASE = [
     const barra = document.getElementById('aprNtFerr'), tela = document.getElementById('aprTelaNota'); if (!barra || !tela) return;
     if (!estilo) {
       ferramentasOriginal();
-      if (!N.perguntouEstilo) { N.perguntouEstilo = true; canetasEscolherEstilo(() => aprNotaFerramentas(), tela); }
+      if (!N.perguntouEstilo) { N.perguntouEstilo = true; canetasEscolherEstilo(() => { aprNotaFerramentas(); if (window.notaAjustarAoEstilo) notaAjustarAoEstilo(); }, tela); }
       return;
     }
     const ad = {
@@ -22272,7 +22290,7 @@ const ASSIST_BASE = [
       desfazer: aprNotaDesfazer, refazer: aprNotaRefazer, podeDesf: () => N.hist.length > 0, podeRef: () => N.refaz.length > 0,
       mao: { ativo: () => N.ferr === 'mao', ativar: () => { N.ferr = 'mao'; document.getElementById('aprNtArea')?.classList.add('mao'); }, nome: 'Mover a folha' },
       endireitar: { get: () => !(APR.indice && APR.indice.formas === false), set: v => { APR.indice.formas = v ? true : false; aprGravarIndice(); } },
-      trocarEstilo: () => { APR.indice.estiloCanetas = estilo === 'ipad' ? 'samsung' : 'ipad'; aprGravarIndice(); aprNotaFerramentas(); },
+      trocarEstilo: () => { APR.indice.estiloCanetas = estilo === 'ipad' ? 'samsung' : 'ipad'; aprGravarIndice(); aprNotaFerramentas(); if (window.notaAjustarAoEstilo) notaAjustarAoEstilo(); },
     };
     let host;
     if (estilo === 'samsung') {
@@ -22291,6 +22309,112 @@ const ASSIST_BASE = [
   const botoesOriginal = aprNotaBotoes;
   aprNotaBotoes = function () { const r = botoesOriginal.apply(this, arguments); try { APR.nota && APR.nota.paleta && APR.nota.paleta.atualizarDesfazer(); } catch (e) {} return r; };
   window.__canetas = { penaSvg };
+})();
+</script>
+<script id="notaInfinitaScript">
+// ===== NOTA INFINITA (sem margem), como no iPad =====
+// Novo formato de folha "Infinita": o papel ocupa a tela toda, sem a borda cinza em volta,
+// e vai crescendo para baixo conforme você escreve ou rola. No estilo iPad as notas novas já começam assim;
+// no estilo Samsung dá para escolher em Folha › Formato.
+(function () {
+  const LARG = 1240, ALT_MIN = 1754;
+  APR_FOLHA.infinita = [LARG, ALT_MIN];
+  const infinita = doc => doc && doc.folha === 'infinita';
+  // ponto mais baixo já escrito na página (guarda o resultado enquanto a página não muda)
+  function fundoEscrito(pg) {
+    const t = (pg && pg.t) || [];
+    if (pg && pg.__alt && pg.__alt.n === t.length) return pg.__alt.y;
+    let y = 0; t.forEach(tr => { const p = tr.p || []; for (let i = 1; i < p.length; i += 3) if (p[i] > y) y = p[i]; });
+    if (pg) Object.defineProperty(pg, '__alt', { value: { n: t.length, y }, writable: true, configurable: true, enumerable: false });
+    return y;
+  }
+  // altura da folha infinita: sempre sobra espaço abaixo do que foi escrito e abaixo do que está na tela
+  const folhaOriginal = aprNotaFolha;
+  aprNotaFolha = function () {
+    const N = APR.nota; if (!N || !infinita(N.doc)) return folhaOriginal();
+    const pg = N.doc.paginas[N.pag];
+    const vista = N.s ? (N.ah - N.oy) / N.s : 0;
+    APR_FOLHA.infinita[1] = Math.max(ALT_MIN, fundoEscrito(pg) + 1400, vista + 900);
+    return APR_FOLHA.infinita;
+  };
+  const redimOriginal = aprNotaRedimensionar;
+  aprNotaRedimensionar = function (primeira) {
+    const N = APR.nota;
+    if (!N || !infinita(N.doc)) return redimOriginal.apply(this, arguments);
+    const area = document.getElementById('aprNtArea'); if (!area) return;
+    const w = area.clientWidth, h = area.clientHeight; if (!w || !h) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    N.aw = w; N.ah = h; N.dpr = dpr;
+    ['aprNtFundo', 'aprNtTinta', 'aprNtVivo'].forEach(id => { const c = document.getElementById(id); if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); } });
+    const tinha = N.sBase, base = w / LARG; N.sBase = base;          // sem margem: a folha ocupa a largura toda
+    if (primeira === true || !tinha) { N.s = base; N.ox = 0; N.oy = 0; }
+    else if (Math.abs(tinha - base) > 1e-6) N.s = N.s / tinha * base;
+    aprNotaLimitar(); aprNotaTudo();
+  };
+  const limitarOriginal = aprNotaLimitar;
+  aprNotaLimitar = function () {
+    const N = APR.nota; if (!N || !infinita(N.doc)) return limitarOriginal.apply(this, arguments);
+    N.s = Math.max(N.sBase * 0.5, Math.min(N.sBase * 8, N.s));
+    const [fw, fh] = aprNotaFolha(), lw = fw * N.s, lh = fh * N.s;
+    N.ox = lw <= N.aw ? (N.aw - lw) / 2 : Math.max(N.aw - lw, Math.min(0, N.ox));
+    N.oy = Math.max(N.ah - lh, Math.min(0, N.oy));
+  };
+  const fundoOriginal = aprNotaFundo;
+  aprNotaFundo = function () {
+    const N = APR.nota; if (!N || !infinita(N.doc)) return fundoOriginal.apply(this, arguments);
+    const [x, c] = aprNotaCtx('aprNtFundo'), [fw, fh] = aprNotaFolha(), papel = APR_PAPEIS[N.doc.papel] || APR_PAPEIS.branco;
+    x.fillStyle = papel[0]; x.fillRect(0, 0, c.width, c.height);      // papel na tela inteira: sem borda
+    x.setTransform(N.dpr * N.s, 0, 0, N.dpr * N.s, N.dpr * N.ox, N.dpr * N.oy);
+    x.save(); x.beginPath(); x.rect(0, 0, fw, fh); x.clip(); aprDesenharPauta(x, N.doc.pauta, fw, fh, papel[1], 1 / N.s); x.restore();
+  };
+  // a folha não corta a tinta nas bordas da tela
+  const naFolhaOriginal = aprNotaNaFolha;
+  aprNotaNaFolha = function (x) {
+    const N = APR.nota; if (!N || !infinita(N.doc)) return naFolhaOriginal.apply(this, arguments);
+    x.setTransform(N.dpr * N.s, 0, 0, N.dpr * N.s, N.dpr * N.ox, N.dpr * N.oy);
+  };
+  // imagem, PDF e miniatura: a página vai até um pouco abaixo do que foi escrito
+  const emCanvasOriginal = aprPaginaEmCanvas;
+  aprPaginaEmCanvas = async function (doc, i) {
+    if (infinita(doc)) APR_FOLHA.infinita[1] = Math.max(ALT_MIN, fundoEscrito((doc.paginas || [])[i]) + 160);
+    return emCanvasOriginal.apply(this, arguments);
+  };
+  // Folha › Formato: opção "Infinita"
+  const menuOriginal = aprNotaMenu;
+  aprNotaMenu = function (abrir) {
+    const r = menuOriginal.apply(this, arguments);
+    const m = document.getElementById('aprNtMenu'), N = APR.nota;
+    if (m && N && m.classList.contains('aberto')) {
+      const pe = [...m.querySelectorAll('button')].find(b => /aprNotaFolhaMudar\('folha','pe'\)/.test(b.getAttribute('onclick') || ''));
+      if (pe && !m.querySelector('[data-infinita]')) {
+        const op = pe.parentElement; op.style.gridTemplateColumns = 'repeat(3,1fr)';
+        const b = document.createElement('button'); b.dataset.infinita = '1'; b.className = infinita(N.doc) ? 'ativo' : '';
+        b.setAttribute('onclick', "aprNotaFolhaMudar('folha','infinita')"); b.innerHTML = '<span style="padding:8px 2px">Infinita (sem margem)</span>';
+        op.appendChild(b); if (infinita(N.doc)) pe.classList.remove('ativo');
+      }
+    }
+    return r;
+  };
+  // nota nova no estilo iPad já começa infinita
+  const novaOriginal = aprNovaNota;
+  aprNovaNota = async function () {
+    if (typeof canetasEstilo === 'function' && canetasEstilo() === 'ipad') {
+      const ind = await aprCarregar(); const ultima = ind.ultimaFolha || {};
+      const doc = { id: aprId(), titulo: 'Nota de ' + new Date().toLocaleDateString('pt-BR'), papel: ultima.papel || 'branco', pauta: ultima.pauta || 'linhas', folha: 'infinita', paginas: [{ t: [] }] };
+      await aprGravarNota(doc); aprEditarNota(doc); return;
+    }
+    // no estilo Samsung a nota nova volta para a folha comum (a infinita escolhe-se em Folha › Formato)
+    const ind = await aprCarregar(); if (ind.ultimaFolha && ind.ultimaFolha.folha === 'infinita') ind.ultimaFolha.folha = 'pe';
+    return novaOriginal.apply(this, arguments);
+  };
+  // ao escolher/trocar para o iPad com a nota ainda vazia, ela vira infinita (e volta para a folha em pé no Samsung)
+  window.notaAjustarAoEstilo = function () {
+    const N = APR.nota; if (!N) return;
+    const vazia = N.doc.paginas.length === 1 && !(N.doc.paginas[0].t || []).length;
+    if (!vazia) return;
+    const estilo = canetasEstilo(), quer = estilo === 'ipad' ? 'infinita' : (N.doc.folha === 'infinita' ? 'pe' : N.doc.folha);
+    if (quer !== N.doc.folha) { N.doc.folha = quer; N.sBase = 0; aprNotaSujo(); aprNotaRedimensionar(true); }
+  };
 })();
 </script>
 <script id="tintaApresentacaoScript">
