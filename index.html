@@ -20495,8 +20495,8 @@ const ASSIST_BASE = [
 // ===================== PROSPECÇÃO =====================
 { id: 'apresentacao_simulacao', t: 'Como faço uma apresentação da simulação com gráficos e fotos?', k: 'virar apresentacao, apresentacao da simulacao, slides da simulacao, graficos, apresentacao com imagens, valor futuro na apresentacao, venda da carta slides, financiamento x consorcio slides',
   r: '1. No **Simulador**, preencha a simulação (e, se quiser, as abas Valor Futuro, Venda da Carta, Aplicação, Financiamento e Financiamento x Consórcio).\n2. Toque em **🎞️ Virar apresentação**.\n3. Marque o que entra: plano e parcela, caminhos para a contemplação, valor futuro, venda da carta, consórcio x financiamento, SAC x PRICE, aplicação e vantagens.\n4. Escolha as cores (o tema **Vivo** é o padrão) e toque em **Criar apresentação**.\nOs slides vêm com fotos da modalidade, gráficos e desenhos. Tudo fica editável: textos, imagens, tema e ordem. Depois toque em **Apresentar**.', aba: 'simulador' },
-{ id: 'apresentacao_canetas', t: 'Como uso caneta e marca-texto na hora de apresentar?', k: 'caneta, marca texto, riscar o slide, desenhar na apresentacao, borracha, desfazer risco, anotar no pdf, rabiscar, destacar',
-  r: '1. Na apresentação (slides ou PDF), toque em **✏️** na barra de baixo.\n2. Escolha **🖊️ Caneta** ou **🖍️ Marca-texto**, a **cor** (ou a paleta colorida para qualquer cor) e a **espessura**.\n3. Risque com o dedo, a caneta ou o mouse.\n- **🧽 Borracha**: toque no risco para apagar.\n- **↶ Desfazer** e **↷ Refazer** (no computador: Ctrl+Z e Ctrl+Y).\n- **🗑️** apaga os riscos do slide.\n- **✋** volta a navegar (trocar slide, zoom e laser).\nCada slide guarda os seus riscos enquanto a apresentação estiver aberta. Atalhos: P caneta, H marca-texto, E borracha, N navegar.', aba: 'apresentacoes' },
+{ id: 'apresentacao_canetas', t: 'Como uso caneta e marca-texto (estilo Samsung Notes ou iPad)?', k: 'caneta, marca texto, riscar o slide, desenhar na apresentacao, borracha, desfazer risco, anotar no pdf, rabiscar, destacar, samsung notes, ipad, estilo das canetas, trocar modelo das canetas, lapis, tinteiro, pincel',
+  r: 'As canetas funcionam nas **Notas à mão** e na **apresentação** (slides e PDF). Na apresentação, toque em **✏️** na barra de baixo.\nNa primeira vez você escolhe o modelo:\n- **Estilo Samsung Notes**: barra no alto. Toque de novo na caneta para escolher o tipo (caneta, tinteiro, lápis, pincel, marca-texto), a espessura, a cor e "Endireitar as linhas".\n- **Estilo iPad**: canetas em pé numa bandeja embaixo. Toque de novo na caneta para a espessura; a bolinha ao lado escolhe a cor.\nNos dois: **borracha** (apaga só por onde passar), **↶ desfazer**, **↷ refazer** e **✋** para mover/navegar. Para trocar de modelo, toque em **⇄**. Com S Pen ou Apple Pencil, a pressão muda a largura do traço.\nNa apresentação, cada slide guarda os riscos enquanto ela estiver aberta. Atalhos no computador: P caneta, H marca-texto, E borracha, N navegar, Ctrl+Z e Ctrl+Y.', aba: 'apresentacoes' },
 { id: 'leads_lote', t: 'Como cadastro vários contatos de uma vez (indicações do WhatsApp)?', k: 'varios contatos, cadastrar varios leads, indicacoes em lote, lista de contatos, contatos do whatsapp, importar contatos do celular, agenda do celular, vcf, colar lista de nomes e telefones, 20 indicacoes, cadastro em massa',
   r: '1. Em **Leads & Carteira**, toque em **📲 Vários contatos** (ou, no **+ Novo Lead**, em "Cadastrar vários de uma vez").\n2. Escolha de onde vêm os contatos:\n- **📇 Da agenda do celular** (Android/Chrome): marque todos os contatos que você salvou e confirme.\n- **📋 Colar uma lista**: copie a mensagem do WhatsApp com os nomes e telefones e cole. Pode ser um por linha, do jeito que veio.\n- **📎 Arquivo de contatos** (.vcf): no iPhone, app Contatos › Listas › segure a lista › Exportar.\n3. Confira a lista: dá para corrigir nome e telefone e desmarcar quem não quer. Quem já está no CRM fica de fora.\n4. Escolha **uma vez só** o responsável, a origem (Indicação, networking, Pessoal...), quem indicou, a etapa e a temperatura.\n5. Toque em **Cadastrar**. Errou? Em **📥 Importar Planilha** › Importações recentes, toque em **↩️ Desfazer**.', aba: 'leads' },
 { id: 'prospeccao', t: 'Como funciona a Prospecção de empresas?', k: 'prospeccao, buscar empresas, google maps, lista de empresas, prospectar',
@@ -22027,199 +22027,440 @@ const ASSIST_BASE = [
   window.__aprRica = { desenhoComoFunciona, graficoComposicao, graficoCenarios, graficoValorFuturo, graficoVenda, graficoComparativo, graficoSacPrice, graficoAplicacao, desenhoVantagens };
 })();
 </script>
+<script id="canetasEstiloScript">
+// ===== CANETAS NO ESTILO SAMSUNG NOTES OU iPAD =====
+// A mesma caixa de canetas serve para as Notas à mão e para riscar slides/PDF na apresentação.
+// Na primeira vez a pessoa escolhe o modelo (Samsung Notes: barra no alto, toque de novo na caneta abre os ajustes;
+// iPad: canetas em pé numa bandeja embaixo, bolinha de cor ao lado). Fica salvo e dá para trocar no botão ⇄.
+(function () {
+  const PENAS = ['caneta', 'tinteiro', 'lapis', 'pincel', 'marca'];
+  const CORES = ['#111827', '#6b7280', '#ffffff', '#dc2626', '#ea580c', '#facc15', '#16a34a', '#0ea5e9', '#1d4ed8', '#7c3aed', '#db2777', '#8a1538'];
+  const RAPIDAS = ['#111827', '#dc2626', '#16a34a', '#ea580c', '#1d4ed8'];
+  const ESP_IPAD = [2, 4, 7, 11, 16];
+  const css = document.createElement('style');
+  css.textContent = `
+  .cz { font-family: var(--font-body); color: #0f172a; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+  .cz button { font: inherit; color: inherit; }
+  .cz-pop { position: absolute; z-index: 30; background: #fff; border-radius: 16px; box-shadow: 0 12px 34px rgba(15,23,42,.25); padding: 12px; width: 270px; max-width: calc(100vw - 24px); }
+  .cz-pop h5 { margin: 0 0 8px; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #64748b; }
+  .cz-cores { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .cz-cor { width: 30px; height: 30px; border-radius: 50%; border: 0; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(15,23,42,.18); padding: 0; justify-self: center; }
+  .cz-cor.ativo { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #2563eb; }
+  .cz-livre { position: relative; width: 30px; height: 30px; border-radius: 50%; background: conic-gradient(#f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00); justify-self: center; cursor: pointer; }
+  .cz-livre input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+  .cz-tam { display: flex; align-items: center; gap: 8px; margin: 4px 0 10px; }
+  .cz-tam button { width: 30px; height: 30px; border-radius: 50%; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; font-size: 18px; line-height: 1; }
+  .cz-tam input { flex: 1; margin: 0; padding: 0; border: 0; background: transparent; accent-color: #2563eb; }
+  .cz-tam b { min-width: 22px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .cz-chave { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; margin: 6px 0 10px; cursor: pointer; }
+  .cz-chave i { width: 40px; height: 22px; border-radius: 999px; background: #cbd5e1; position: relative; flex: none; transition: background .15s; }
+  .cz-chave i::after { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left .15s; }
+  .cz-chave.on i { background: #2563eb; } .cz-chave.on i::after { left: 21px; }
+  /* ---- Samsung Notes: barra no alto ---- */
+  .cz-sam { display: flex; align-items: center; gap: 2px; background: #fff; border-radius: 14px; padding: 4px 6px; box-shadow: 0 2px 10px rgba(15,23,42,.12); position: relative; flex-wrap: wrap; justify-content: center; }
+  .cz-sam .b { width: 40px; height: 38px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
+  .cz-sam .b:hover { background: #f1f5f9; } .cz-sam .b.ativo { background: #e8eefc; }
+  .cz-sam .b.ativo::after { content: ''; position: absolute; bottom: 3px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #2563eb; }
+  .cz-sam .b:disabled { opacity: .3; cursor: default; }
+  .cz-sam .b svg { width: 26px; height: 26px; }
+  .cz-sam .dot { width: 22px; height: 22px; border-radius: 50%; border: 0; margin: 0 3px; cursor: pointer; box-shadow: inset 0 0 0 1px rgba(15,23,42,.15); padding: 0; flex: none; }
+  .cz-sam .dot.ativo { box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #0f172a; }
+  .cz-sam .sep { width: 1px; height: 24px; background: #e2e8f0; margin: 0 5px; }
+  .cz-sam .linha { width: 26px; border-radius: 4px; background: #0f172a; }
+  .cz-sam .cz-pop { top: calc(100% + 8px); left: 50%; transform: translateX(-50%); }
+  .cz-pontas { display: flex; justify-content: space-around; align-items: flex-end; height: 74px; margin-bottom: 8px; border-bottom: 1px solid #f1f5f9; }
+  .cz-pontas button { border: 0; background: none; cursor: pointer; padding: 0 2px; height: 74px; display: flex; align-items: flex-end; transition: transform .15s; }
+  .cz-pontas button.ativo { transform: translateY(-8px); }
+  .cz-pontas svg { width: 30px; height: 70px; }
+  /* ---- iPad: bandeja embaixo com canetas em pé ---- */
+  .cz-ipad { display: flex; align-items: flex-end; gap: 6px; background: rgba(255,255,255,.97); border-radius: 22px; padding: 0 12px 0; height: 86px; box-shadow: 0 8px 30px rgba(15,23,42,.22); position: relative; overflow: visible; }
+  .cz-ipad .acoes { display: flex; flex-direction: column; justify-content: center; gap: 2px; height: 100%; }
+  .cz-ipad .acoes button { width: 36px; height: 32px; border: 0; border-radius: 9px; background: transparent; cursor: pointer; font-size: 19px; }
+  .cz-ipad .acoes button:hover { background: #f1f5f9; } .cz-ipad .acoes button:disabled { opacity: .3; cursor: default; }
+  .cz-ipad .bandeja { display: flex; align-items: flex-end; gap: 4px; height: 100%; overflow: hidden; padding-top: 4px; }
+  .cz-ipad .pen { border: 0; background: none; padding: 0 2px; cursor: pointer; height: 100%; display: flex; align-items: flex-end; transform: translateY(30px); transition: transform .18s; }
+  .cz-ipad .pen.ativo { transform: translateY(8px); }
+  .cz-ipad .pen svg { width: 36px; height: 108px; }
+  .cz-ipad .cor-bola { width: 34px; height: 34px; border-radius: 50%; border: 0; cursor: pointer; align-self: center; padding: 0; box-shadow: 0 0 0 3px #fff, 0 0 0 5px rgba(15,23,42,.18); margin: 0 6px; }
+  .cz-ipad .sep { width: 1px; height: 46px; background: #e2e8f0; align-self: center; margin: 0 4px; }
+  .cz-ipad .extra { width: 36px; height: 36px; border: 0; border-radius: 10px; background: transparent; cursor: pointer; font-size: 18px; align-self: center; }
+  .cz-ipad .extra:hover { background: #f1f5f9; } .cz-ipad .extra.ativo { background: #e8eefc; }
+  .cz-ipad .cz-pop { bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%); }
+  .cz-espi { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .cz-espi button { width: 40px; height: 40px; border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .cz-espi button.ativo { border-color: #2563eb; background: #eef4ff; }
+  .cz-espi i { display: block; border-radius: 50%; background: #0f172a; }
+  @media (max-width: 600px) { .cz-ipad { gap: 1px; padding: 0 5px; } .cz-ipad .pen { padding: 0 1px; transform: translateY(26px); } .cz-ipad .pen svg { width: 22px; height: 92px; } .cz-ipad .extra { width: 28px; font-size: 15px; } .cz-ipad .cor-bola { width: 28px; height: 28px; margin: 0 4px; } .cz-ipad .sep { margin: 0 2px; } .cz-ipad .acoes button { width: 30px; } }
+  /* ---- escolha do modelo ---- */
+  .cz-escolha { position: fixed; inset: 0; z-index: 400; background: rgba(15,23,42,.6); display: flex; align-items: center; justify-content: center; padding: 16px; font-family: var(--font-body); }
+  .cz-escolha .cx { background: #fff; border-radius: 18px; padding: 20px; max-width: 640px; width: 100%; color: #0f172a; }
+  .cz-escolha h3 { margin: 0 0 4px; font-size: 19px; } .cz-escolha p { margin: 0 0 14px; color: #64748b; font-size: 13.5px; }
+  .cz-escolha .op { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cz-escolha .card { border: 2px solid #e2e8f0; border-radius: 14px; padding: 12px; cursor: pointer; background: #f8fafc; text-align: left; font: inherit; color: inherit; }
+  .cz-escolha .card:hover { border-color: #2563eb; }
+  .cz-escolha .card b { display: block; font-size: 15px; margin-top: 10px; } .cz-escolha .card small { color: #64748b; font-size: 12.5px; }
+  .cz-escolha .prev { height: 120px; border-radius: 10px; background: #fff; border: 1px solid #e2e8f0; position: relative; overflow: hidden; }
+  @media (max-width: 520px) { .cz-escolha .op { grid-template-columns: 1fr; } .cz-escolha .prev { height: 92px; } }`;
+  document.head.appendChild(css);
+
+  // ---------- desenho das canetas (de pé, ponta para cima) ----------
+  function penaSvg(k, cor, esp) {
+    const c = cor || '#111827', e = Math.max(1.5, Math.min(9, (esp || 4) * 0.55));
+    const corpo = (fill, extra = '') => `<rect x="9" y="38" width="22" height="80" rx="4" fill="${fill}" stroke="#cbd5e1" stroke-width="1"/>${extra}`;
+    const faixa = `<rect x="9" y="50" width="22" height="${e + 2}" fill="${c}" opacity=".9"/>`;
+    let topo = '';
+    if (k === 'caneta') topo = `<path d="M9 40 L20 8 L31 40 Z" fill="#e5e7eb" stroke="#cbd5e1"/><path d="M17 17 L20 6 L23 17 Z" fill="${c}"/>` + corpo('#f8fafc', faixa);
+    else if (k === 'tinteiro') topo = `<path d="M10 40 L20 4 L30 40 Z" fill="${c}"/><path d="M20 10 L20 30" stroke="#fff" stroke-width="1.4"/><circle cx="20" cy="30" r="2" fill="#fff"/>` + corpo('#1f2937', `<rect x="9" y="38" width="22" height="6" fill="#d4af37"/>`);
+    else if (k === 'lapis') topo = `<path d="M9 40 L20 10 L31 40 Z" fill="#f2d3a2"/><path d="M16 21 L20 9 L24 21 Z" fill="${c}"/>` + corpo(c, `<rect x="16" y="38" width="8" height="80" fill="rgba(255,255,255,.25)"/>`);
+    else if (k === 'pincel') topo = `<path d="M13 40 Q20 0 27 40 Z" fill="${c}"/><rect x="11" y="34" width="18" height="10" fill="#94a3b8"/>` + corpo('#b45309');
+    else if (k === 'marca') topo = `<path d="M7 42 L9 24 L31 16 L33 42 Z" fill="#475569"/><path d="M11 24 L31 17 L31 24 L11 30 Z" fill="${c}"/>` + corpo('#334155', `<rect x="9" y="56" width="22" height="22" fill="${c}" opacity=".85"/>`);
+    else if (k === 'borracha') topo = `<rect x="8" y="14" width="24" height="30" rx="5" fill="#fda4af"/><rect x="8" y="36" width="24" height="8" fill="#f8fafc"/>` + corpo('#e2e8f0');
+    return `<svg viewBox="0 0 40 120" aria-hidden="true">${topo}</svg>`;
+  }
+  const ICO = {
+    caneta: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"/><path d="M14 6l3 3"/></svg>',
+    marca: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M9 14l7-7 3 3-7 7z"/><path d="M9 14l-3 4h4l2-1"/><path d="M4 21h9" stroke-width="3" stroke-linecap="round" opacity=".45"/></svg>',
+    borracha: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 15l9-9 7 7-6 6H9z"/><path d="M9 19h11" stroke-linecap="round"/></svg>',
+    mao: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V6a1.5 1.5 0 013 0v5M11 11V4.5a1.5 1.5 0 013 0V11M14 11V6a1.5 1.5 0 013 0v7a6 6 0 01-6 6h-1a6 6 0 01-5-3l-2-4a1.5 1.5 0 012.6-1.4L8 13"/></svg>',
+    desfazer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 010 10h-3"/></svg>',
+    refazer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14l5-5-5-5"/><path d="M20 9H9a5 5 0 000 10h3"/></svg>',
+  };
+  const NOME = k => (APR_CANETAS[k] || {}).nome || k;
+
+  // ---------- modelo escolhido ----------
+  window.canetasEstilo = () => (APR.indice && APR.indice.estiloCanetas) || null;
+  window.canetasEscolherEstilo = function (pronto, dentro) {
+    const fundo = document.createElement('div'); fundo.className = 'cz-escolha';
+    const prevSam = `<div class="prev"><div style="position:absolute;left:50%;top:8px;transform:translateX(-50%);display:flex;gap:4px;background:#fff;border-radius:9px;padding:4px 6px;box-shadow:0 2px 8px rgba(0,0,0,.15)">${['#2563eb', '#111827', '#dc2626', '#16a34a', '#ea580c'].map((c, i) => i ? `<span style="width:12px;height:12px;border-radius:50%;background:${c}"></span>` : `<span style="width:12px;height:12px;border-radius:3px;border:2px solid ${c}"></span>`).join('')}</div>
+      <svg viewBox="0 0 200 80" style="position:absolute;left:0;right:0;bottom:6px;width:100%;height:70px"><path d="M20 50 q20 -30 40 0 t40 0 t40 0" fill="none" stroke="#111827" stroke-width="3" stroke-linecap="round"/><path d="M30 64 h120" stroke="#facc15" stroke-width="12" opacity=".5"/></svg></div>`;
+    const prevIpad = `<div class="prev"><svg viewBox="0 0 200 80" style="position:absolute;left:0;right:0;top:4px;width:100%;height:50px"><path d="M20 40 q20 -30 40 0 t40 0 t40 0" fill="none" stroke="#1d4ed8" stroke-width="3" stroke-linecap="round"/></svg>
+      <div style="position:absolute;left:50%;bottom:6px;transform:translateX(-50%);display:flex;align-items:flex-end;gap:3px;background:#fff;border-radius:12px;padding:0 8px;height:44px;box-shadow:0 3px 12px rgba(0,0,0,.18);overflow:hidden">${['caneta', 'marca', 'lapis', 'borracha'].map((k, i) => `<span style="display:block;width:16px;height:46px;transform:translateY(${i ? 12 : 3}px)">${penaSvg(k, k === 'marca' ? '#facc15' : '#1d4ed8', 4)}</span>`).join('')}<span style="width:16px;height:16px;border-radius:50%;background:#1d4ed8;align-self:center;margin-left:4px"></span></div></div>`;
+    fundo.innerHTML = `<div class="cx"><h3>Como você prefere as canetas?</h3><p>Escolha o modelo que você já conhece. Dá para trocar depois no botão ⇄.</p>
+      <div class="op"><button class="card" data-e="samsung">${prevSam}<b>Estilo Samsung Notes</b><small>Barra no alto. Toque de novo na caneta para escolher o tipo, a espessura e a cor.</small></button>
+      <button class="card" data-e="ipad">${prevIpad}<b>Estilo iPad</b><small>Canetas em pé numa bandeja embaixo. A bolinha ao lado escolhe a cor.</small></button></div></div>`;
+    (dentro || document.body).appendChild(fundo);
+    fundo.querySelectorAll('[data-e]').forEach(b => b.onclick = () => {
+      if (APR.indice) { APR.indice.estiloCanetas = b.dataset.e; try { aprGravarIndice(); } catch (e) {} }
+      fundo.remove(); if (pronto) pronto(b.dataset.e);
+    });
+  };
+
+  // ---------- a caixa de canetas ----------
+  // ad: { ferr(), setFerr(k), est(k) -> {c,e}, setCor(c), setEsp(e), desfazer(), refazer(), podeDesf(), podeRef(),
+  //       mao: { ativo(), ativar(), nome }, endireitar: { get(), set(v) }, extras: [{ ic, dica, acao, ativo() }], trocarEstilo() }
+  window.canetasPaleta = function (host, ad, estilo) {
+    const P = { host, ad, estilo, pop: null };
+    host.classList.add('cz');
+    host.addEventListener('pointerdown', ev => ev.stopPropagation());
+    host.addEventListener('wheel', ev => ev.stopPropagation(), { passive: true });
+    P.render = () => { (estilo === 'ipad' ? ipad : samsung)(P); };
+    P.atualizarDesfazer = () => {
+      host.querySelectorAll('[data-a="desfazer"]').forEach(b => b.disabled = !ad.podeDesf());
+      host.querySelectorAll('[data-a="refazer"]').forEach(b => b.disabled = !ad.podeRef());
+    };
+    P.fecharPop = () => { P.pop = null; P.render(); };
+    host.onclick = ev => {
+      const el = ev.target.closest('[data-a],[data-k],[data-cor],[data-esp]'); if (!el || !host.contains(el)) return;
+      ev.preventDefault();
+      const k = el.dataset.k, a = el.dataset.a;
+      if (el.dataset.cor) { ad.setCor(el.dataset.cor); if (ad.ferr() === 'borracha' || !APR_CANETAS[ad.ferr()]) ad.setFerr('caneta'); if (P.pop === 'cor') P.pop = null; P.render(); return; }
+      if (el.dataset.esp) { ad.setEsp(Number(el.dataset.esp)); P.render(); return; }
+      if (k) {
+        const atual = ad.ferr();
+        if (k === 'grupo') { const alvo = PENAS.includes(atual) && atual !== 'marca' ? atual : (P.ultimaPena || 'caneta'); if (atual === alvo) P.pop = P.pop === 'ajuste' ? null : 'ajuste'; else { ad.setFerr(alvo); P.pop = null; } }
+        else if (atual === k) P.pop = P.pop === 'ajuste' ? null : 'ajuste';
+        else { ad.setFerr(k); if (!el.closest('.cz-pop')) P.pop = null; }
+        if (PENAS.includes(k) && k !== 'marca') P.ultimaPena = k;
+        P.render(); return;
+      }
+      if (a === 'desfazer') { ad.desfazer(); P.atualizarDesfazer(); }
+      else if (a === 'refazer') { ad.refazer(); P.atualizarDesfazer(); }
+      else if (a === 'mao') { ad.mao.ativar(); P.pop = null; P.render(); }
+      else if (a === 'cor') { P.pop = P.pop === 'cor' ? null : 'cor'; P.render(); }
+      else if (a === 'esp') { P.pop = P.pop === 'esp' ? null : 'esp'; P.render(); }
+      else if (a === 'endireitar') { ad.endireitar.set(!ad.endireitar.get()); P.render(); }
+      else if (a === 'menos' || a === 'mais') { const e = ad.est(ad.ferr()); ad.setEsp(Math.max(1, Math.min(20, e.e + (a === 'mais' ? 1 : -1)))); P.render(); }
+      else if (a === 'estilo') { P.pop = null; ad.trocarEstilo(); }
+      else if (a && a.startsWith('x')) { const x = (ad.extras || [])[Number(a.slice(1))]; if (x) { P.pop = null; x.acao(); P.render(); } }
+    };
+    host.oninput = ev => {
+      if (ev.target.matches('input[type=range]')) { ad.setEsp(Number(ev.target.value)); const b = host.querySelector('.cz-tam b'); if (b) b.textContent = ev.target.value; }
+      if (ev.target.matches('input[type=color]')) ad.setCor(ev.target.value);
+    };
+    host.onchange = ev => { if (ev.target.matches('input[type=color]')) { if (ad.ferr() === 'borracha' || !APR_CANETAS[ad.ferr()]) ad.setFerr('caneta'); P.render(); } };
+    const fora = ev => { if (!host.isConnected) { document.removeEventListener('pointerdown', fora, true); return; } if (P.pop && !host.contains(ev.target)) { P.pop = null; P.render(); } };
+    document.addEventListener('pointerdown', fora, true);
+    P.render(); return P;
+  };
+  function corAtual(ad) { const f = ad.ferr(); return (APR_CANETAS[f] && f !== 'borracha') ? ad.est(f).c : ad.est(PENAS.includes(ad.ultima) ? ad.ultima : 'caneta').c; }
+  function popCores(ad) {
+    const c = corAtual(ad);
+    return `<h5>Cor</h5><div class="cz-cores">${CORES.map(x => `<button class="cz-cor ${x === c ? 'ativo' : ''}" data-cor="${x}" style="background:${x}" title="${x}"></button>`).join('')}
+      <label class="cz-livre" title="Qualquer cor"><input type="color" value="${/^#[0-9a-f]{6}$/i.test(c) ? c : '#111827'}"></label></div>`;
+  }
+  function popTamanho(ad) {
+    const f = ad.ferr(), e = ad.est(f).e;
+    return `<h5>${f === 'borracha' ? 'Tamanho da borracha' : 'Espessura'}</h5><div class="cz-tam"><button data-a="menos">−</button><input type="range" min="1" max="20" value="${e}"><button data-a="mais">+</button><b>${e}</b></div>`;
+  }
+  function chave(ad) { return ad.endireitar ? `<div class="cz-chave ${ad.endireitar.get() ? 'on' : ''}" data-a="endireitar"><span>Endireitar as linhas e formas<br><small style="color:#64748b">desenhe e segure parado no fim</small></span><i></i></div>` : ''; }
+  function extrasHtml(ad, classe) { return (ad.extras || []).map((x, i) => `<button class="${classe} ${x.ativo && x.ativo() ? 'ativo' : ''}" data-a="x${i}" title="${x.dica}">${x.ic}</button>`).join(''); }
+
+  // ---------- Samsung Notes ----------
+  function samsung(P) {
+    const ad = P.ad, f = ad.ferr(), pena = PENAS.includes(f) && f !== 'marca' ? f : (P.ultimaPena || 'caneta'), c = corAtual(ad), e = APR_CANETAS[f] ? ad.est(f).e : 4;
+    let pop = '';
+    if (P.pop === 'ajuste' && APR_CANETAS[f]) {
+      pop = `<div class="cz-pop">` + (f === 'borracha' ? popTamanho(ad) :
+        `<div class="cz-pontas">${PENAS.map(k => `<button data-k="${k}" class="${f === k ? 'ativo' : ''}" title="${NOME(k)}">${penaSvg(k, ad.est(k).c, ad.est(k).e)}</button>`).join('')}</div>` + popTamanho(ad) + chave(ad) + popCores(ad)) + `</div>`;
+    } else if (P.pop === 'cor') pop = `<div class="cz-pop">${popCores(ad)}</div>`;
+    else if (P.pop === 'esp' && APR_CANETAS[f]) pop = `<div class="cz-pop">${popTamanho(ad)}</div>`;
+    P.host.innerHTML = `<div class="cz-sam">
+      ${ad.mao ? `<button class="b ${ad.mao.ativo() ? 'ativo' : ''}" data-a="mao" title="${ad.mao.nome || 'Mover'}">${ICO.mao}</button>` : ''}
+      <button class="b ${PENAS.includes(f) && f !== 'marca' ? 'ativo' : ''}" data-k="grupo" title="Caneta: toque de novo para escolher o tipo (${NOME(pena)})" style="color:${ad.est(pena).c === '#ffffff' ? '#0f172a' : ad.est(pena).c}">${ICO.caneta}</button>
+      <button class="b ${f === 'marca' ? 'ativo' : ''}" data-k="marca" title="Marca-texto" style="color:${ad.est('marca').c}">${ICO.marca}</button>
+      <button class="b ${f === 'borracha' ? 'ativo' : ''}" data-k="borracha" title="Borracha">${ICO.borracha}</button>
+      <span class="sep"></span>
+      ${RAPIDAS.map(x => `<button class="dot ${x === c && APR_CANETAS[f] && f !== 'borracha' ? 'ativo' : ''}" data-cor="${x}" style="background:${x}" title="Cor"></button>`).join('')}
+      <button class="dot" data-a="cor" title="Mais cores" style="background:conic-gradient(#f00,#ff0,#0f0,#0ff,#00f,#f0f,#f00)"></button>
+      <span class="sep"></span>
+      <button class="b" data-a="esp" title="Espessura"><span class="linha" style="height:${Math.max(2, Math.min(10, e * 0.6))}px"></span></button>
+      <button class="b" data-a="desfazer" title="Desfazer">${ICO.desfazer}</button>
+      <button class="b" data-a="refazer" title="Refazer">${ICO.refazer}</button>
+      ${ad.trocarEstilo ? `<span class="sep"></span><button class="b" data-a="estilo" title="Trocar para o estilo iPad" style="font-size:17px">⇄</button>` : ''}
+      ${extrasHtml(ad, 'b')}
+      ${pop}</div>`;
+    P.atualizarDesfazer();
+  }
+
+  // ---------- iPad ----------
+  function ipad(P) {
+    const ad = P.ad, f = ad.ferr(), c = corAtual(ad);
+    let pop = '';
+    if (P.pop === 'ajuste' && APR_CANETAS[f]) {
+      const e = ad.est(f).e;
+      pop = `<div class="cz-pop"><h5>${f === 'borracha' ? 'Tamanho da borracha' : NOME(f) + ': espessura'}</h5><div class="cz-espi">${ESP_IPAD.map(v => `<button data-esp="${v}" class="${Math.abs(v - e) < 1.5 ? 'ativo' : ''}"><i style="width:${3 + v}px;height:${3 + v}px"></i></button>`).join('')}</div>${f === 'borracha' ? '' : chave(ad)}</div>`;
+    } else if (P.pop === 'cor') pop = `<div class="cz-pop">${popCores(ad)}</div>`;
+    const ordem = ['caneta', 'marca', 'lapis', 'tinteiro', 'pincel', 'borracha'];
+    P.host.innerHTML = `<div class="cz-ipad">
+      <div class="acoes"><button data-a="desfazer" title="Desfazer">↶</button><button data-a="refazer" title="Refazer">↷</button></div>
+      <span class="sep"></span>
+      <div class="bandeja">${ordem.map(k => `<button class="pen ${f === k ? 'ativo' : ''}" data-k="${k}" title="${NOME(k)}${f === k ? ' (toque de novo para a espessura)' : ''}">${penaSvg(k, ad.est(k).c, ad.est(k).e)}</button>`).join('')}</div>
+      <button class="cor-bola" data-a="cor" title="Cor" style="background:${c}"></button>
+      ${ad.mao ? `<button class="extra ${ad.mao.ativo() ? 'ativo' : ''}" data-a="mao" title="${ad.mao.nome || 'Mover'}">${ICO.mao.replace('<svg', '<svg width="22" height="22"')}</button>` : ''}
+      ${ad.trocarEstilo ? `<button class="extra" data-a="estilo" title="Trocar para o estilo Samsung Notes">⇄</button>` : ''}
+      ${extrasHtml(ad, 'extra')}
+      ${pop}</div>`;
+    P.atualizarDesfazer();
+  }
+
+  // =================== NAS NOTAS À MÃO ===================
+  const ferramentasOriginal = aprNotaFerramentas;
+  aprNotaFerramentas = function () {
+    const N = APR.nota; if (!N) return;
+    const estilo = canetasEstilo();
+    const barra = document.getElementById('aprNtFerr'), tela = document.getElementById('aprTelaNota'); if (!barra || !tela) return;
+    if (!estilo) {
+      ferramentasOriginal();
+      if (!N.perguntouEstilo) { N.perguntouEstilo = true; canetasEscolherEstilo(() => aprNotaFerramentas(), tela); }
+      return;
+    }
+    const ad = {
+      ferr: () => N.ferr, setFerr: k => { N.ferr = k; document.getElementById('aprNtArea')?.classList.toggle('mao', k === 'mao'); },
+      est: k => N.est[k] || { c: '#111827', e: 4 },
+      setCor: c => { const f = APR_CANETAS[N.ferr] && N.ferr !== 'borracha' ? N.ferr : 'caneta'; N.est[f].c = c; },
+      setEsp: e => { if (APR_CANETAS[N.ferr]) N.est[N.ferr].e = e; },
+      desfazer: aprNotaDesfazer, refazer: aprNotaRefazer, podeDesf: () => N.hist.length > 0, podeRef: () => N.refaz.length > 0,
+      mao: { ativo: () => N.ferr === 'mao', ativar: () => { N.ferr = 'mao'; document.getElementById('aprNtArea')?.classList.add('mao'); }, nome: 'Mover a folha' },
+      endireitar: { get: () => !(APR.indice && APR.indice.formas === false), set: v => { APR.indice.formas = v ? true : false; aprGravarIndice(); } },
+      trocarEstilo: () => { APR.indice.estiloCanetas = estilo === 'ipad' ? 'samsung' : 'ipad'; aprGravarIndice(); aprNotaFerramentas(); },
+    };
+    let host;
+    if (estilo === 'samsung') {
+      document.getElementById('aprNtPaleta')?.remove();
+      barra.style.display = ''; barra.innerHTML = ''; barra.style.justifyContent = 'center'; barra.style.overflow = 'visible'; barra.style.background = '#eef1f5'; barra.style.position = 'relative'; barra.style.zIndex = '7';
+      host = document.createElement('div'); host.style.cssText = 'flex:1 1 auto;min-width:0;display:flex;justify-content:center'; barra.appendChild(host);
+    } else {
+      barra.style.display = 'none';
+      host = document.getElementById('aprNtPaleta');
+      if (!host) { host = document.createElement('div'); host.id = 'aprNtPaleta'; host.style.cssText = 'position:absolute;left:50%;bottom:calc(14px + env(safe-area-inset-bottom, 0px));transform:translateX(-50%);z-index:6;width:max-content;max-width:calc(100% - 16px)'; tela.appendChild(host); }
+      host.innerHTML = '';
+    }
+    N.paleta = canetasPaleta(host, ad, estilo);
+    document.getElementById('aprNtArea')?.classList.toggle('mao', N.ferr === 'mao');
+  };
+  const botoesOriginal = aprNotaBotoes;
+  aprNotaBotoes = function () { const r = botoesOriginal.apply(this, arguments); try { APR.nota && APR.nota.paleta && APR.nota.paleta.atualizarDesfazer(); } catch (e) {} return r; };
+  window.__canetas = { penaSvg };
+})();
+</script>
 <script id="tintaApresentacaoScript">
 // ===== CANETAS NA HORA DE APRESENTAR (slides e PDF) =====
-// Botão ✏️ na barra da apresentação abre as ferramentas: caneta e marca-texto na cor que quiser,
-// espessura, borracha (apaga o risco que tocar), desfazer, refazer e limpar o slide.
+// Botão ✏️ na barra da apresentação abre as canetas no modelo escolhido (Samsung Notes ou iPad):
+// caneta, tinteiro, lápis, pincel, marca-texto e borracha (apaga só a parte que passar por cima),
+// com a cor e a espessura que quiser, desfazer e refazer. A pressão da caneta (S Pen / Apple Pencil) muda a largura.
 // O desenho acompanha o zoom e fica guardado em cada slide/página enquanto a apresentação estiver aberta.
 // Atalhos no computador: P caneta, H marca-texto, E borracha, N navegar, Ctrl+Z desfazer, Ctrl+Y refazer.
 (function () {
-  const CORES = ['#e11d48', '#f97316', '#facc15', '#22c55e', '#0ea5e9', '#2563eb', '#a855f7', '#111827', '#ffffff'];
-  const ESP = [['extra fino', 2], ['fino', 4], ['médio', 7], ['grosso', 12]];
   const css = document.createElement('style');
   css.textContent = `
   #aprTintaCv { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; touch-action: none; }
   #aprTintaCv.ativo { pointer-events: auto; cursor: crosshair; }
-  #aprTintaCv.borracha { cursor: cell; }
-  .apr-tinta { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); z-index: 5; display: none; flex-direction: column; gap: 6px;
-    background: rgba(15,23,42,.86); border-radius: 16px; padding: 8px 6px; box-shadow: 0 8px 26px rgba(0,0,0,.35); max-height: calc(100% - 20px); overflow-y: auto; }
-  .apr-tinta.aberta { display: flex; }
-  .apr-tinta button { width: 44px; height: 40px; border: 0; border-radius: 10px; background: transparent; color: #fff; font-size: 19px; cursor: pointer; display: flex; align-items: center; justify-content: center; position: relative; }
-  .apr-tinta button:hover { background: rgba(255,255,255,.14); }
-  .apr-tinta button.ativo { background: #fff; color: #0f172a; }
-  .apr-tinta button:disabled { opacity: .35; cursor: default; }
-  .apr-tinta .sep { height: 1px; background: rgba(255,255,255,.18); margin: 2px 4px; }
-  .apr-tinta .cores { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 2px 4px; }
-  .apr-tinta .cor { width: 18px; height: 18px; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); cursor: pointer; padding: 0; }
-  .apr-tinta .cor.ativo { border-color: #fff; box-shadow: 0 0 0 2px #fff; }
-  .apr-tinta label.livre { width: 44px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff; font-size: 11px; font-weight: 700; border-radius: 8px; }
-  .apr-tinta label.livre input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-  .apr-tinta label.livre span { width: 22px; height: 22px; border-radius: 6px; background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); border: 2px solid #fff; }
-  .apr-tinta .esp i { display: block; border-radius: 50%; background: currentColor; }
-  #aprShowTintaBt.ligado { background: rgba(255,255,255,.3); }
-  @media (max-width: 760px) { .apr-tinta button { width: 40px; height: 36px; font-size: 17px; } }
-  @media (max-height: 560px) { .apr-tinta { display: none; flex-direction: row; flex-wrap: wrap; width: 98px; align-content: flex-start; }
-    .apr-tinta.aberta { display: flex; } .apr-tinta .sep { width: 100%; } .apr-tinta .cores { grid-template-columns: repeat(4, 1fr); width: 100%; } }`;
+  #aprTintaPaleta { position: absolute; left: 50%; transform: translateX(-50%); z-index: 6; width: max-content; max-width: calc(100% - 16px); display: none; }
+  #aprTintaPaleta.aberta { display: block; }
+  #aprTintaPaleta.samsung { top: calc(10px + env(safe-area-inset-top, 0px)); }
+  #aprTintaPaleta.ipad { bottom: calc(62px + env(safe-area-inset-bottom, 0px)); }
+  #aprShowTintaBt.ligado { background: rgba(255,255,255,.3); }`;
   document.head.appendChild(css);
 
   const T = () => APR.show && APR.show.tinta;
+  const U = 1000;                                  // largura da área = 1000 unidades (o risco gruda no slide)
   function folha(i) { const t = T(); if (!t.folhas[i]) t.folhas[i] = { tracos: [], feitos: [], refazer: [] }; return t.folhas[i]; }
+  function estInicial() {
+    const salvo = (APR.indice && APR.indice.canetas) || {}, est = {};
+    Object.keys(APR_CANETAS).forEach(k => { est[k] = Object.assign({ c: APR_CANETAS[k].cor, e: APR_CANETAS[k].esp }, salvo[k] || {}); });
+    if (!salvo.caneta) est.caneta.c = '#e11d48';   // na apresentação a caneta começa vermelha
+    return est;
+  }
+  function guardar() { const t = T(); if (!t || !APR.indice) return; clearTimeout(t.tGuardar); t.tGuardar = setTimeout(() => { APR.indice.canetas = Object.assign({}, APR.indice.canetas || {}, t.est); try { aprGravarIndice(); } catch (e) {} }, 800); }
 
   // ---------- liga junto com a apresentação ----------
   const mostrarOriginal = aprMostrar;
   aprMostrar = function (op) {
     const r = mostrarOriginal.apply(this, arguments);
     const sh = APR.show; if (!sh) return r;
-    const salvo = (APR.indice && APR.indice.tinta) || {};
-    sh.tinta = { ferr: null, cor: salvo.cor || CORES[0], esp: ESP.some(e => e[1] === salvo.esp) ? salvo.esp : 4, folhas: {}, desenhando: null };
+    sh.tinta = { ferr: null, est: estInicial(), folhas: {}, desenhando: null };
     const area = document.getElementById('aprShowArea');
     const cv = document.createElement('canvas'); cv.id = 'aprTintaCv'; area.appendChild(cv);
     cv.addEventListener('pointerdown', aperta); cv.addEventListener('pointermove', move);
     cv.addEventListener('pointerup', solta); cv.addEventListener('pointercancel', solta);
+    cv.addEventListener('contextmenu', ev => ev.preventDefault());
     const ctrl = document.getElementById('aprShowCtrl');
     if (ctrl) {
-      const b = document.createElement('button'); b.id = 'aprShowTintaBt'; b.title = 'Canetas: caneta, marca-texto, borracha, desfazer'; b.textContent = '✏️';
-      b.onclick = () => abrirBarra(); const ref = [...ctrl.querySelectorAll('button')].find(x => x.textContent === '⛶'); ctrl.insertBefore(b, ref || null);
+      const b = document.createElement('button'); b.id = 'aprShowTintaBt'; b.title = 'Canetas e marca-texto'; b.textContent = '✏️';
+      b.onclick = () => abrir(); const ref = [...ctrl.querySelectorAll('button')].find(x => x.textContent === '⛶'); ctrl.insertBefore(b, ref || null);
     }
-    const barra = document.createElement('div'); barra.className = 'apr-tinta'; barra.id = 'aprTintaBarra';
-    document.getElementById('aprTelaShow').appendChild(barra);
-    desenharBarra(); return r;
+    const host = document.createElement('div'); host.id = 'aprTintaPaleta'; document.getElementById('aprTelaShow').appendChild(host);
+    return r;
   };
-  function abrirBarra(forcar) {
-    const b = document.getElementById('aprTintaBarra'); if (!b) return;
-    const abrir = forcar !== undefined ? forcar : !b.classList.contains('aberta');
-    b.classList.toggle('aberta', abrir);
-    if (abrir && !T().ferr) ferramenta('caneta'); if (!abrir) ferramenta(null);
-    document.getElementById('aprShowTintaBt')?.classList.toggle('ligado', abrir);
+  function adaptador() {
+    const t = T();
+    return {
+      ferr: () => t.ferr || 'mao',
+      setFerr: k => ferramenta(k === 'mao' ? null : k),
+      est: k => t.est[k] || { c: '#111827', e: 4 },
+      setCor: c => { const f = t.ferr && t.ferr !== 'borracha' ? t.ferr : 'caneta'; t.est[f].c = c; guardar(); },
+      setEsp: e => { if (t.ferr) { t.est[t.ferr].e = e; guardar(); } },
+      desfazer, refazer, podeDesf: () => folha(APR.show.i).feitos.length > 0, podeRef: () => folha(APR.show.i).refazer.length > 0,
+      mao: { ativo: () => !t.ferr, ativar: () => ferramenta(null), nome: 'Navegar (trocar slide, zoom e laser)' },
+      trocarEstilo: () => { APR.indice.estiloCanetas = canetasEstilo() === 'ipad' ? 'samsung' : 'ipad'; try { aprGravarIndice(); } catch (e) {} montarPaleta(); },
+      extras: [{ ic: '🗑️', dica: 'Apagar todos os riscos deste slide', acao: limpar }, { ic: '✕', dica: 'Fechar as canetas', acao: () => abrir(false) }],
+    };
   }
-  function desenharBarra() {
-    const t = T(), b = document.getElementById('aprTintaBarra'); if (!t || !b) return;
-    const f = folha(APR.show.i);
-    const bt = (id, ic, dica, ativo, extra = '') => `<button data-a="${id}" title="${dica}" class="${ativo ? 'ativo' : ''}" ${extra}>${ic}</button>`;
-    b.innerHTML =
-      bt('navegar', '✋', 'Navegar (trocar slide e dar zoom)', !t.ferr) +
-      bt('caneta', '🖊️', 'Caneta (P)', t.ferr === 'caneta') +
-      bt('marca', '🖍️', 'Marca-texto (H)', t.ferr === 'marca') +
-      bt('borracha', '🧽', 'Borracha: toque no risco para apagar (E)', t.ferr === 'borracha') +
-      '<div class="sep"></div>' +
-      `<div class="cores">${CORES.map(c => `<button class="cor ${c === t.cor ? 'ativo' : ''}" data-cor="${c}" title="Cor" style="background:${c};width:18px;height:18px"></button>`).join('')}</div>` +
-      `<label class="livre" title="Escolher outra cor"><input type="color" id="aprTintaCorLivre" value="${t.cor}"><span></span></label>` +
-      '<div class="sep"></div>' +
-      ESP.map(([n, v]) => bt('esp' + v, `<i style="width:${3 + v * 1.3}px;height:${3 + v * 1.3}px"></i>`, 'Espessura ' + n, t.esp === v, `class="esp ${t.esp === v ? 'ativo' : ''}"`)).join('') +
-      '<div class="sep"></div>' +
-      bt('desfazer', '↶', 'Desfazer (Ctrl+Z)', false, f.feitos.length ? '' : 'disabled') +
-      bt('refazer', '↷', 'Refazer (Ctrl+Y)', false, f.refazer.length ? '' : 'disabled') +
-      bt('limpar', '🗑️', 'Apagar todos os riscos deste slide', false, f.tracos.length ? '' : 'disabled') +
-      bt('fechar', '✕', 'Fechar as canetas');
-    b.querySelectorAll('[data-a]').forEach(x => x.onclick = ev => { ev.stopPropagation(); acao(x.dataset.a); });
-    b.querySelectorAll('[data-cor]').forEach(x => x.onclick = ev => { ev.stopPropagation(); mudarCor(x.dataset.cor); });
-    const livre = b.querySelector('#aprTintaCorLivre'); if (livre) livre.oninput = () => mudarCor(livre.value, true);
-    b.querySelectorAll('[data-a^="esp"]').forEach(x => { x.className = 'esp' + (Number(x.dataset.a.slice(3)) === t.esp ? ' ativo' : ''); });
+  function montarPaleta() {
+    const t = T(), host = document.getElementById('aprTintaPaleta'); if (!t || !host) return;
+    const estilo = canetasEstilo() || 'samsung';
+    host.className = 'aberta ' + estilo; host.innerHTML = '';
+    t.paleta = canetasPaleta(host, adaptador(), estilo);
   }
-  function guardarPref() { const t = T(); if (APR.indice) { APR.indice.tinta = { cor: t.cor, esp: t.esp }; try { aprGravarIndice(); } catch (e) {} } }
-  function mudarCor(c, semRedesenhar) { const t = T(); t.cor = c; if (!t.ferr || t.ferr === 'borracha') ferramenta('caneta'); guardarPref(); if (!semRedesenhar) desenharBarra(); else document.querySelectorAll('.apr-tinta .cor').forEach(x => x.classList.toggle('ativo', x.dataset.cor === c)); }
+  function abrir(forcar) {
+    const t = T(), host = document.getElementById('aprTintaPaleta'); if (!t || !host) return;
+    const abrirAgora = forcar !== undefined ? forcar : !host.classList.contains('aberta');
+    if (abrirAgora && !canetasEstilo()) { canetasEscolherEstilo(() => abrir(true), document.getElementById('aprTelaShow')); return; }
+    if (abrirAgora) { if (!t.ferr) t.ferr = 'caneta'; ferramenta(t.ferr); montarPaleta(); }
+    else { host.classList.remove('aberta'); ferramenta(null); }
+    document.getElementById('aprShowTintaBt')?.classList.toggle('ligado', abrirAgora);
+  }
   function ferramenta(f) {
     const t = T(); if (!t) return; t.ferr = f;
-    const cv = document.getElementById('aprTintaCv'); if (cv) { cv.classList.toggle('ativo', !!f); cv.classList.toggle('borracha', f === 'borracha'); }
+    document.getElementById('aprTintaCv')?.classList.toggle('ativo', !!f);
     if (f && APR.show.laser) aprShowLaser(false);
-    desenharBarra();
-  }
-  function acao(a) {
-    const t = T(), f = folha(APR.show.i);
-    if (a === 'navegar') ferramenta(null);
-    else if (a === 'caneta' || a === 'marca' || a === 'borracha') ferramenta(a);
-    else if (a.startsWith('esp')) { t.esp = Number(a.slice(3)); if (!t.ferr || t.ferr === 'borracha') ferramenta('caneta'); guardarPref(); desenharBarra(); }
-    else if (a === 'desfazer') desfazer();
-    else if (a === 'refazer') refazer();
-    else if (a === 'limpar') { if (!f.tracos.length) return; f.feitos.push({ tipo: 'apagar', tracos: f.tracos.slice() }); f.tracos = []; f.refazer = []; redesenhar(); desenharBarra(); }
-    else if (a === 'fechar') abrirBarra(false);
   }
   function desfazer() {
     const f = folha(APR.show.i), op = f.feitos.pop(); if (!op) return;
-    if (op.tipo === 'add') f.tracos = f.tracos.filter(x => x !== op.traco);
-    else f.tracos = f.tracos.concat(op.tracos);
-    f.refazer.push(op); redesenhar(); desenharBarra();
+    if (op.tipo === 'add') f.tracos = f.tracos.filter(x => x !== op.traco); else f.tracos = op.antes;
+    f.refazer.push(op); redesenhar(); T().paleta?.atualizarDesfazer();
   }
   function refazer() {
     const f = folha(APR.show.i), op = f.refazer.pop(); if (!op) return;
-    if (op.tipo === 'add') f.tracos.push(op.traco);
-    else f.tracos = f.tracos.filter(x => !op.tracos.includes(x));
-    f.feitos.push(op); redesenhar(); desenharBarra();
+    if (op.tipo === 'add') f.tracos.push(op.traco); else { op.antes = f.tracos; f.tracos = []; }
+    f.feitos.push(op); redesenhar(); T().paleta?.atualizarDesfazer();
+  }
+  function limpar() {
+    const f = folha(APR.show.i); if (!f.tracos.length) return;
+    f.feitos.push({ tipo: 'limpar', antes: f.tracos }); f.tracos = []; f.refazer = []; redesenhar(); T().paleta?.atualizarDesfazer();
   }
 
   // ---------- coordenadas: o risco "gruda" no slide, mesmo com zoom ----------
-  function paraSlide(ev) {
-    const sh = APR.show, a = document.getElementById('aprShowArea'), r = a.getBoundingClientRect();
-    const px = ev.clientX - r.left, py = ev.clientY - r.top, z = sh.z || 1;
-    return { u: (px - (sh.z > 1 ? sh.zx : 0)) / z / a.clientWidth, v: (py - (sh.z > 1 ? sh.zy : 0)) / z / a.clientHeight };
-  }
-  function paraTela(p, W, H) { const sh = APR.show, z = sh.z || 1; return [p.u * W * z + (z > 1 ? sh.zx : 0), p.v * H * z + (z > 1 ? sh.zy : 0)]; }
+  function escala() { const sh = APR.show, a = document.getElementById('aprShowArea'); const z = sh.z || 1; return { a, z, k: a.clientWidth / U * z, ox: z > 1 ? sh.zx : 0, oy: z > 1 ? sh.zy : 0 }; }
+  function ponto(ev, E) { const r = E.a.getBoundingClientRect(); return [Math.round((ev.clientX - r.left - E.ox) / E.k * 10) / 10, Math.round((ev.clientY - r.top - E.oy) / E.k * 10) / 10]; }
   function aperta(ev) {
     const t = T(); if (!t || !t.ferr) return; ev.preventDefault(); ev.stopPropagation();
-    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) {}
     if (t.desenhando) return;
-    const p = paraSlide(ev);
-    if (t.ferr === 'borracha') { t.desenhando = { borracha: true, id: ev.pointerId, apagados: [] }; apagarPerto(p); return; }
-    const tr = { ferr: t.ferr, cor: t.cor, esp: t.ferr === 'marca' ? t.esp * 2.4 : t.esp, pts: [p] };
-    t.desenhando = { tr, id: ev.pointerId };
+    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch (e) {}
+    if (t.paleta && t.paleta.pop) t.paleta.fecharPop();
+    const borrachaDaCaneta = ev.pointerType === 'pen' && (ev.button === 5 || (ev.buttons & 32));
+    const f = borrachaDaCaneta ? 'borracha' : t.ferr, k = APR_CANETAS[f] || APR_CANETAS.caneta, e = t.est[f], E = escala(), [x, y] = ponto(ev, E);
+    const pr = ev.pointerType === 'pen' && ev.pressure > 0 ? ev.pressure : 0.55;
+    t.desenhando = { id: ev.pointerId, tr: { f, c: e.c, l: Math.round(e.e * k.mult * 0.9 * 10) / 10, p: [x, y, Math.round(pr * 100) / 100] }, tAnt: ev.timeStamp, prAnt: pr, xAnt: ev.clientX, yAnt: ev.clientY };
     redesenhar();
   }
   function move(ev) {
     const t = T(); if (!t || !t.desenhando || ev.pointerId !== t.desenhando.id) return; ev.preventDefault();
-    const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
-    if (t.desenhando.borracha) { evs.forEach(e => apagarPerto(paraSlide(e))); return; }
-    evs.forEach(e => t.desenhando.tr.pts.push(paraSlide(e)));
+    const d = t.desenhando, E = escala(), lista = (ev.getCoalescedEvents && ev.getCoalescedEvents().length) ? ev.getCoalescedEvents() : [ev];
+    for (const e2 of lista) {
+      const dist = Math.hypot(e2.clientX - d.xAnt, e2.clientY - d.yAnt); if (dist < 0.9) continue;
+      let pr;
+      if (e2.pointerType === 'pen' && e2.pressure > 0) pr = e2.pressure;
+      else { const dt = Math.max(1, e2.timeStamp - d.tAnt); pr = Math.max(0.12, Math.min(1, 1.08 - (dist / dt) / 2.4)); pr = d.prAnt * 0.72 + pr * 0.28; }
+      d.prAnt = pr; d.tAnt = e2.timeStamp; d.xAnt = e2.clientX; d.yAnt = e2.clientY;
+      const [x, y] = ponto(e2, E); d.tr.p.push(x, y, Math.round(pr * 100) / 100);
+    }
     if (!t.quadro) t.quadro = requestAnimationFrame(() => { t.quadro = 0; redesenhar(); });
   }
   function solta(ev) {
     const t = T(); if (!t || !t.desenhando || ev.pointerId !== t.desenhando.id) return;
-    const d = t.desenhando; t.desenhando = null; const f = folha(APR.show.i);
-    if (d.borracha) { if (d.apagados.length) { f.feitos.push({ tipo: 'apagar', tracos: d.apagados }); f.refazer = []; desenharBarra(); } return; }
-    if (d.tr.pts.length === 1) d.tr.pts.push({ u: d.tr.pts[0].u + 0.0005, v: d.tr.pts[0].v });   // um toque vira um ponto
-    f.tracos.push(d.tr); f.feitos.push({ tipo: 'add', traco: d.tr }); f.refazer = [];
-    redesenhar(); desenharBarra();
-  }
-  function apagarPerto(p) {
-    const t = T(), f = folha(APR.show.i), a = document.getElementById('aprShowArea'), W = a.clientWidth, H = a.clientHeight, raio = 16 / (APR.show.z || 1);
-    const antes = f.tracos.length;
-    f.tracos = f.tracos.filter(tr => {
-      const perto = tr.pts.some(q => Math.hypot((q.u - p.u) * W, (q.v - p.v) * H) < raio + tr.esp / 2);
-      if (perto) t.desenhando.apagados.push(tr); return !perto;
-    });
-    if (f.tracos.length !== antes) redesenhar();
+    const tr = t.desenhando.tr; t.desenhando = null;
+    if (ev.type === 'pointercancel' && tr.p.length <= 3) { redesenhar(); return; }
+    const f = folha(APR.show.i); f.tracos.push(tr); f.feitos.push({ tipo: 'add', traco: tr }); f.refazer = [];
+    redesenhar(); t.paleta?.atualizarDesfazer();
   }
   function redesenhar() {
     const sh = APR.show, t = T(); if (!sh || !t) return;
     const cv = document.getElementById('aprTintaCv'), a = document.getElementById('aprShowArea'); if (!cv || !a) return;
     const dpr = Math.min(window.devicePixelRatio || 1, 2), W = a.clientWidth, H = a.clientHeight;
     if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
-    const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H);
-    const lista = (folha(sh.i).tracos || []).concat(t.desenhando && t.desenhando.tr ? [t.desenhando.tr] : []);
-    const z = sh.z || 1;
-    // marca-texto por baixo, caneta por cima
-    lista.filter(tr => tr.ferr === 'marca').concat(lista.filter(tr => tr.ferr !== 'marca')).forEach(tr => {
-      x.save(); x.lineCap = tr.ferr === 'marca' ? 'butt' : 'round'; x.lineJoin = 'round'; x.strokeStyle = tr.cor; x.lineWidth = tr.esp * z * (W / 1280 + 0.35);
-      x.globalAlpha = tr.ferr === 'marca' ? 0.38 : 1; if (tr.ferr === 'marca') x.globalCompositeOperation = 'multiply';
-      x.beginPath(); tr.pts.forEach((p, i) => { const [sx, sy] = paraTela(p, W, H); if (i) x.lineTo(sx, sy); else x.moveTo(sx, sy); }); x.stroke(); x.restore();
-    });
+    const x = cv.getContext('2d'); x.setTransform(1, 0, 0, 1, 0, 0); x.clearRect(0, 0, cv.width, cv.height);
+    const E = escala();
+    x.setTransform(dpr * E.k, 0, 0, dpr * E.k, dpr * E.ox, dpr * E.oy);
+    folha(sh.i).tracos.forEach(tr => aprDesenharTraco(x, tr));
+    if (t.desenhando) aprDesenharTraco(x, t.desenhando.tr);
   }
   // redesenha quando muda o zoom, o slide ou o tamanho da tela
   const zoomOriginal = aprShowAplicarZoom;
   aprShowAplicarZoom = function () { const r = zoomOriginal.apply(this, arguments); redesenhar(); return r; };
   const desenharOriginal = aprShowDesenhar;
-  aprShowDesenhar = function () { const r = desenharOriginal.apply(this, arguments); if (T()) { T().desenhando = null; redesenhar(); desenharBarra(); } return r; };
+  aprShowDesenhar = function () { const r = desenharOriginal.apply(this, arguments); const t = T(); if (t) { t.desenhando = null; redesenhar(); t.paleta?.atualizarDesfazer(); } return r; };
   window.addEventListener('resize', () => setTimeout(redesenhar, 200));
 
   // atalhos de teclado (antes dos atalhos da apresentação)
   window.addEventListener('keydown', ev => {
     const t = T(); if (!t) return; const k = (ev.key || '').toLowerCase();
+    if (/^(INPUT|TEXTAREA)$/.test((ev.target && ev.target.tagName) || '')) return;
     if ((ev.ctrlKey || ev.metaKey) && k === 'z' && !ev.shiftKey) { ev.preventDefault(); ev.stopImmediatePropagation(); desfazer(); return; }
     if ((ev.ctrlKey || ev.metaKey) && (k === 'y' || (k === 'z' && ev.shiftKey))) { ev.preventDefault(); ev.stopImmediatePropagation(); refazer(); return; }
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     const mapa = { p: 'caneta', h: 'marca', e: 'borracha', n: null };
-    if (k in mapa) { ev.preventDefault(); ev.stopImmediatePropagation(); if (mapa[k]) { abrirBarra(true); ferramenta(mapa[k]); } else ferramenta(null); }
+    if (k in mapa) {
+      ev.preventDefault(); ev.stopImmediatePropagation();
+      if (!mapa[k]) { ferramenta(null); t.paleta?.render(); return; }
+      if (!document.getElementById('aprTintaPaleta')?.classList.contains('aberta')) abrir(true);
+      ferramenta(mapa[k]); t.paleta?.render();
+    }
   }, true);
-  window.__tinta = { acao, ferramenta, abrirBarra, folha };
+  window.__tinta = {
+    acao: a => { const t = T(); if (a === 'navegar') ferramenta(null); else if (a === 'desfazer') desfazer(); else if (a === 'refazer') refazer(); else if (a === 'limpar') limpar(); else ferramenta(a); t.paleta?.render(); },
+    abrir, folha, ferramenta,
+  };
 })();
 </script>
 </body>
