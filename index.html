@@ -20503,6 +20503,8 @@ const ASSIST_BASE = [
   r: '- **Caneta**: traço firme e uniforme.\n- **Tinteiro**: o traço engrossa e afina como caneta-tinteiro.\n- **Lápis**: traço mais claro, para rascunho.\n- **Pincel**: traço largo que varia bastante.\n- **Marca-texto**: faixa transparente que destaca sem esconder o que está por baixo.\n- **Borracha**: apaga só por onde passar.\nCom **S Pen** ou **Apple Pencil**, apertar mais deixa o traço mais grosso. No dedo, traço rápido fica mais fino.\n**Espessura**: no estilo Samsung, toque de novo na caneta e use − / +; no estilo iPad, toque de novo na caneta e escolha uma das 5 bolinhas.', aba: 'apresentacoes' },
 { id: 'canetas_endireitar', t: 'Como faço linhas retas e formas certinhas com a caneta?', k: 'linha reta, endireitar as linhas, formas, circulo perfeito, quadrado, retangulo, triangulo, desenhar reto',
   r: 'Nas **Notas à mão**, desenhe a linha ou a forma e **segure parado no fim do traço**: ela vira uma linha reta, círculo, retângulo ou triângulo certinho.\nPara ligar ou desligar: toque de novo na caneta e use a chave **Endireitar as linhas e formas**.', aba: 'apresentacoes' },
+{ id: 'laser_crm', t: 'Como ligo o laser para apresentar o CRM?', k: 'laser no crm, laser na tela, apontador, apontar na tela, apresentar o crm, mostrar o crm para cliente, dois toques, tres toques, ligar laser, desligar laser, ponteiro vermelho, segurar copia o texto, copiar texto ao segurar',
+  r: 'Em qualquer tela do CRM:\n- **Dois toques rápidos** numa área livre (fora de botões e campos) **ligam** o laser.\n- **Três toques rápidos** **desligam** (ou toque em **Desligar** no aviso do alto, ou aperte Esc no computador).\nCom o laser ligado, um ponto vermelho com rastro segue o seu dedo, a caneta ou o mouse, e **segurar o dedo não abre mais o "copiar"** do aparelho. Os botões continuam funcionando com um toque. Para **rolar a tela**, arraste com **dois dedos**.\nA cor é a mesma escolhida para o laser da apresentação de slides. Dentro da apresentação e das Notas à mão ele fica de fora, porque lá já existe o laser próprio (segurar o dedo) e as canetas.', aba: 'apresentacoes' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -22585,6 +22587,140 @@ const ASSIST_BASE = [
     acao: a => { const t = T(); if (a === 'navegar') ferramenta(null); else if (a === 'desfazer') desfazer(); else if (a === 'refazer') refazer(); else if (a === 'limpar') limpar(); else ferramenta(a); t.paleta?.render(); },
     abrir, folha, ferramenta,
   };
+})();
+</script>
+<script id="laserCrmScript">
+// ===== LASER PARA APRESENTAR O CRM =====
+// Dois toques rápidos na tela ligam o laser; três toques rápidos desligam.
+// Com o laser ligado, um ponto vermelho brilhante (com rastro que some) segue o dedo, a caneta ou o mouse,
+// e segurar o dedo não abre mais o "copiar/selecionar" do aparelho. A tela continua funcionando normalmente
+// (tocar nos botões; para rolar a tela com o laser ligado, arraste com dois dedos). Os toques que contam são só em área livre: botões, campos e links não contam.
+// Dentro da apresentação de slides/PDF e das Notas à mão ele fica de fora (lá já existem laser e canetas).
+(function () {
+  const JANELA = 380, DIST = 60;          // tempo máximo entre toques (ms) e distância máxima entre eles (px)
+  const css = document.createElement('style');
+  css.textContent = `
+  #laserCrmTela { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 2147483000; }
+  body.laser-crm, body.laser-crm * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
+  body.laser-crm, body.laser-crm * { touch-action: none !important; }
+  body.laser-crm input, body.laser-crm textarea, body.laser-crm [contenteditable] { -webkit-user-select: text !important; user-select: text !important; }
+  #laserCrmAviso { position: fixed; left: 50%; top: 14px; transform: translateX(-50%); z-index: 2147483001; background: rgba(17,17,20,.92); color: #fff;
+    font: 600 13.5px/1.3 system-ui, sans-serif; padding: 9px 14px 9px 12px; border-radius: 30px; display: none; align-items: center; gap: 9px; box-shadow: 0 8px 24px rgba(0,0,0,.25); }
+  #laserCrmAviso i { width: 11px; height: 11px; border-radius: 50%; background: #ff2a2a; box-shadow: 0 0 10px 3px rgba(255,40,40,.75); flex: none; }
+  #laserCrmAviso button { background: rgba(255,255,255,.14); color: #fff; border: 0; border-radius: 20px; padding: 4px 10px; font: 600 12px system-ui, sans-serif; cursor: pointer; }
+  #laserCrmAviso span { display: flex; flex-direction: column; white-space: nowrap; }
+  #laserCrmAviso small { font-weight: 500; font-size: 11.5px; opacity: .8; white-space: normal; }
+  #laserCrmAviso span { min-width: 0; } #laserCrmAviso button { flex: none; }
+  #laserCrmAviso { width: max-content; max-width: calc(100vw - 24px); }
+  #laserCrmAviso.mini span { display: none; }
+  @media print { #laserCrmTela, #laserCrmAviso { display: none !important; } }`;
+  document.head.appendChild(css);
+
+  let ligado = false, tela = null, ctx = null, aviso = null, quadro = 0, rastro = [], ponto = null, tAviso = 0;
+  const cor = () => { try { return (window.APR && APR.indice && APR.indice.laserCor) || '#ff2a2a'; } catch (e) { return '#ff2a2a'; } };
+  const emOutroModo = () => !!(window.APR && (APR.show || APR.nota)) || !!document.getElementById('aprShowArea') || !!document.getElementById('aprNtArea');
+  const livre = el => !(el && el.closest && el.closest('a,button,input,select,textarea,label,[contenteditable],[onclick],canvas,video,.modal-close,#laserCrmAviso'));
+
+  function montar() {
+    if (tela) return;
+    tela = document.createElement('canvas'); tela.id = 'laserCrmTela'; document.body.appendChild(tela); ctx = tela.getContext('2d');
+    aviso = document.createElement('div'); aviso.id = 'laserCrmAviso';
+    aviso.innerHTML = '<i></i><span><b>Laser ligado</b><small>3 toques rápidos desligam · 2 dedos rolam a tela</small></span><button type="button">Desligar</button>';
+    aviso.querySelector('button').addEventListener('click', e => { e.stopPropagation(); desligar(); });
+    document.body.appendChild(aviso);
+    window.addEventListener('resize', medir); medir();
+  }
+  function medir() {
+    if (!tela) return; const d = Math.min(window.devicePixelRatio || 1, 2);
+    tela.width = Math.round(innerWidth * d); tela.height = Math.round(innerHeight * d); ctx.setTransform(d, 0, 0, d, 0, 0);
+  }
+  function ligar() {
+    if (ligado) return; montar(); ligado = true; document.body.classList.add('laser-crm');
+    aviso.style.display = 'flex'; aviso.classList.remove('mini'); aviso.querySelector('i').style.background = cor();
+    clearTimeout(tAviso); tAviso = setTimeout(() => aviso && aviso.classList.add('mini'), 3000);
+    try { const s = getSelection(); if (s) s.removeAllRanges(); } catch (e) {}
+    try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) {}
+  }
+  function desligar() {
+    if (!ligado) return; ligado = false; document.body.classList.remove('laser-crm');
+    if (aviso) aviso.style.display = 'none'; ponto = null; rastro = [];
+    if (ctx) ctx.clearRect(0, 0, innerWidth, innerHeight);
+    try { if (navigator.vibrate) navigator.vibrate([10, 40, 10]); } catch (e) {}
+  }
+  window.laserCrm = { ligar, desligar, ligado: () => ligado };
+  const _desl = desligar; desligar = function () { dedos.clear(); rolar = null; _desl(); }; window.laserCrm.desligar = desligar;
+
+  // ---- desenho: ponto brilhante + rastro que some ----
+  function desenhar() {
+    quadro = 0; if (!ctx) return;
+    const agora = performance.now(), c = cor();
+    ctx.clearRect(0, 0, innerWidth, innerHeight);
+    rastro = rastro.filter(p => agora - p.t < 450);
+    if (rastro.length > 1) {
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      for (let i = 1; i < rastro.length; i++) {
+        const a = rastro[i - 1], b = rastro[i], vida = 1 - (agora - b.t) / 450;
+        ctx.strokeStyle = c; ctx.globalAlpha = Math.max(0, vida) * 0.55; ctx.lineWidth = 3 + 7 * vida;
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (ponto) {
+      const g = ctx.createRadialGradient(ponto.x, ponto.y, 0, ponto.x, ponto.y, 22);
+      g.addColorStop(0, '#fff'); g.addColorStop(0.22, c); g.addColorStop(0.55, c + '66'); g.addColorStop(1, c + '00');
+      ctx.fillStyle = g; ctx.beginPath(); ctx.arc(ponto.x, ponto.y, 22, 0, Math.PI * 2); ctx.fill();
+    }
+    if (ponto || rastro.length) quadro = requestAnimationFrame(desenhar);
+  }
+  const pedir = () => { if (!quadro) quadro = requestAnimationFrame(desenhar); };
+
+  // ---- contagem dos toques ----
+  let toques = [], tLigar = 0, apertado = false;
+  // com o laser ligado, um dedo aponta e dois dedos rolam a tela
+  const dedos = new Map(); let rolar = null;
+  function rolavel(el) {
+    for (let n = el; n && n !== document.body && n !== document.documentElement; n = n.parentElement) {
+      const st = getComputedStyle(n);
+      if ((/(auto|scroll)/.test(st.overflowY) && n.scrollHeight > n.clientHeight + 2) || (/(auto|scroll)/.test(st.overflowX) && n.scrollWidth > n.clientWidth + 2)) return n;
+    }
+    return document.scrollingElement || document.documentElement;
+  }
+  const meio = () => { let x = 0, y = 0; dedos.forEach(d => { x += d.x; y += d.y; }); return { x: x / dedos.size, y: y / dedos.size }; };
+  document.addEventListener('pointerdown', e => {
+    if (e.button > 0 || emOutroModo()) { if (ligado && emOutroModo()) desligar(); return; }
+    if (ligado && e.pointerType === 'touch') { dedos.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (dedos.size === 2) { rolar = { el: rolavel(e.target), ...meio() }; ponto = null; rastro = []; pedir(); toques = []; return; } }
+    if (ligado) { apertado = true; ponto = { x: e.clientX, y: e.clientY }; rastro.push({ x: e.clientX, y: e.clientY, t: performance.now() }); pedir(); }
+    if (!livre(e.target)) { toques = []; return; }
+    const agora = performance.now(), ult = toques[toques.length - 1];
+    if (ult && (agora - ult.t > JANELA || Math.hypot(e.clientX - ult.x, e.clientY - ult.y) > DIST)) toques = [];
+    toques.push({ t: agora, x: e.clientX, y: e.clientY });
+    if (toques.length === 2 && !ligado) {
+      // espera um pouquinho: se vier o 3º toque, era "três toques" (que desliga), então não liga
+      clearTimeout(tLigar); tLigar = setTimeout(() => { if (toques.length === 2) ligar(); }, JANELA);
+    } else if (toques.length >= 3) {
+      clearTimeout(tLigar); toques = [];
+      if (ligado) { desligar(); e.preventDefault(); }
+    }
+  }, true);
+  document.addEventListener('pointermove', e => {
+    if (!ligado) return;
+    if (dedos.has(e.pointerId)) dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (rolar && dedos.size >= 2) { const m = meio(); rolar.el.scrollBy(rolar.x - m.x, rolar.y - m.y); rolar.x = m.x; rolar.y = m.y; return; }
+    if (e.pointerType === 'mouse' || apertado || e.pressure > 0) {
+      ponto = { x: e.clientX, y: e.clientY }; rastro.push({ x: e.clientX, y: e.clientY, t: performance.now() });
+      if (rastro.length > 60) rastro.shift(); pedir();
+    }
+  }, { capture: true, passive: true });
+  const soltar = e => { dedos.delete(e.pointerId); if (dedos.size < 2) rolar = null; if (!ligado) return; apertado = false; if (e.pointerType !== 'mouse') { ponto = null; pedir(); } };
+  document.addEventListener('pointerup', soltar, true);
+  document.addEventListener('pointercancel', soltar, true);
+  document.addEventListener('mouseleave', () => { if (ligado) { ponto = null; pedir(); } });
+  // com o laser ligado, segurar o dedo não abre o menu de copiar
+  document.addEventListener('contextmenu', e => { if (ligado && livre(e.target)) e.preventDefault(); }, true);
+  document.addEventListener('selectstart', e => { if (ligado && livre(e.target)) e.preventDefault(); }, true);
+  // dois toques rápidos não dão zoom na tela quando é para ligar o laser
+  document.addEventListener('dblclick', e => { if (livre(e.target) && !emOutroModo()) { try { const s = getSelection(); if (s) s.removeAllRanges(); } catch (x) {} } }, true);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && ligado) desligar(); });
 })();
 </script>
 <script id="capaSlidesScript">
