@@ -1805,8 +1805,9 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
   <!-- SUB ABA: VALOR FUTURO -->
   <div id="simFuturo" class="subpage">
     <div class="card">
-      <h3 style="margin-top:0">📈 Projeção de Valor Futuro (Rendimento Selic + INCC)</h3>
-      <p class="muted" style="font-size:12px; margin-top:0;">Simula o crédito contemplado rendendo no fundo da administradora na Selic (14% a.a) somado ao reajuste da carta no prazo restante.</p>
+      <h3 style="margin-top:0">📈 Projeção de Valor Futuro (Rendimento Selic)</h3>
+      <p class="muted" style="font-size:12px; margin-top:0;">Depois de contemplado, o crédito fica rendendo no fundo da administradora pela Selic até ser usado. O INCC/INPC corrige o crédito <b>só até a contemplação</b>; depois dela, o índice reajusta <b>apenas a parcela</b>.</p>
+      <div style="margin-bottom:12px;max-width:300px"><div class="field"><label>Selic (% ao ano)</label><input type="text" id="simSelicAnual" value="14,00%" inputmode="decimal" oninput="maskPercentSim(this); try{localStorage.setItem('simSelicAnual', this.value)}catch(e){}; calcularSimulacao()"></div></div>
       <div id="resultadoValorFuturo" style="font-size:14px; line-height:1.6; background:#f8fafc; padding:14px; border-radius:8px; border:1px solid var(--line);"></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
         <button class="btn" onclick="gerarValorFuturo('imagem')">🖼️ Imagem</button>
@@ -13091,7 +13092,8 @@ function calcularSimulacao() {
     `;
   }
 
-  const taxaSelicMes = 0.0109;
+  const selicAnual = (parseSimNumber(document.getElementById('simSelicAnual')?.value) / 100) || 0;
+  const taxaSelicMes = Math.pow(1 + selicAnual, 1 / 12) - 1;     // taxa mensal equivalente à Selic anual
   const mesesRendendo = prazo - mesesPagos;
   const valorFinalFundo = creditoReajustado * Math.pow(1 + taxaSelicMes, mesesRendendo);
   const rendimentoPuro = valorFinalFundo - creditoReajustado;
@@ -13099,8 +13101,12 @@ function calcularSimulacao() {
   const resFuturo = document.getElementById('resultadoValorFuturo');
   if (resFuturo) {
     resFuturo.innerHTML = `
+      Crédito contratado hoje: <b>${formatBR(credito)}</b><br>
+      Crédito na contemplação (${indiceReajuste} até o ${mesesPagos}º mês): <b>${formatBR(creditoReajustado)}</b><br>
+      Selic: <b>${(selicAnual * 100).toFixed(2).replace('.', ',')}% ao ano</b> (${(taxaSelicMes * 100).toFixed(2).replace('.', ',')}% ao mês)<br>
       Tempo Rendendo na Selic: <b>${mesesRendendo} meses</b><br>
-      Montante Final Acumulado: <b>${formatBR(valorFinalFundo)}</b><br><br>
+      Montante Final Acumulado: <b>${formatBR(valorFinalFundo)}</b><br>
+      <small class="muted">Depois da contemplação o crédito não é mais corrigido pelo ${indiceReajuste}: ele só rende na Selic. O ${indiceReajuste} continua reajustando apenas a parcela, uma vez por ano.</small><br><br>
       <div style="font-size:16px; padding:10px; background:#f0fdf4; color:#166534; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid #bbf7d0;">
         RENDIMENTO GERADO (FUNDO): + ${formatBR(rendimentoPuro)}
       </div>
@@ -13118,7 +13124,7 @@ function calcularSimulacao() {
     lanceLivreBolso, novaParcelaLivre,
     novaParcelaTradicional,
     agio, totalPagoAteContemplar, creditoReajustado, valorVenda, lucroVenda,
-    mesesRendendo, valorFinalFundo, rendimentoPuro
+    mesesRendendo, valorFinalFundo, rendimentoPuro, selicAnual, taxaSelicMes, reajusteAnual
   };
 }
 
@@ -13487,7 +13493,7 @@ function montarHtmlPublicidade(cardKey, fundoSrc) {
         ${manual.observacao ? `<div style="clear:both;margin-top:20px;font-size:16px;font-weight:800;color:#fff;background:#7a1216;border:1px solid #ff5a5f;width:fit-content;padding:8px 16px;border-radius:8px;">${manual.observacao}</div>` : ''}
 
         <div style="font-size:11px;color:#e2e8f0;margin-top:26px;line-height:1.6;text-shadow:0 1px 4px rgba(0,0,0,0.6);">
-          *Reajuste anual pelo ${sim.indiceReajuste} — crédito + parcela. Prazo: ${sim.prazo} meses.<br>
+          *Reajuste anual pelo ${sim.indiceReajuste}: crédito até a contemplação; depois, só a parcela. Prazo: ${sim.prazo} meses.<br>
           Taxa de administração: ${((sim.taxaAdmin / sim.prazo) * 100).toFixed(2)}% a.m. / ${((sim.taxaAdmin / sim.prazo) * 100 * 12).toFixed(2)}% a.a.
         </div>
       </div>
@@ -13535,8 +13541,9 @@ function montarHtmlValorFuturo() {
     subtitulo: `Consórcio de ${nomeModalidadeExport(sim.modalidade)} — crédito de ${fmtBRExport(sim.credito)}`,
     cor: '#16a34a',
     linhas: [
-      { label: `Crédito contemplado (atualizado pelo ${sim.indiceReajuste})`, valor: fmtBRExport(sim.creditoReajustado) },
-      { label: 'Rendendo no fundo da administradora (Selic) por', valor: `${sim.mesesRendendo} meses` },
+      { label: `Crédito na contemplação (${sim.indiceReajuste} só até contemplar)`, valor: fmtBRExport(sim.creditoReajustado) },
+      { label: `Rendendo na Selic (${((sim.selicAnual || 0) * 100).toFixed(2).replace('.', ',')}% ao ano) por`, valor: `${sim.mesesRendendo} meses` },
+      { label: `Depois de contemplar, o ${sim.indiceReajuste} reajusta`, valor: 'só a parcela' },
       { label: 'Rendimento gerado', valor: `+ ${fmtBRExport(sim.rendimentoPuro)}` }
     ],
     destaqueLabel: 'Montante Final Estimado',
@@ -18543,7 +18550,7 @@ async function aprSimulacaoEmSlides(){
         '- Taxa de administração: ' + taxaTotal + '% no plano todo (' + taxaMes + '% ao mês)',
         '- Parcela cheia: ' + R(sim.parcelaCheia || parcelaPercentualExport(sim, 100)),
         pct < 100 ? '- Parcela reduzida (' + pct + '%): ' + R(parcela) : '',
-        '- Reajuste anual pelo ' + (sim.indiceReajuste || 'índice do grupo') + ' (crédito e parcela)',
+        '- Reajuste anual pelo ' + (sim.indiceReajuste || 'índice do grupo') + ': o crédito até a contemplação; depois, só a parcela',
         '- Sem juros: você paga taxa de administração, não juros de financiamento'
       ].filter(Boolean).join('\n') }
   ];
@@ -20505,6 +20512,8 @@ const ASSIST_BASE = [
   r: 'Nas **Notas à mão**, desenhe a linha ou a forma e **segure parado no fim do traço**: ela vira uma linha reta, círculo, retângulo ou triângulo certinho.\nPara ligar ou desligar: toque de novo na caneta e use a chave **Endireitar as linhas e formas**.', aba: 'apresentacoes' },
 { id: 'laser_crm', t: 'Como ligo o laser para apresentar o CRM?', k: 'laser no crm, laser na tela, apontador, apontar na tela, apresentar o crm, mostrar o crm para cliente, dois toques, tres toques, ligar laser, desligar laser, ponteiro vermelho, segurar copia o texto, copiar texto ao segurar',
   r: 'Em qualquer tela do CRM:\n- **Dois toques rápidos** numa área livre (fora de botões e campos) **ligam** o laser.\n- **Três toques rápidos** **desligam** (ou toque em **Desligar** no aviso do alto, ou aperte Esc no computador).\nCom o laser ligado, um ponto vermelho com rastro segue o seu dedo, a caneta ou o mouse, e **segurar o dedo não abre mais o "copiar"** do aparelho. Os botões continuam funcionando com um toque. Para **rolar a tela**, arraste com **dois dedos**.\nA cor é a mesma escolhida para o laser da apresentação de slides. Dentro da apresentação e das Notas à mão ele fica de fora, porque lá já existe o laser próprio (segurar o dedo) e as canetas.', aba: 'apresentacoes' },
+{ id: 'valor_futuro_selic', t: 'Como funciona o Valor Futuro e onde mudo a Selic?', k: 'valor futuro, selic, mudar selic, taxa selic, rendimento do credito, credito rendendo, fundo da administradora, incc depois da contemplacao, credito reajusta depois de contemplar, reajuste da parcela',
+  r: 'Em **Simulador** › **📈 Valor Futuro**:\n- O campo **Selic (% ao ano)** define quanto o crédito rende no fundo da administradora (o CRM converte para a taxa ao mês). O último valor digitado fica salvo no aparelho.\n- O **INCC/INPC corrige o crédito só até a contemplação**. Depois de contemplado, o crédito não é mais reajustado pelo índice: ele só rende na Selic até ser usado.\n- Depois da contemplação, o índice continua reajustando **apenas a parcela**, uma vez por ano.\nO reajuste anual (campo **Reajuste Anual da Carta**) fica nos Parâmetros do Plano.', aba: 'simulador' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -22017,7 +22026,7 @@ const ASSIST_BASE = [
         '- Taxa de administração: ' + taxaTotal + '% no plano (' + taxaMes + '% ao mês)',
         '- Parcela cheia: ' + R2(sim.parcelaCheia || parcelaPercentualExport(sim, 100)),
         pct < 100 ? '- Parcela reduzida (' + pct + '%): ' + R2(parcela) : '',
-        '- Reajuste anual pelo ' + (sim.indiceReajuste || 'índice do grupo'), '- Sem juros e sem entrada'].filter(Boolean).join('\n') });
+        '- Reajuste anual pelo ' + (sim.indiceReajuste || 'índice do grupo') + ' (no crédito só até a contemplação)', '- Sem juros e sem entrada'].filter(Boolean).join('\n') });
       slides.push(g('Para onde vai o seu dinheiro', graficoComposicao(sim), '- A maior parte da parcela volta para você em forma de crédito'));
     }
     if (escolhas.has('contemplacao')) {
@@ -22588,6 +22597,11 @@ const ASSIST_BASE = [
     abrir, folha, ferramenta,
   };
 })();
+</script>
+<script id="selicSalvaScript">
+// Selic do Valor Futuro: o último valor digitado fica salvo neste aparelho
+(function(){ function ok(){ const el = document.getElementById('simSelicAnual'); if (!el) return; try { const v = localStorage.getItem('simSelicAnual'); if (v) { el.value = v; if (typeof calcularSimulacao === 'function') calcularSimulacao(); } } catch(e){} }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ok); else ok(); })();
 </script>
 <script id="laserCrmScript">
 // ===== LASER PARA APRESENTAR O CRM =====
