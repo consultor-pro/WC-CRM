@@ -22723,6 +22723,53 @@ const ASSIST_BASE = [
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ligado) desligar(); });
 })();
 </script>
+<script id="simAbasFixasScript">
+// ===== SIMULADOR: LINHA DAS ABAS FIXA NO ALTO =====
+// A linha de botões (Simulador de Cotas, Valor Futuro, Venda da Carta, Aplicação, Financiamento...)
+// sai de dentro do cartão do título e fica presa no alto da tela enquanto você rola o simulador.
+// Ao trocar de aba com a página já rolada, a tela volta para o começo do conteúdo (logo abaixo da linha).
+(function () {
+  const css = document.createElement('style');
+  css.textContent = `
+  #simAbasFixas { position: sticky; top: 0; z-index: 60; margin: -6px -24px 14px; padding: 10px 24px 0;
+    background: var(--bg, #f1f5f9); box-shadow: 0 1px 0 var(--line, #e2e8f0); }
+  #simAbasFixas.colada { box-shadow: 0 6px 16px -8px rgba(15,23,42,.28); }
+  #simAbasFixas .tab-pills { margin: 0 !important; border-bottom: 0; padding-bottom: 10px; flex-wrap: nowrap; scrollbar-width: thin; }
+  #simAbasFixas .tab-pill { flex: none; white-space: nowrap; }
+  @media (min-width: 769px) { #simAbasFixas .tab-pills { flex-wrap: wrap; row-gap: 6px; } }
+  @media (max-width: 768px) { #simAbasFixas { margin: -4px -14px 12px; padding: 8px 14px 0; } }`;
+  document.head.appendChild(css);
+
+  function montar() {
+    const sec = document.getElementById('simulador'); if (!sec || document.getElementById('simAbasFixas')) return;
+    const linha = sec.querySelector('.card .tab-pills'); if (!linha) return;
+    const cartao = linha.closest('.card');
+    const caixa = document.createElement('div'); caixa.id = 'simAbasFixas';
+    cartao.parentNode.insertBefore(caixa, cartao.nextSibling); caixa.appendChild(linha);
+    // a cor de fundo acompanha a da página (tema claro/escuro)
+    const fundo = () => { const c = getComputedStyle(document.body).backgroundColor; if (c && c !== 'rgba(0, 0, 0, 0)') caixa.style.background = c; };
+    fundo(); new MutationObserver(fundo).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+    // sombra quando está colada no alto
+    const sombra = () => { const r = caixa.getBoundingClientRect(); caixa.classList.toggle('colada', r.top <= 0.5 && sec.classList.contains('active')); };
+    addEventListener('scroll', sombra, { passive: true, capture: true });
+    // trocar de aba com a tela rolada: volta para o começo do conteúdo
+    linha.addEventListener('click', e => {
+      if (!e.target.closest('.tab-pill')) return;
+      const r = caixa.getBoundingClientRect();
+      if (r.top <= 0.5) requestAnimationFrame(() => {
+        const alvo = caixa.nextElementSibling; if (!alvo) return;
+        const d = alvo.getBoundingClientRect().top - caixa.offsetHeight - 6;
+        const rol = (document.scrollingElement || document.documentElement);
+        let el = caixa.parentElement; while (el && el !== document.body && !(el.scrollHeight > el.clientHeight + 2 && /(auto|scroll)/.test(getComputedStyle(el).overflowY))) el = el.parentElement;
+        (el && el !== document.body ? el : rol).scrollBy(0, d);
+      });
+    });
+    // o botão ativo aparece inteiro na linha (celular)
+    linha.addEventListener('click', e => { const b = e.target.closest('.tab-pill'); if (b) b.scrollIntoView({ block: 'nearest', inline: 'nearest' }); });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
+})();
+</script>
 <script id="capaSlidesScript">
 // ===== CAPA DAS APRESENTAÇÕES DE SLIDES =====
 // Na lista de apresentações (aba Apresentações › Slides), a miniatura mostra o primeiro slide de verdade,
