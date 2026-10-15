@@ -4,7 +4,7 @@
 // IMPORTANTE: toda vez que você atualizar o index.html e subir uma nova
 // versão, mude o número abaixo (ex: 'elo-crm-v4'). Isso força o navegador
 // a baixar a versão nova em vez de continuar usando a cópia antiga salva.
-const CACHE_NAME = 'elo-crm-v59';
+const CACHE_NAME = 'elo-crm-v60';
 
 const ARQUIVOS_ESSENCIAIS = [
   './',
@@ -43,6 +43,8 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   // dados do Google Maps nunca são guardados no aparelho (regra do Google)
   if (new URL(event.request.url).hostname === 'places.googleapis.com') return;
+  // manuais (PDF e vídeo) da Central de Ajuda: abertos direto da internet, sem guardar cópia
+  if (new URL(event.request.url).pathname.includes('/ajuda/')) return;
 
   event.respondWith(
     fetch(event.request)

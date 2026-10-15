@@ -20514,6 +20514,10 @@ const ASSIST_BASE = [
   r: 'Em qualquer tela do CRM:\n- **Dois toques rápidos** numa área livre (fora de botões e campos) **ligam** o laser.\n- **Três toques rápidos** **desligam** (ou toque em **Desligar** no aviso do alto, ou aperte Esc no computador).\nCom o laser ligado, um ponto vermelho com rastro segue o seu dedo, a caneta ou o mouse, e **segurar o dedo não abre mais o "copiar"** do aparelho. Os botões continuam funcionando com um toque. Para **rolar a tela**, arraste com **dois dedos**.\nA cor é a mesma escolhida para o laser da apresentação de slides. Dentro da apresentação e das Notas à mão ele fica de fora, porque lá já existe o laser próprio (segurar o dedo) e as canetas.', aba: 'apresentacoes' },
 { id: 'valor_futuro_selic', t: 'Como funciona o Valor Futuro e onde mudo a Selic?', k: 'valor futuro, selic, mudar selic, taxa selic, rendimento do credito, credito rendendo, fundo da administradora, incc depois da contemplacao, credito reajusta depois de contemplar, reajuste da parcela',
   r: 'Em **Simulador** › **📈 Valor Futuro**:\n- O campo **Selic (% ao ano)** define quanto o crédito rende no fundo da administradora (o CRM converte para a taxa ao mês). O último valor digitado fica salvo no aparelho.\n- O **INCC/INPC corrige o crédito só até a contemplação**. Depois de contemplado, o crédito não é mais reajustado pelo índice: ele só rende na Selic até ser usado.\n- Depois da contemplação, o índice continua reajustando **apenas a parcela**, uma vez por ano.\nO reajuste anual (campo **Reajuste Anual da Carta**) fica nos Parâmetros do Plano.', aba: 'simulador' },
+{ id: 'funil_vendedor', t: 'Como uso o Funil do Vendedor?', k: 'funil do vendedor, funil de vendas, meta de vendas, quantas reunioes preciso, quantos contatos por dia, 5 vias de prospeccao, vias de prospeccao, redes sociais, networking, pap, porta a porta, indicacoes, ligacao fria, script de prospeccao, no show, agendamento, rotina do vendedor, vender mais',
+  r: 'Em **Material de Apoio** › **🧭 Funil do Vendedor**:\n1. **Meta em números**: preencha a meta do mês, o ticket médio, os dias úteis e as suas taxas (agendamento, comparecimento, fechamento). O funil mostra quantos contatos, agendamentos, reuniões e vendas você precisa por dia.\n2. **As 5 vias de prospecção**: indicações, redes sociais, networking, PAP e ligação fria. Divida os contatos do dia entre elas; cada via explica onde prospectar, como fazer, o que evitar e traz scripts prontos.\n3. **Agendamento sem no-show**: o passo a passo do "sim" até a reunião, com as mensagens de confirmação e lembrete.\n4. **Os 5 passos da reunião** e 5. **o pós-venda até a contemplação**.\nCada script tem **📋 Copiar** e **✏️ Personalizar** (fica salvo para você). Os números também ficam salvos.', aba: 'materialApoio' },
+{ id: 'central_ajuda', t: 'Onde ficam os manuais e vídeos de ajuda?', k: 'manual, manuais, video de ajuda, tutorial, central de ajuda, como usar o crm, pdf do manual, aprender a usar',
+  r: 'Na aba **Informações & Arquivos**, no alto, fica a **📚 Central de Ajuda**:\n- **Manuais** em PDF (para ler ou baixar) e em vídeo (botão **▶ Assistir**): o manual do CRM, o do Google Agenda/Meet e o da chave da Prospecção.\n- **Guias rápidos**: toque num assunto e a resposta abre aqui no Tira-dúvidas.\nOs manuais precisam de internet para abrir. O botão **Esconder** recolhe a Central se você quiser só o mural.', aba: 'informacoes' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -22602,6 +22606,414 @@ const ASSIST_BASE = [
 // Selic do Valor Futuro: o último valor digitado fica salvo neste aparelho
 (function(){ function ok(){ const el = document.getElementById('simSelicAnual'); if (!el) return; try { const v = localStorage.getItem('simSelicAnual'); if (v) { el.value = v; if (typeof calcularSimulacao === 'function') calcularSimulacao(); } } catch(e){} }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ok); else ok(); })();
+</script>
+<script id="funilVendedorScript">
+// ===== MATERIAL DE APOIO › FUNIL DO VENDEDOR =====
+// Nova sub-aba que mostra o caminho completo da venda: a meta do mês vira números do dia
+// (contatos → agendamentos → reuniões → vendas), o plano das 5 vias de prospecção com scripts,
+// o processo de agendamento contra o "no-show", os 5 passos da reunião e o pós-venda até a contemplação.
+// Os números e os scripts personalizados ficam salvos para cada usuário, neste aparelho.
+(function () {
+  const PADRAO = { meta: 5000000, ticket: 125000, dias: 20, fech: 20, comp: 80, agend: 12.5,
+    vias: { indicacoes: 30, redes: 20, networking: 15, pap: 15, fria: 20 } };
+
+  // ---------------- conteúdo ----------------
+  const VIAS = [
+    { id: 'indicacoes', ic: '🤝', nome: 'Indicações', cor: '#16a34a',
+      oque: 'Contatos que chegam por alguém que já confia em você: clientes, amigos, parceiros. É a via que mais converte, porque a pessoa já chega "aquecida" pela confiança de quem indicou.',
+      onde: ['Toda reunião, com venda ou sem venda: peça no mínimo 20 nomes', 'Pós-venda (boas-vindas e acompanhamento mensal)', 'Contemplação: o momento em que o cliente mais quer contar para os outros', 'Parceiros fixos: contadores, corretores, arquitetos, despachantes'],
+      como: ['Peça com o celular do cliente na mão: "vamos olhar seus contatos juntos"', 'Anote nome, telefone, quem indicou e o motivo (casa, carro, investimento)', 'Cadastre tudo de uma vez no CRM: Leads › 📲 Vários contatos', 'Fale com o indicado em até 24 horas, citando o nome de quem indicou'],
+      erros: ['Pedir "se lembrar de alguém, me avisa" (quase nunca volta)', 'Demorar dias para falar com o indicado', 'Não contar para quem indicou que você já conversou com a pessoa'],
+      scripts: [
+        ['ind_pedir', 'Pedindo indicações (no fim da reunião)', '[cliente], meu trabalho cresce por indicação. Quem são as pessoas que você conhece que têm o sonho de comprar um imóvel, trocar de carro ou fazer o dinheiro render? Pega seu WhatsApp, vamos olhar seus contatos juntos. Você me passa uns 20 nomes e eu cito você quando falar com eles, combinado?'],
+        ['ind_contato', 'Primeira mensagem para o indicado', 'Oi, [nome]! Tudo bem? Aqui é [seu nome], consultor da Ademicon. O(a) [quem indicou] me passou seu contato porque acha que você vai gostar de conhecer uma forma de comprar [imóvel/veículo] sem pagar juros de financiamento. Posso te explicar em 20 minutos? Fica melhor [dia] às [hora] ou [dia] às [hora]?'],
+        ['ind_retorno', 'Avisando quem indicou', 'Oi, [cliente]! Passando para agradecer: já conversei com o(a) [indicado] e marcamos uma reunião. Obrigado pela confiança!']] },
+    { id: 'redes', ic: '📱', nome: 'Redes sociais', cor: '#db2777',
+      oque: 'Usar Instagram, Facebook, LinkedIn e o status do WhatsApp para gerar conversas: você publica conteúdo útil e aborda, uma a uma, as pessoas que interagem.',
+      onde: ['Quem reagiu, respondeu ou comentou seus stories e posts', 'Seguidores novos da sua cidade', 'LinkedIn: empresários, médicos, advogados, contadores e gestores da região', 'Grupos e comunidades locais (participando e ajudando, sem spam)'],
+      como: ['Publique 1 conteúdo de valor por dia: simulação, caso real, dúvida comum, bastidores', 'Responda todo mundo que interagir no mesmo dia', 'Aborde cada pessoa individualmente, com mensagem personalizada', 'Objetivo da conversa: marcar a reunião (não explicar tudo pelo chat)'],
+      erros: ['Mandar a mesma mensagem para muita gente de uma vez (bloqueio e má impressão)', 'Copiar contatos de grupos para abordar sem permissão', 'Só postar propaganda, sem conteúdo útil'],
+      scripts: [
+        ['red_story', 'Quem reagiu a um story', 'Oi, [nome]! Vi que você reagiu ao story sobre [tema] 😊 Você está pensando em [comprar um imóvel/trocar de carro/investir] ou foi só curiosidade? Se quiser, te mostro uma simulação com os seus números.'],
+        ['red_linkedin', 'LinkedIn (profissional ou empresário)', 'Olá, [nome], tudo bem? Sou [seu nome], consultor da Ademicon em [cidade]. Tenho ajudado [profissão/segmento] a planejar a compra de [imóvel/equipamentos/sede própria] sem juros de financiamento. Faria sentido uma conversa de 20 minutos para eu te mostrar como funciona?'],
+        ['red_seguidor', 'Seguidor novo', 'Oi, [nome]! Obrigado por seguir 🙌 Por aqui eu compartilho dicas para comprar imóvel, carro e investir sem juros. Tem algum projeto em mente para este ano?']] },
+    { id: 'networking', ic: '🧑‍💼', nome: 'Networking', cor: '#2563eb',
+      oque: 'Relacionamento com pessoas e grupos que encontram o seu cliente antes de você. Bem feito, vira uma fonte fixa de indicações todos os meses.',
+      onde: ['Associação comercial (ACI), CDL, BNI e grupos de empresários', 'Eventos, feiras, cursos e palestras da cidade', 'Igreja, clubes, academia, escola dos filhos', 'Parceiros: contadores, corretores de imóveis, arquitetos, engenheiros, concessionárias, despachantes'],
+      como: ['Tenha uma apresentação de 30 segundos (quem você é, quem você ajuda e como)', 'Troque contato e marque um café com quem tem o mesmo cliente que você', 'Proponha parceria com troca de indicações, e indique também', 'Registre cada contato no CRM no mesmo dia'],
+      erros: ['Ir ao evento só para entregar cartão', 'Prometer parceria e não dar retorno', 'Não acompanhar o parceiro todo mês'],
+      scripts: [
+        ['net_30s', 'Apresentação de 30 segundos', 'Sou [seu nome], consultor da Ademicon. Eu ajudo famílias e empresas a comprar imóveis, veículos e equipamentos sem pagar juros, com planejamento. Se você conhece alguém pensando em comprar ou investir, eu adoraria conversar.'],
+        ['net_parceiro', 'Convite de parceria (contador, corretor, arquiteto)', '[nome], muitos dos seus clientes querem [comprar sede/imóvel/equipamento] e acabam no financiamento, pagando juros altos. Eu posso montar o planejamento pelo consórcio, sem custo para você e com atendimento caprichado. Que tal um café esta semana para vermos como um ajuda o outro? [dia] ou [dia]?'],
+        ['net_seguimento', 'Depois do evento', 'Oi, [nome]! Foi ótimo te conhecer no [evento]. Como combinamos, gostaria de marcar um café para falarmos de [assunto]. Pode ser [dia] às [hora]?']] },
+    { id: 'pap', ic: '🚪', nome: 'PAP (porta a porta)', cor: '#ea580c',
+      oque: 'Visitar pessoalmente empresas e comércios da região. O contato cara a cara gera confiança rápida e enche a agenda da semana.',
+      onde: ['Comércios do bairro, escritórios e salas comerciais', 'Clínicas, consultórios, oficinas, lojas, padarias, academias', 'Produtores rurais e empresas da sua região', 'Use a aba Prospecção do CRM para montar a rota por bairro e segmento'],
+      como: ['Planeje a rota antes: 20 a 30 visitas por turno, no mesmo bairro', 'Leve material (cartão, folder ou a imagem das possibilidades da Ademicon)', 'Objetivo: falar com o decisor e marcar a reunião, não vender na porta', 'Anote nome, WhatsApp e melhor horário, e registre no CRM ao fim do turno'],
+      erros: ['Sair sem rota e perder tempo no trânsito', 'Tentar explicar tudo na porta', 'Não voltar para quem pediu "passa outro dia"'],
+      scripts: [
+        ['pap_porta', 'Na porta da empresa', 'Bom dia! Sou [seu nome], da Ademicon. Estou visitando as empresas do bairro. Quem cuida aqui das compras grandes, como imóvel, veículos ou equipamentos? Não vim vender nada agora: quero deixar um material e marcar 20 minutos para mostrar como comprar sem juros. Fica melhor terça ou quinta?'],
+        ['pap_recepcao', 'Quando atende a recepção', 'Entendo que ele(a) está ocupado(a). Você me ajuda? Qual o melhor horário para eu falar 5 minutos com ele(a)? Posso deixar meu cartão e voltar [dia] às [hora]?'],
+        ['pap_depois', 'Mensagem no mesmo dia', 'Oi, [nome]! Aqui é [seu nome], da Ademicon. Passei hoje aí na [empresa]. Como combinamos, fica confirmado [dia] às [hora] para eu te mostrar a simulação. Qualquer coisa, é só me chamar!']] },
+    { id: 'fria', ic: '📞', nome: 'Ligação fria', cor: '#7c3aed',
+      oque: 'Ligar para quem ainda não te conhece, a partir de uma lista bem escolhida. O objetivo da ligação é marcar a reunião, nunca vender por telefone.',
+      onde: ['Lista da aba Prospecção (empresas por segmento e cidade)', 'Leads antigos que não responderam', 'Clientes de anos anteriores (nova cota, reinvestimento)', 'Listas de eventos e parceiros, com permissão'],
+      como: ['Reserve blocos de 1 hora só para ligar, com a lista pronta', 'Fale em pé, com sorriso e frases curtas', 'Ofereça duas opções de horário', 'Registre o resultado de cada ligação no CRM (atendeu, retorno, agendou)'],
+      erros: ['Ligar sem lista e sem objetivo', 'Querer explicar o consórcio inteiro pelo telefone', 'Desistir no primeiro "não tenho interesse"'],
+      scripts: [
+        ['fri_abertura', 'Abertura da ligação', 'Olá, [nome]? Aqui é [seu nome], da Ademicon. Rapidinho, eu prometo: estou ajudando [segmento] aqui de [cidade] a comprar [imóvel/equipamentos] sem pagar juros. Você tem algum projeto de compra para os próximos 12 meses?'],
+        ['fri_agendar', 'Levando para a reunião', 'Ótimo! Para eu te mostrar com os seus números, preciso de 20 minutos. Fica melhor amanhã às [hora] ou [dia] às [hora]? Pode ser por vídeo ou eu passo aí.'],
+        ['fri_whats', 'Quando pedem "manda pelo WhatsApp"', 'Mando sim! Só que cada simulação muda conforme o valor e o prazo que você precisa, então em 20 minutos eu te mostro a sua, não uma tabela genérica. Fica melhor [dia] às [hora] ou [dia] às [hora]?'],
+        ['fri_sem', 'Quando dizem "não tenho interesse"', 'Entendo perfeitamente. Posso só te perguntar uma coisa? Hoje, se você fosse comprar [imóvel/carro], faria à vista ou financiado? Porque é exatamente aí que eu consigo te ajudar a economizar.']] }
+  ];
+
+  const AGENDA = [
+    ['Marque com duas opções', 'Nunca pergunte "quando você pode?". Ofereça dois horários: "fica melhor terça às 10h ou quinta às 15h?".', null],
+    ['Reunião em até 48 horas', 'Quanto mais longe a data, maior a chance de faltar. Marque para hoje, amanhã ou depois de amanhã.', null],
+    ['Registre na hora no CRM', 'Cadastre a reunião na Agenda do CRM no mesmo momento. Com o Google Agenda conectado, ela vai para lá e, se for online, já cria o link do Meet.', null],
+    ['Envie a confirmação na hora', 'Mande o resumo: dia, hora, local ou link, duração e o que vão ver. Peça que o decisor participe (cônjuge ou sócio).', 'ag_confirma'],
+    ['Entregue valor antes da reunião', 'Envie um conteúdo curto: um vídeo, um caso real ou a imagem das possibilidades. Isso aumenta o compromisso com o encontro.', 'ag_valor'],
+    ['Lembrete na véspera (D-1)', 'Peça uma confirmação simples. Se não responder até o fim do dia, ligue.', 'ag_vespera'],
+    ['Lembrete no dia (2 horas antes)', 'Reenvie o link do Meet ou a localização do encontro.', 'ag_dia'],
+    ['10 minutos antes', 'Avise que já está pronto. Isso evita o "esqueci".', 'ag_10min'],
+    ['Se faltar, reagende na hora', 'Sem cobrança nem bronca. Ofereça duas novas opções e atualize a Agenda do CRM.', 'ag_falta']
+  ];
+  const SCRIPTS_AG = {
+    ag_confirma: ['Confirmação do agendamento', 'Perfeito, [nome]! Fica confirmado: [dia], às [hora], [local/por vídeo]. Vai levar uns 30 minutos e eu vou te mostrar a simulação com os seus números para [objetivo]. Se o(a) [cônjuge/sócio] puder participar, melhor ainda, porque a decisão fica mais fácil. Até lá! [seu nome] - Ademicon'],
+    ag_valor: ['Conteúdo de valor', 'Oi, [nome]! Enquanto nossa reunião não chega, separei este material para você já ir conhecendo as possibilidades. Na [dia] eu te mostro como isso fica no seu caso 😉'],
+    ag_vespera: ['Lembrete na véspera', 'Oi, [nome]! Passando para confirmar nossa reunião de amanhã, às [hora]. Posso contar com você? Responde com um "sim" para eu deixar tudo preparado 🙂'],
+    ag_dia: ['Lembrete no dia', 'Bom dia, [nome]! Hoje às [hora] é a nossa conversa. Aqui está o [link do Meet/localização]: [link]. Te espero!'],
+    ag_10min: ['10 minutos antes', '[nome], já estou [na sala/a caminho]. Te aguardo daqui a pouco!'],
+    ag_falta: ['Quando o cliente falta', 'Oi, [nome]! Imagino que surgiu algum imprevisto, acontece. Vamos remarcar? Tenho [dia] às [hora] ou [dia] às [hora]. Qual fica melhor?']
+  };
+
+  const POS = [
+    ['Dia da venda (D0)', 'Boas-vindas: explique o boleto, o portal e o aplicativo, salve o contato e peça indicações enquanto a empolgação está alta.', 'pos_d0'],
+    ['3 dias depois (D3)', 'Check-in: chegou o primeiro boleto? Conseguiu acessar o portal? Ficou alguma dúvida?', 'pos_d3'],
+    ['Primeira assembleia', 'Explique como funciona a assembleia, o sorteio e os lances, e envie o resultado.', null],
+    ['Todo mês, depois da assembleia', 'Envie o resultado (lances vencedores do grupo) e a estratégia de lance para o mês seguinte.', 'pos_mensal'],
+    ['A cada 3 meses', 'Revisão do planejamento: valor do lance, lance embutido, uso do FGTS, momento ideal.', null],
+    ['Datas especiais', 'Aniversário (veja a aba Aniversariantes) e datas comemorativas: uma mensagem pessoal, sem venda.', null],
+    ['Contemplação', 'Comemore junto, oriente a documentação e o uso do crédito (imóvel, veículo, venda da carta) e acompanhe até a liberação.', 'pos_contemplou'],
+    ['Depois da contemplação', 'Peça depoimento e indicações, e apresente a próxima conquista: nova cota, investimento ou alavancagem.', 'pos_depois']
+  ];
+  const SCRIPTS_POS = {
+    pos_d0: ['Boas-vindas', '[nome], seja muito bem-vindo(a) à Ademicon! 🎉 Agora você faz parte de um grupo e eu vou te acompanhar em cada passo até a contemplação. Salva meu contato. Qualquer dúvida sobre boleto, portal ou assembleia, é só me chamar.'],
+    pos_d3: ['Check-in do 3º dia', 'Oi, [nome]! Passando para saber se chegou tudo certinho: o primeiro boleto e o acesso ao portal. Ficou alguma dúvida?'],
+    pos_mensal: ['Resultado da assembleia', 'Oi, [nome]! Saiu o resultado da assembleia do seu grupo: o lance vencedor foi de [X]%. Para o próximo mês, minha sugestão de estratégia é [estratégia]. Quer que eu te explique?'],
+    pos_contemplou: ['Contemplação', '[nome], PARABÉNS! 🎉 Sua cota foi contemplada! Agora vou te ajudar com os próximos passos: documentos e uso do crédito. Quando podemos conversar?'],
+    pos_depois: ['Depoimento e indicações', '[nome], foi uma alegria acompanhar você até aqui! Você toparia gravar um depoimento rápido contando sua experiência? E quem mais da sua família ou dos seus amigos merece realizar um sonho assim?']
+  };
+
+  const ROTINA = [
+    ['08:00', 'Planejar o dia e enviar as confirmações das reuniões de hoje'],
+    ['08:30', 'Prospecção ativa: indicações e ligações (metade dos contatos do dia)'],
+    ['10:30', 'Reuniões da manhã'],
+    ['13:30', 'Prospecção: redes sociais, networking ou PAP (a outra metade)'],
+    ['14:30', 'Reuniões da tarde'],
+    ['18:00', 'Registrar tudo no CRM, enviar lembretes D-1 e fazer os follow-ups']
+  ];
+
+  // ---------------- dados salvos (por usuário, neste aparelho) ----------------
+  const chave = () => 'crm_funil_' + (typeof EQUIPE_ID !== 'undefined' ? EQUIPE_ID : '') + '_' + ((typeof currentUser !== 'undefined' && currentUser && currentUser.nome) || 'geral');
+  function ler() {
+    let d = {}; try { d = JSON.parse(localStorage.getItem(chave())) || {}; } catch (e) {}
+    const c = Object.assign({}, PADRAO, d); c.vias = Object.assign({}, PADRAO.vias, d.vias || {}); c.scripts = d.scripts || {};
+    if (!d.meta) { try { const m = parseFloat(localStorage.getItem(getMetaMensalKey())); if (m > 0) c.meta = m; } catch (e) {} }
+    return c;
+  }
+  function gravar(c) { try { localStorage.setItem(chave(), JSON.stringify(c)); } catch (e) {} }
+
+  // ---------------- utilidades ----------------
+  const R = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  const N = (v, d) => Number(v || 0).toLocaleString('pt-BR', { maximumFractionDigits: d == null ? 1 : d });
+  const E = t => (typeof esc === 'function' ? esc(t) : String(t || '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch])));
+  const meuNome = () => { try { return ((currentUser && currentUser.nome) || '').trim().split(/\s+/)[0] || ''; } catch (e) { return ''; } };
+  const textoScript = (id, orig) => { const c = ler(); return c.scripts[id] != null ? c.scripts[id] : orig; };
+  const comNome = t => { const n = meuNome(); return n ? t.replace(/\[seu nome\]/g, n) : t; };
+  const ROTULO = {}; VIAS.forEach(v => v.scripts.forEach(s => ROTULO[s[0]] = [s[1], s[2]]));
+  Object.assign(ROTULO, SCRIPTS_AG, SCRIPTS_POS);
+
+  function scriptHtml(id) {
+    const [tit, orig] = ROTULO[id]; const c = ler(), mudou = c.scripts[id] != null;
+    return `<div class="fv-script"><div class="fv-script-cab"><b>💬 ${E(tit)}</b>${mudou ? '<span class="fv-tag">personalizado</span>' : ''}</div>
+      <div class="fv-script-txt">${E(comNome(textoScript(id, orig)))}</div>
+      <div class="fv-script-bt"><button class="btn" onclick="funilCopiar('${id}')">📋 Copiar</button><button class="btn" onclick="funilEditarScript('${id}')">✏️ Personalizar</button></div></div>`;
+  }
+
+  // ---------------- cálculo do funil ----------------
+  function calcular(c) {
+    const cotasMes = c.ticket > 0 ? c.meta / c.ticket : 0;
+    const vendasDia = c.dias > 0 ? cotasMes / c.dias : 0;
+    const reunioesDia = c.fech > 0 ? vendasDia / (c.fech / 100) : 0;
+    const agendDia = c.comp > 0 ? reunioesDia / (c.comp / 100) : 0;
+    const contatosDia = c.agend > 0 ? agendDia / (c.agend / 100) : 0;
+    return { cotasMes, vendasDia, reunioesDia, agendDia, contatosDia };
+  }
+
+  function render() {
+    const box = document.getElementById('matFunil'); if (!box) return;
+    const c = ler(), f = calcular(c);
+    const campo = (id, rot, val, suf, dica) => `<label class="fv-campo"><span>${rot}</span><div><input id="fv_${id}" inputmode="decimal" value="${E(val)}" onchange="funilSalvarCampos()">${suf ? `<i>${suf}</i>` : ''}</div>${dica ? `<small>${dica}</small>` : ''}</label>`;
+    const etapas = [
+      ['Contatos', f.contatosDia, '#2563eb', 'pessoas abordadas'],
+      ['Agendamentos', f.agendDia, '#7c3aed', N(c.agend, 1) + '% dos contatos'],
+      ['Reuniões realizadas', f.reunioesDia, '#ea580c', N(c.comp, 1) + '% comparecem'],
+      ['Vendas', f.vendasDia, '#16a34a', N(c.fech, 1) + '% fecham']];
+    const max = Math.max(1, f.contatosDia);
+    const melhor = c.fech + 5, reunMelhor = f.vendasDia / (melhor / 100);
+    const totalVias = Object.values(c.vias).reduce((a, b) => a + (Number(b) || 0), 0);
+    const porVia = id => Math.round(f.contatosDia * (Number(c.vias[id]) || 0) / 100), somaVias = VIAS.reduce((a, v) => a + porVia(v.id), 0);
+
+    box.innerHTML = `
+    <div class="card fv-topo"><h2 style="margin:0">🧭 Funil do Vendedor</h2>
+      <small class="muted">O caminho completo da venda: da meta do mês aos números do dia, da prospecção até a contemplação do cliente.</small>
+      <div class="fv-indice">${[['fv1', '1. Meta em números'], ['fv2', '2. As 5 vias de prospecção'], ['fv3', '3. Agendamento sem no-show'], ['fv4', '4. A reunião (5 passos)'], ['fv5', '5. Pós-venda até a contemplação'], ['fv6', '6. Rotina do dia']].map(([a, t]) => `<button class="tab-pill" onclick="document.getElementById('${a}').scrollIntoView({behavior:'smooth',block:'start'})">${t}</button>`).join('')}</div></div>
+
+    <div class="card" id="fv1"><h3 class="fv-h">1. Sua meta vira números do dia</h3>
+      <p class="muted fv-p">Preencha a sua meta e as suas taxas. O funil mostra quantas pessoas você precisa abordar por dia para chegar lá.</p>
+      <div class="fv-campos">
+        ${campo('meta', 'Meta de vendas no mês', N(c.meta, 0), 'R$')}
+        ${campo('ticket', 'Ticket médio por cota', N(c.ticket, 0), 'R$')}
+        ${campo('dias', 'Dias úteis no mês', N(c.dias, 0), 'dias')}
+        ${campo('agend', 'Contatos que viram agendamento', N(c.agend, 1), '%', 'de cada 100 abordados, quantos marcam')}
+        ${campo('comp', 'Agendamentos que acontecem', N(c.comp, 1), '%', 'comparecimento (o resto é no-show)')}
+        ${campo('fech', 'Reuniões que viram venda', N(c.fech, 1), '%', 'taxa de fechamento')}
+      </div>
+      <div class="fv-resumo"><div><b>${N(f.cotasMes, 1)}</b><span>cotas no mês</span></div><div><b>${N(f.vendasDia, 1)}</b><span>vendas por dia</span></div><div><b>${N(f.reunioesDia, 1)}</b><span>reuniões por dia</span></div><div><b>${N(Math.ceil(f.contatosDia), 0)}</b><span>contatos por dia</span></div></div>
+      <div class="fv-funil">${etapas.map(([t, v, cor, sub]) => `<div class="fv-etapa"><div class="fv-barra" style="width:${Math.max(22, v / max * 100)}%;background:${cor}"><b>${N(v, 1)}</b><span>por dia</span></div><div class="fv-rot"><b>${t}</b><small>${sub} · ${N(v * c.dias, 0)} no mês · ${N(v * 5, 0)} na semana</small></div></div>`).join('')}</div>
+      <div class="fv-dica">💡 Se a sua taxa de fechamento subir de ${N(c.fech, 0)}% para ${N(melhor, 0)}%, você precisa de <b>${N(reunMelhor, 1)} reuniões por dia</b> em vez de ${N(f.reunioesDia, 1)}. Treinar os 5 passos rende tanto quanto prospectar mais.</div>
+    </div>
+
+    <div class="card" id="fv2"><h3 class="fv-h">2. Plano de prospecção: as 5 vias</h3>
+      <p class="muted fv-p">Divida os ${N(Math.ceil(f.contatosDia), 0)} contatos do dia entre as 5 vias. Ajuste a porcentagem de cada uma conforme o que funciona melhor para você.</p>
+      <div class="fv-tabela"><table><thead><tr><th>Via</th><th>% do dia</th><th>Por dia</th><th class="fv-sem">Por semana</th></tr></thead><tbody>
+      ${VIAS.map(v => { const pct = Number(c.vias[v.id]) || 0, n = porVia(v.id); return `<tr><td>${v.ic} ${v.nome}</td><td><input class="fv-pct" id="fvv_${v.id}" inputmode="decimal" value="${N(pct, 1)}" onchange="funilSalvarCampos()"> %</td><td><b>${N(n, 0)}</b></td><td class="fv-sem">${N(n * 5, 0)}</td></tr>`; }).join('')}
+      <tr class="fv-total"><td>Total</td><td${Math.abs(totalVias - 100) > 0.5 ? ' style="color:#dc2626"' : ''}>${N(totalVias, 1)} %</td><td>${N(somaVias, 0)}</td><td class="fv-sem">${N(somaVias * 5, 0)}</td></tr></tbody></table>
+      ${Math.abs(totalVias - 100) > 0.5 ? '<small style="color:#dc2626">A soma das porcentagens precisa dar 100%.</small>' : ''}</div>
+      ${VIAS.map(v => { const n = porVia(v.id); return `
+      <details class="fv-via" style="--cor:${v.cor}"><summary><span class="fv-ic">${v.ic}</span><span><b>${v.nome}</b><small>${N(n, 0)} contatos por dia</small></span><i>▾</i></summary>
+        <p>${v.oque}</p>
+        <div class="fv-cols"><div><h4>Onde prospectar</h4><ul>${v.onde.map(x => `<li>${x}</li>`).join('')}</ul></div>
+          <div><h4>Como fazer</h4><ol>${v.como.map(x => `<li>${x}</li>`).join('')}</ol></div></div>
+        <div class="fv-erros"><h4>Evite</h4><ul>${v.erros.map(x => `<li>${x}</li>`).join('')}</ul></div>
+        <h4>Scripts</h4>${v.scripts.map(s => scriptHtml(s[0])).join('')}
+      </details>`; }).join('')}
+      <div class="fv-dica">Os campos entre colchetes, como [nome] e [dia], você troca na hora de enviar. Mande sempre uma mensagem por pessoa, personalizada. Mensagens em massa irritam e podem bloquear o seu WhatsApp.</div>
+    </div>
+
+    <div class="card" id="fv3"><h3 class="fv-h">3. Agendamento sem no-show</h3>
+      <p class="muted fv-p">Do "sim, vamos conversar" até a reunião acontecer. Cada passo diminui a chance de o cliente faltar.</p>
+      <div class="fv-passos">${AGENDA.map(([t, d, s], i) => `<div class="fv-passo"><div class="fv-num">${i + 1}</div><div><b>${t}</b><p>${d}</p>${s ? scriptHtml(s) : ''}</div></div>`).join('')}</div>
+    </div>
+
+    <div class="card" id="fv4"><h3 class="fv-h">4. A reunião: os 5 passos da venda</h3>
+      <p class="muted fv-p">Com o cliente na reunião, siga os seus 5 passos (os mesmos da sub-aba "5 Passos da Venda").</p>
+      <div class="fv-passos">${((typeof db !== 'undefined' && db && db.meetingSteps) || []).map(m => `<div class="fv-passo"><div class="fv-num">${E(m.num)}</div><div><b>${E(m.title)}</b><div class="fv-script-txt" style="margin-top:6px">${E(m.script)}</div></div></div>`).join('')}</div>
+      <div class="fv-dica">Ao final de toda reunião, com ou sem venda, peça as indicações (meta: 20 nomes). Use o script "Pedindo indicações" da via Indicações.</div>
+      <button class="btn" style="margin-top:10px" onclick="funilIrSub('mat5Passos')">✏️ Editar os 5 passos</button>
+    </div>
+
+    <div class="card" id="fv5"><h3 class="fv-h">5. Pós-venda até a contemplação</h3>
+      <p class="muted fv-p">Vender é o começo. Cliente bem acompanhado fica até a contemplação, compra de novo e indica.</p>
+      <div class="fv-passos">${POS.map(([t, d, s], i) => `<div class="fv-passo"><div class="fv-num">${i + 1}</div><div><b>${t}</b><p>${d}</p>${s ? scriptHtml(s) : ''}</div></div>`).join('')}</div>
+      <button class="btn" style="margin-top:10px" onclick="funilIrSub('matPosVenda')">💙 Ver a régua de Pós-Venda</button>
+    </div>
+
+    <div class="card" id="fv6"><h3 class="fv-h">6. Rotina do dia (sugestão)</h3>
+      <div class="fv-rotina">${ROTINA.map(([h, t]) => `<div><b>${h}</b><span>${t}</span></div>`).join('')}</div>
+      <div class="fv-dica">Ritmo do dia: ${N(Math.ceil(f.contatosDia), 0)} contatos, ${N(Math.ceil(f.agendDia), 0)} agendamentos, ${N(f.reunioesDia, 1)} reuniões e ${N(f.vendasDia, 1)} vendas. Acompanhe os números todos os dias: o funil mostra onde você precisa melhorar.</div>
+    </div>`;
+  }
+
+  // ---------------- ações ----------------
+  const num = v => { const t = String(v || '').replace(/[^\d,.-]/g, ''); return parseFloat(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t.replace(/\.(?=\d{3}(\D|$))/g, '')) || 0; };
+  window.funilSalvarCampos = function () {
+    const c = ler();
+    ['meta', 'ticket', 'dias', 'agend', 'comp', 'fech'].forEach(k => { const el = document.getElementById('fv_' + k); if (el) c[k] = Math.max(0, num(el.value)); });
+    ['agend', 'comp', 'fech'].forEach(k => { c[k] = Math.min(100, c[k]); });
+    VIAS.forEach(v => { const el = document.getElementById('fvv_' + v.id); if (el) c.vias[v.id] = Math.max(0, Math.min(100, num(el.value))); });
+    gravar(c); const y = scrollY; render(); scrollTo(0, y);
+  };
+  window.funilCopiar = async function (id) {
+    const t = comNome(textoScript(id, ROTULO[id][1]));
+    try { await navigator.clipboard.writeText(t); } catch (e) { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); } catch (x) {} a.remove(); }
+    if (typeof showToast === 'function') showToast('Script copiado!', 'success');
+  };
+  window.funilEditarScript = function (id) {
+    const [tit, orig] = ROTULO[id];
+    openModal(`<h2 style="margin-top:0">✏️ ${E(tit)}</h2><p class="muted" style="font-size:13px">Escreva do seu jeito. [seu nome] é trocado pelo seu nome automaticamente.</p>
+      <textarea id="fvScriptTxt" rows="8" style="width:100%">${E(textoScript(id, orig))}</textarea>
+      <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-top:12px"><button class="btn" onclick="funilRestaurarScript('${id}')">↺ Voltar ao original</button>
+      <div style="display:flex;gap:8px"><button class="btn" onclick="closeModal()">Cancelar</button><button class="btn primary" onclick="funilGravarScript('${id}')">Salvar</button></div></div>`);
+  };
+  window.funilGravarScript = function (id) { const c = ler(); c.scripts[id] = document.getElementById('fvScriptTxt').value; gravar(c); closeModal(); const y = scrollY; render(); scrollTo(0, y); if (typeof showToast === 'function') showToast('Script salvo!', 'success'); };
+  window.funilRestaurarScript = function (id) { const c = ler(); delete c.scripts[id]; gravar(c); closeModal(); const y = scrollY; render(); scrollTo(0, y); };
+  window.funilIrSub = function (sub) { const b = [...document.querySelectorAll('#materialApoio .tab-pills .tab-pill')].find(x => (x.getAttribute('onclick') || '').includes("'" + sub + "'")); switchMaterialSub(sub, b); scrollTo(0, 0); };
+  window.funilRender = render;
+  window.__funil = { calcular, ler, VIAS };
+
+  // ---------------- estilos ----------------
+  const css = document.createElement('style');
+  css.textContent = `
+  #matFunil .card { margin-bottom: 14px; }
+  .fv-indice { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .fv-indice .tab-pill { font-size: 12.5px; }
+  .fv-h { margin: 0 0 4px; font-size: 18px; }
+  .fv-p { margin: 0 0 14px; font-size: 13px; }
+  .fv-campos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .fv-campo { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; }
+  .fv-campo > div { display: flex; align-items: center; gap: 6px; }
+  .fv-campo input { flex: 1; min-width: 0; font-weight: 700; }
+  .fv-campo i { font-style: normal; color: var(--muted); font-weight: 600; }
+  .fv-campo small { color: var(--muted); font-weight: 400; font-size: 11.5px; }
+  .fv-resumo { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 18px 0 8px; }
+  .fv-resumo div { background: rgba(127,127,127,.08); border-radius: 12px; padding: 12px; text-align: center; }
+  .fv-resumo b { display: block; font-size: 26px; line-height: 1.1; }
+  .fv-resumo span { font-size: 12px; color: var(--muted); }
+  .fv-funil { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .fv-etapa { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 12px; align-items: center; }
+  .fv-barra { color: #fff; border-radius: 10px; padding: 10px 12px; display: flex; align-items: baseline; gap: 6px; justify-self: center; transition: width .3s; }
+  .fv-barra b { font-size: 20px; } .fv-barra span { font-size: 11.5px; opacity: .9; }
+  .fv-rot b { display: block; font-size: 14px; } .fv-rot small { color: var(--muted); font-size: 12px; }
+  .fv-dica { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.35); font-size: 13px; line-height: 1.5; }
+  .fv-tabela { overflow-x: auto; margin-bottom: 12px; }
+  .fv-tabela table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .fv-tabela th, .fv-tabela td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+  .fv-tabela .fv-pct { width: 62px; padding: 4px 6px; }
+  .fv-total td { font-weight: 800; }
+  .fv-via { border: 1px solid var(--line); border-left: 4px solid var(--cor); border-radius: 12px; margin: 10px 0; padding: 0 14px; }
+  .fv-via summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+  .fv-via summary::-webkit-details-marker { display: none; }
+  .fv-via summary > span:nth-child(2) { flex: 1; display: flex; flex-direction: column; }
+  .fv-via summary small { color: var(--muted); font-size: 12px; }
+  .fv-via summary i { font-style: normal; transition: transform .2s; color: var(--muted); }
+  .fv-via[open] summary i { transform: rotate(180deg); }
+  .fv-ic { font-size: 24px; }
+  .fv-via p { font-size: 13.5px; line-height: 1.55; margin: 0 0 10px; }
+  .fv-via h4 { margin: 12px 0 6px; font-size: 13.5px; }
+  .fv-via ul, .fv-via ol { margin: 0; padding-left: 20px; font-size: 13px; line-height: 1.55; }
+  .fv-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .fv-erros ul li::marker { content: '✕  '; color: #dc2626; }
+  .fv-script { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin: 8px 0 12px; background: rgba(127,127,127,.05); }
+  .fv-script-cab { display: flex; gap: 8px; align-items: center; font-size: 13px; }
+  .fv-tag { font-size: 10.5px; background: #dbeafe; color: #1d4ed8; padding: 1px 8px; border-radius: 10px; font-weight: 700; }
+  .fv-script-txt { font-size: 13.5px; line-height: 1.55; margin: 6px 0 8px; white-space: pre-wrap; background: #0d1117; color: #e6edf3; border-radius: 8px; padding: 10px 12px; }
+  .fv-script-bt { display: flex; gap: 8px; flex-wrap: wrap; } .fv-script-bt .btn { font-size: 12px; padding: 5px 10px; }
+  .fv-passos { display: flex; flex-direction: column; gap: 4px; }
+  .fv-passo { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+  .fv-passo:last-child { border-bottom: 0; }
+  .fv-num { width: 30px; height: 30px; border-radius: 50%; background: var(--primary, #c8102e); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; }
+  .fv-passo p { margin: 3px 0 0; font-size: 13px; line-height: 1.5; color: var(--muted); }
+  .fv-rotina { display: grid; gap: 6px; }
+  .fv-rotina div { display: grid; grid-template-columns: 64px 1fr; gap: 10px; font-size: 13.5px; padding: 8px 10px; border-radius: 8px; background: rgba(127,127,127,.06); }
+  @media (max-width: 768px) {
+    .fv-campos { grid-template-columns: 1fr 1fr; } .fv-resumo { grid-template-columns: 1fr 1fr; }
+    .fv-sem { display: none; }
+    .fv-etapa { grid-template-columns: 1fr; gap: 4px; } .fv-barra { justify-self: start; } .fv-cols { grid-template-columns: 1fr; }
+  }`;
+  document.head.appendChild(css);
+
+  // ---------------- liga a sub-aba ----------------
+  function montar() {
+    const sec = document.getElementById('materialApoio'); if (!sec || document.getElementById('matFunil')) return;
+    const pills = sec.querySelector('.tab-pills');
+    const b = document.createElement('button'); b.className = 'tab-pill'; b.textContent = '🧭 Funil do Vendedor';
+    b.setAttribute('onclick', "switchMaterialSub('matFunil', this)");
+    pills.insertBefore(b, pills.querySelector('[onclick*="matBdr"]') || null);
+    const sub = document.createElement('div'); sub.id = 'matFunil'; sub.className = 'subpage';
+    sec.appendChild(sub);
+  }
+  const trocaOriginal = window.switchMaterialSub;
+  window.switchMaterialSub = switchMaterialSub = function (id, btn) { const r = trocaOriginal.apply(this, arguments); if (id === 'matFunil') render(); return r; };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
+})();
+</script>
+<script id="ajudaCentralScript">
+// ===== INFORMAÇÕES › CENTRAL DE AJUDA =====
+// No alto da aba Informações & Arquivos aparecem publicações fixas, já embutidas no CRM:
+// os manuais (PDF para ler e vídeo para assistir) e guias rápidos que abrem a resposta do Tira-dúvidas.
+// Os arquivos ficam na pasta "ajuda" do próprio CRM (precisam de internet para abrir).
+(function () {
+  const MANUAIS = [
+    { id: 'crm', titulo: 'Manual do CRM', sub: 'Como usar cada função, passo a passo', paginas: 39, min: 7 },
+    { id: 'google-agenda', titulo: 'Google Agenda e Meet', sub: 'Como conseguir o ID do Cliente do Google e ligar a Agenda', paginas: 12, min: 2 },
+    { id: 'chave-prospeccao', titulo: 'Chave da Prospecção', sub: 'Como criar a chave do Google para a Prospecção de empresas', paginas: 12, min: 2 }
+  ];
+  const GUIAS = [
+    ['🚀 Começando', ['oque', 'instalar', 'menu_cel', 'busca', 'backup']],
+    ['👥 Leads e vendas', ['lead_novo', 'leads_lote', 'importar_planilha', 'venda_nova', 'comissao_como']],
+    ['📅 Agenda', ['agenda_nova', 'agenda_google', 'google_client_id']],
+    ['📈 Simulação e apresentação', ['simulador', 'valor_futuro_selic', 'apresentacao_simulacao', 'apresentacao_canetas', 'laser_crm']],
+    ['🔎 Prospecção', ['prospeccao', 'prospeccao_chave', 'prospeccao_custo']]
+  ];
+  const base = id => 'ajuda/manual-' + id;
+  const E = t => (typeof esc === 'function' ? esc(t) : String(t || ''));
+  const entrada = id => { try { return (typeof ASSIST_BASE !== 'undefined' ? ASSIST_BASE : []).find(e => e.id === id && !e.so); } catch (e) { return null; } };
+
+  const css = document.createElement('style');
+  css.textContent = `
+  #ajudaCentral { margin-bottom: 16px; }
+  #ajudaCentral .aj-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  #ajudaCentral h2 { margin: 0; }
+  .aj-grade { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+  .aj-post { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; display: flex; flex-direction: column; background: var(--card, #fff); }
+  .aj-capa { position: relative; aspect-ratio: 16 / 9; background: #0b3a8c center top / cover no-repeat; cursor: pointer; }
+  .aj-capa:after { content: '▶'; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 54px; height: 54px; border-radius: 50%;
+    background: rgba(0,0,0,.55); color: #fff; font-size: 22px; display: flex; align-items: center; justify-content: center; padding-left: 4px; box-sizing: border-box; }
+  .aj-selo { position: absolute; left: 10px; top: 10px; background: rgba(255,255,255,.92); color: #0f172a; font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 20px; z-index: 1; }
+  .aj-corpo { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .aj-corpo b { font-size: 15px; } .aj-corpo small { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+  .aj-bts { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; flex-wrap: wrap; } .aj-bts .btn { font-size: 12px; padding: 6px 10px; text-decoration: none; }
+  .aj-guias { margin-top: 18px; display: grid; gap: 12px; }
+  .aj-guias h4 { margin: 0 0 6px; font-size: 13px; }
+  .aj-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .aj-chip { border: 1px solid var(--line); background: rgba(127,127,127,.06); border-radius: 20px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; color: inherit; text-align: left; }
+  .aj-chip:hover { border-color: var(--primary, #c8102e); }
+  #ajudaCentral.fechada .aj-conteudo { display: none; }
+  .aj-video { width: 100%; max-height: 70vh; border-radius: 10px; background: #000; }
+  @media (max-width: 900px) { .aj-grade { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px) { .aj-grade { grid-template-columns: 1fr; } }`;
+  document.head.appendChild(css);
+
+  function html() {
+    let fechada = false; try { fechada = localStorage.getItem('crm_ajuda_fechada') === '1'; } catch (e) {}
+    const guias = GUIAS.map(([g, ids]) => { const its = ids.map(entrada).filter(Boolean); return its.length ? `<div><h4>${g}</h4><div class="aj-chips">${its.map(e => `<button type="button" class="aj-chip" onclick="ajudaGuia('${e.id}')">${E(e.t)}</button>`).join('')}</div></div>` : ''; }).join('');
+    return `<div class="card${fechada ? ' fechada' : ''}" id="ajudaCentral">
+      <div class="aj-cab"><div><h2>📚 Central de Ajuda</h2><small class="muted">Manuais em PDF e vídeo, e respostas rápidas sobre o CRM.</small></div>
+        <button class="btn" onclick="ajudaAlternar()">${fechada ? 'Mostrar ▾' : 'Esconder ▴'}</button></div>
+      <div class="aj-conteudo">
+        <div class="aj-grade">${MANUAIS.map(m => `<div class="aj-post">
+          <div class="aj-capa" style="background-image:url('ajuda/capa-manual-${m.id}.jpg')" onclick="ajudaVideo('${m.id}')" title="Assistir ao vídeo"><span class="aj-selo">MANUAL</span></div>
+          <div class="aj-corpo"><b>${m.titulo}</b><small>${m.sub}</small><small>📄 ${m.paginas} páginas · 🎬 vídeo de ${m.min} min</small>
+            <div class="aj-bts"><button class="btn primary" onclick="ajudaVideo('${m.id}')">▶ Assistir</button><a class="btn" href="${base(m.id)}.pdf" target="_blank" rel="noopener">📄 Ler o PDF</a><a class="btn" href="${base(m.id)}.pdf" download>⬇️ Baixar</a></div></div></div>`).join('')}</div>
+        <div class="aj-guias">${guias}</div>
+      </div></div>`;
+  }
+  function montar() {
+    const sec = document.getElementById('informacoes'); if (!sec) return;
+    const velho = document.getElementById('ajudaCentral');
+    const tmp = document.createElement('div'); tmp.innerHTML = html(); const novo = tmp.firstElementChild;
+    if (velho) velho.replaceWith(novo);
+    else { const primeiro = sec.querySelector('.card'); primeiro ? primeiro.after(novo) : sec.prepend(novo); }
+  }
+  window.ajudaAlternar = function () {
+    const c = document.getElementById('ajudaCentral'); if (!c) return;
+    const f = !c.classList.contains('fechada'); try { localStorage.setItem('crm_ajuda_fechada', f ? '1' : '0'); } catch (e) {} montar();
+  };
+  window.ajudaVideo = function (id) {
+    const m = MANUAIS.find(x => x.id === id); if (!m) return;
+    openModal(`<div class="between" style="gap:10px;align-items:flex-start"><div><h2 style="margin:0">🎬 ${m.titulo}</h2><small class="muted">${m.sub}</small></div><button class="btn" onclick="closeModal()">✕</button></div>
+      <video class="aj-video" src="${base(id)}.mp4" controls playsinline preload="metadata" style="margin-top:12px"></video>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><a class="btn" href="${base(id)}.pdf" target="_blank" rel="noopener">📄 Ler o PDF</a><small class="muted" style="align-self:center">Precisa de internet para assistir.</small></div>`);
+  };
+  window.ajudaGuia = function (id) {
+    try { assistenteAbrir(); assistenteResposta(id, true); } catch (e) {}
+  };
+  const renderOriginal = window.renderInformacoes;
+  if (typeof renderOriginal === 'function') window.renderInformacoes = renderInformacoes = function () { const r = renderOriginal.apply(this, arguments); montar(); return r; };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
+})();
 </script>
 <script id="laserCrmScript">
 // ===== LASER PARA APRESENTAR O CRM =====
