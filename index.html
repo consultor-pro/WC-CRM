@@ -20516,8 +20516,8 @@ const ASSIST_BASE = [
   r: 'Em **Simulador** › **📈 Valor Futuro**:\n- O campo **Selic (% ao ano)** define quanto o crédito rende no fundo da administradora (o CRM converte para a taxa ao mês). O último valor digitado fica salvo no aparelho.\n- O **INCC/INPC corrige o crédito só até a contemplação**. Depois de contemplado, o crédito não é mais reajustado pelo índice: ele só rende na Selic até ser usado.\n- Depois da contemplação, o índice continua reajustando **apenas a parcela**, uma vez por ano.\nO reajuste anual (campo **Reajuste Anual da Carta**) fica nos Parâmetros do Plano.', aba: 'simulador' },
 { id: 'funil_vendedor', t: 'Como uso o Funil do Vendedor?', k: 'funil do vendedor, funil de vendas, fluxograma, meta de vendas, quantas reunioes preciso, quantos contatos por dia, 5 vias de prospeccao, vias de prospeccao, redes sociais, networking, pap, porta a porta, indicacoes, ligacao fria, criar lista, como ligar, qualificacao, bdr, script de prospeccao, no show, agendamento, pos venda, follow up, cliente nao fechou, vender mais',
   r: 'Em **Material de Apoio** › **🧭 Funil do Vendedor** fica o fluxograma da venda: **Meta → Prospecção → Criação de lista → Agendamento → Reunião (5 passos) → Fechou?** Se sim, **Pós-venda**; se não, **Follow-up**, que volta para um novo agendamento.\nToque em qualquer etapa para abrir a explicação. Dentro dela, os assuntos ligados abrem novos pop-ups (as 5 vias, a qualificação, como ligar, cada um dos 5 passos, os motivos de não fechar); use **‹** para voltar.\n- Na **Meta** você calcula quantos contatos, agendamentos e reuniões precisa por dia.\n- Os scripts têm **📋 Copiar** e **✏️ Personalizar** (fica salvo para você).\n- As perguntas de qualificação (antigo Processo BDR) ficam em **Criação de lista › Qualificar o contato**.', aba: 'materialApoio' },
-{ id: 'central_ajuda', t: 'Onde ficam os manuais e vídeos de ajuda?', k: 'manual, manuais, video de ajuda, tutorial, central de ajuda, como usar o crm, pdf do manual, aprender a usar',
-  r: 'Na aba **Informações & Arquivos**, no alto, fica a **📚 Central de Ajuda**:\n- **Manuais** em PDF (para ler ou baixar) e em vídeo (botão **▶ Assistir**): o manual do CRM, o do Google Agenda/Meet e o da chave da Prospecção.\n- **Guias rápidos**: toque num assunto e a resposta abre aqui no Tira-dúvidas.\nOs manuais precisam de internet para abrir. O botão **Esconder** recolhe a Central se você quiser só o mural.', aba: 'informacoes' },
+{ id: 'central_ajuda', t: 'Onde ficam os manuais e vídeos de ajuda?', k: 'manual, manuais, video de ajuda, tutorial, central de ajuda, ajuda do crm, como usar o crm, pdf do manual, aprender a usar',
+  r: 'Na aba **Informações & Arquivos**, toque na sub-aba **📚 Ajuda do CRM**. Lá ficam os manuais em PDF (para ler ou baixar) e em vídeo (botão **▶ Assistir**): o manual do CRM, o do Google Agenda/Meet e o da chave da Prospecção. Eles precisam de internet para abrir.\nA sub-aba **📢 Mural** fica só com as publicações suas e da equipe.', aba: 'informacoes' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -23092,8 +23092,8 @@ const ASSIST_BASE = [
 </script>
 <script id="ajudaCentralScript">
 // ===== INFORMAÇÕES › CENTRAL DE AJUDA =====
-// No alto da aba Informações & Arquivos aparecem publicações fixas, já embutidas no CRM:
-// os manuais (PDF para ler e vídeo para assistir) e guias rápidos que abrem a resposta do Tira-dúvidas.
+// A aba Informações & Arquivos ganha duas sub-abas: 📢 Mural (só o que você e a equipe publicam)
+// e 📚 Ajuda do CRM (os manuais já embutidos no CRM: PDF para ler e vídeo para assistir).
 // Os arquivos ficam na pasta "ajuda" do próprio CRM (precisam de internet para abrir).
 (function () {
   const MANUAIS = [
@@ -23101,16 +23101,8 @@ const ASSIST_BASE = [
     { id: 'google-agenda', titulo: 'Google Agenda e Meet', sub: 'Como conseguir o ID do Cliente do Google e ligar a Agenda', paginas: 12, min: 2 },
     { id: 'chave-prospeccao', titulo: 'Chave da Prospecção', sub: 'Como criar a chave do Google para a Prospecção de empresas', paginas: 12, min: 2 }
   ];
-  const GUIAS = [
-    ['🚀 Começando', ['oque', 'instalar', 'menu_cel', 'busca', 'backup']],
-    ['👥 Leads e vendas', ['lead_novo', 'leads_lote', 'importar_planilha', 'venda_nova', 'comissao_como']],
-    ['📅 Agenda', ['agenda_nova', 'agenda_google', 'google_client_id']],
-    ['📈 Simulação e apresentação', ['simulador', 'valor_futuro_selic', 'apresentacao_simulacao', 'apresentacao_canetas', 'laser_crm']],
-    ['🔎 Prospecção', ['prospeccao', 'prospeccao_chave', 'prospeccao_custo']]
-  ];
   const base = id => 'ajuda/manual-' + id;
   const E = t => (typeof esc === 'function' ? esc(t) : String(t || ''));
-  const entrada = id => { try { return (typeof ASSIST_BASE !== 'undefined' ? ASSIST_BASE : []).find(e => e.id === id && !e.so); } catch (e) { return null; } };
 
   const css = document.createElement('style');
   css.textContent = `
@@ -23126,50 +23118,47 @@ const ASSIST_BASE = [
   .aj-corpo { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
   .aj-corpo b { font-size: 15px; } .aj-corpo small { color: var(--muted); font-size: 12.5px; line-height: 1.4; }
   .aj-bts { display: flex; gap: 8px; margin-top: auto; padding-top: 10px; flex-wrap: wrap; } .aj-bts .btn { font-size: 12px; padding: 6px 10px; text-decoration: none; }
-  .aj-guias { margin-top: 18px; display: grid; gap: 12px; }
-  .aj-guias h4 { margin: 0 0 6px; font-size: 13px; }
-  .aj-chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .aj-chip { border: 1px solid var(--line); background: rgba(127,127,127,.06); border-radius: 20px; padding: 6px 12px; font-size: 12.5px; cursor: pointer; color: inherit; text-align: left; }
-  .aj-chip:hover { border-color: var(--primary, #c8102e); }
-  #ajudaCentral.fechada .aj-conteudo { display: none; }
   .aj-video { width: 100%; max-height: 70vh; border-radius: 10px; background: #000; }
   @media (max-width: 900px) { .aj-grade { grid-template-columns: 1fr 1fr; } }
   @media (max-width: 560px) { .aj-grade { grid-template-columns: 1fr; } }`;
   document.head.appendChild(css);
 
   function html() {
-    let fechada = false; try { fechada = localStorage.getItem('crm_ajuda_fechada') === '1'; } catch (e) {}
-    const guias = GUIAS.map(([g, ids]) => { const its = ids.map(entrada).filter(Boolean); return its.length ? `<div><h4>${g}</h4><div class="aj-chips">${its.map(e => `<button type="button" class="aj-chip" onclick="ajudaGuia('${e.id}')">${E(e.t)}</button>`).join('')}</div></div>` : ''; }).join('');
-    return `<div class="card${fechada ? ' fechada' : ''}" id="ajudaCentral">
-      <div class="aj-cab"><div><h2>📚 Central de Ajuda</h2><small class="muted">Manuais em PDF e vídeo, e respostas rápidas sobre o CRM.</small></div>
-        <button class="btn" onclick="ajudaAlternar()">${fechada ? 'Mostrar ▾' : 'Esconder ▴'}</button></div>
-      <div class="aj-conteudo">
-        <div class="aj-grade">${MANUAIS.map(m => `<div class="aj-post">
-          <div class="aj-capa" style="background-image:url('ajuda/capa-manual-${m.id}.jpg')" onclick="ajudaVideo('${m.id}')" title="Assistir ao vídeo"><span class="aj-selo">MANUAL</span></div>
-          <div class="aj-corpo"><b>${m.titulo}</b><small>${m.sub}</small><small>📄 ${m.paginas} páginas · 🎬 vídeo de ${m.min} min</small>
-            <div class="aj-bts"><button class="btn primary" onclick="ajudaVideo('${m.id}')">▶ Assistir</button><a class="btn" href="${base(m.id)}.pdf" target="_blank" rel="noopener">📄 Ler o PDF</a><a class="btn" href="${base(m.id)}.pdf" download>⬇️ Baixar</a></div></div></div>`).join('')}</div>
-        <div class="aj-guias">${guias}</div>
-      </div></div>`;
+    return `<div class="card" id="ajudaCentral">
+      <div class="aj-cab"><div><h2>📚 Ajuda do CRM</h2><small class="muted">Manuais para ler em PDF ou assistir em vídeo.</small></div></div>
+      <div class="aj-grade">${MANUAIS.map(m => `<div class="aj-post">
+        <div class="aj-capa" style="background-image:url('ajuda/capa-manual-${m.id}.jpg')" onclick="ajudaVideo('${m.id}')" title="Assistir ao vídeo"><span class="aj-selo">MANUAL</span></div>
+        <div class="aj-corpo"><b>${m.titulo}</b><small>${m.sub}</small><small>📄 ${m.paginas} páginas · 🎬 vídeo de ${m.min} min</small>
+          <div class="aj-bts"><button class="btn primary" onclick="ajudaVideo('${m.id}')">▶ Assistir</button><a class="btn" href="${base(m.id)}.pdf" target="_blank" rel="noopener">📄 Ler o PDF</a><a class="btn" href="${base(m.id)}.pdf" download>⬇️ Baixar</a></div></div></div>`).join('')}</div>
+      <p class="muted" style="font-size:12.5px;margin:14px 0 0">Ficou alguma dúvida? Toque em <b>💬 Dúvidas</b>, no canto da tela, e pergunte do seu jeito.</p></div>`;
   }
+  // a aba Informações vira duas sub-abas: Mural (o que você publica) e Ajuda do CRM (manuais)
+  function subAtual() { try { return localStorage.getItem('crm_info_sub') === 'ajuda' ? 'ajuda' : 'mural'; } catch (e) { return 'mural'; } }
+  window.infoSub = function (qual) {
+    try { localStorage.setItem('crm_info_sub', qual); } catch (e) {}
+    const m = document.getElementById('infoSubMural'), a = document.getElementById('infoSubAjuda'); if (!m || !a) return;
+    m.style.display = qual === 'mural' ? '' : 'none'; a.style.display = qual === 'ajuda' ? '' : 'none';
+    document.querySelectorAll('#infoSubPills .tab-pill').forEach(b => b.classList.toggle('active', b.dataset.sub === qual));
+  };
   function montar() {
     const sec = document.getElementById('informacoes'); if (!sec) return;
-    const velho = document.getElementById('ajudaCentral');
-    const tmp = document.createElement('div'); tmp.innerHTML = html(); const novo = tmp.firstElementChild;
-    if (velho) velho.replaceWith(novo);
-    else { const primeiro = sec.querySelector('.card'); primeiro ? primeiro.after(novo) : sec.prepend(novo); }
+    if (!document.getElementById('infoSubMural')) {
+      const cab = sec.querySelector('.card'), posts = document.getElementById('infoPostsContainer'); if (!cab || !posts) return;
+      const pills = document.createElement('div'); pills.className = 'tab-pills'; pills.id = 'infoSubPills';
+      pills.innerHTML = '<button class="tab-pill" data-sub="mural" onclick="infoSub(\'mural\')">📢 Mural</button><button class="tab-pill" data-sub="ajuda" onclick="infoSub(\'ajuda\')">📚 Ajuda do CRM</button>';
+      const mural = document.createElement('div'); mural.id = 'infoSubMural';
+      const ajuda = document.createElement('div'); ajuda.id = 'infoSubAjuda';
+      sec.insertBefore(pills, cab); sec.insertBefore(mural, cab); mural.appendChild(cab); mural.appendChild(posts); sec.appendChild(ajuda);
+    }
+    const caixa = document.getElementById('infoSubAjuda');
+    if (!document.getElementById('ajudaCentral')) caixa.innerHTML = html();
+    infoSub(subAtual());
   }
-  window.ajudaAlternar = function () {
-    const c = document.getElementById('ajudaCentral'); if (!c) return;
-    const f = !c.classList.contains('fechada'); try { localStorage.setItem('crm_ajuda_fechada', f ? '1' : '0'); } catch (e) {} montar();
-  };
   window.ajudaVideo = function (id) {
     const m = MANUAIS.find(x => x.id === id); if (!m) return;
     openModal(`<div class="between" style="gap:10px;align-items:flex-start"><div><h2 style="margin:0">🎬 ${m.titulo}</h2><small class="muted">${m.sub}</small></div><button class="btn" onclick="closeModal()">✕</button></div>
       <video class="aj-video" src="${base(id)}.mp4" controls playsinline preload="metadata" style="margin-top:12px"></video>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><a class="btn" href="${base(id)}.pdf" target="_blank" rel="noopener">📄 Ler o PDF</a><small class="muted" style="align-self:center">Precisa de internet para assistir.</small></div>`);
-  };
-  window.ajudaGuia = function (id) {
-    try { assistenteAbrir(); assistenteResposta(id, true); } catch (e) {}
   };
   const renderOriginal = window.renderInformacoes;
   if (typeof renderOriginal === 'function') window.renderInformacoes = renderInformacoes = function () { const r = renderOriginal.apply(this, arguments); montar(); return r; };
