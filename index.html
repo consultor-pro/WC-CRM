@@ -20518,8 +20518,8 @@ const ASSIST_BASE = [
   r: 'Em **Material de Apoio** › **🧭 Funil do Vendedor** fica o fluxograma da venda: **Meta → Prospecção → Criação de lista → Agendamento → Reunião (5 passos) → Fechou?** Se sim, **Pós-venda**; se não, **Follow-up**, que volta para um novo agendamento.\nToque em qualquer etapa para abrir a explicação. Dentro dela, os assuntos ligados abrem novos pop-ups (as 5 vias, a qualificação, como ligar, cada um dos 5 passos, os motivos de não fechar); use **‹** para voltar.\n- Na **Meta** você calcula quantos contatos, agendamentos e reuniões precisa por dia.\n- Os scripts têm **📋 Copiar** e **✏️ Personalizar** (fica salvo para você).\n- As perguntas de qualificação (antigo Processo BDR) ficam em **Criação de lista › Qualificar o contato**.', aba: 'materialApoio' },
 { id: 'central_ajuda', t: 'Onde ficam os manuais e vídeos de ajuda?', k: 'manual, manuais, video de ajuda, tutorial, central de ajuda, ajuda do crm, como usar o crm, pdf do manual, aprender a usar',
   r: 'Na aba **Informações & Arquivos**, toque na sub-aba **📚 Ajuda do CRM**. Lá ficam os manuais em PDF (para ler ou baixar) e em vídeo (botão **▶ Assistir**): o manual do CRM, o do Google Agenda/Meet e o da chave da Prospecção. Eles precisam de internet para abrir.\nA sub-aba **📢 Mural** fica só com as publicações suas e da equipe.', aba: 'informacoes' },
-{ id: 'modo_apresentacao', t: 'Como escondo comissões e dados dos clientes quando vou mostrar o CRM?', k: 'modo apresentacao, esconder valores, esconder comissao, privacidade, mostrar o crm para cliente, ocultar dados, olho, apresentar o crm',
-  r: 'Use o **Modo apresentação**: toque no **olho** no alto da tela (ao lado do sininho) ou, no celular, em **Mais › Modo apresentação**.\n- **Cálculo de Comissão, Gastos, Consultores & Vendas, Equipe e Contas** ficam escondidos.\n- No Dashboard, Leads, Agenda, Mapa de Cotas e Semáforo, os **valores em R$ e os nomes e telefones dos clientes** ficam embaçados.\n- **Simulador, Calculadora, Apresentações, Material de Apoio, Informações e Prospecção** continuam normais, para você apresentar.\nPara sair, toque em **Sair** no aviso do canto da tela ou no olho de novo. Combine com o **laser** (dois toques na tela).', aba: 'dashboard' },
+{ id: 'modo_apresentacao', t: 'Como escondo as abas internas quando vou mostrar o CRM para um cliente?', k: 'modo apresentacao, esconder valores, esconder comissao, esconder abas, privacidade, mostrar o crm para cliente, ocultar dados, olho, apresentar o crm',
+  r: 'Use o **Modo apresentação**: toque no **olho** no alto da tela (ao lado do sininho) ou, no celular, em **Mais › Modo apresentação**.\n- No menu ficam **só o Simulador, a Calculadora e as Apresentações**, no computador e na barra de baixo do celular.\n- Todas as outras abas saem do menu, junto com a busca de leads, o **+ Novo Lead**, o sininho e o aviso de backup.\n- Se você estiver em outra aba ao ligar, o CRM vai direto para o Simulador.\nPara sair, toque em **Sair** no aviso do rodapé ou no olho de novo: tudo volta como estava. Combine com o **laser** (dois toques na tela).', aba: 'simulador' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -23172,9 +23172,8 @@ const ASSIST_BASE = [
 // 1) O menu "Mais" do celular passa a ser montado a partir do menu lateral: mesmos ícones (os profissionais),
 //    mesmos grupos (Vendas, Financeiro, Ferramentas...), e só as abas que estão visíveis. Assim, o que você
 //    esconder em Configurações › Menu também some do celular (inclusive da barra de baixo).
-// 2) Modo apresentação: um botão (olho) esconde comissões, gastos, valores e dados de outros clientes
-//    enquanto você mostra o CRM para alguém. O Simulador, a Calculadora, as Apresentações, o Material de Apoio,
-//    as Informações e a Prospecção continuam normais.
+// 2) Modo apresentação: um botão (olho) deixa no menu só o que serve para mostrar ao cliente (Simulador,
+//    Calculadora e Apresentações). Todo o resto sai do menu, inclusive a busca de leads, o + Novo Lead e o sininho.
 (function () {
   const SVG = d => `<svg class="icon-svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
   const IC = {
@@ -23223,24 +23222,29 @@ const ASSIST_BASE = [
     openModal(`<div class="between"><h2 style="margin:0">Mais opções</h2><button class="btn" onclick="closeModal()">✕</button></div>
       ${grupos.filter(g => g.itens.length).map(g => `<div class="mm-grupo">${g.nome ? `<small>${E(g.nome)}</small>` : ''}<div class="mm-grade">${g.itens.map(it => tile(it.onclick, it.svg, it.nome)).join('')}</div></div>`).join('')}
       <div class="mm-grupo"><small>APRESENTAR</small><div class="mm-grade">${tile('modoApresentacao()', SVG(modoLigado() ? IC.olho : IC.olhoFechado), modoLigado() ? 'Sair do modo apresentação' : 'Modo apresentação', modoLigado() ? 'mm-on' : '')}</div></div>
-      <div class="mm-grupo"><small>DADOS & CONTA</small><div class="mm-grade">
+      <div class="mm-grupo mm-dados"><small>DADOS & CONTA</small><div class="mm-grade">
         ${tile('exportData()', SVG(IC.backup), 'Backup')}${tile("document.getElementById('importFile').click()", SVG(IC.importar), 'Importar')}
         ${podeInstalar ? tile('triggerPwaInstall()', SVG(IC.instalar), 'Instalar app') : ''}${tile('logout()', SVG(IC.sair), 'Sair', 'mm-sair')}</div></div>
       <div class="app-version-tag" style="text-align:center;margin-top:14px;font-size:10px;color:#94a3b8">Versão ${typeof APP_VERSION !== 'undefined' ? APP_VERSION : ''}</div>`);
   };
 
   // ---------------- modo apresentação ----------------
+  // Só ficam as abas que servem para mostrar ao cliente; todo o resto sai do menu (computador e celular).
   const CHAVE = 'crm_modo_apresentacao';
-  const BLOQUEADAS = { comissoes: 'Cálculo de Comissão', gastos: 'Gastos', consultoresVendas: 'Consultores & Vendas', contas: 'Contas', usuarios: 'Equipe & Hierarquia' };
-  const LIVRES = ['simulador', 'calculadora', 'apresentacoes', 'materialApoio', 'informacoes', 'prospeccao', 'configuracoes'];
+  const PERMITIDAS = ['simulador', 'calculadora', 'apresentacoes'];
   const modoLigado = () => document.body.classList.contains('modo-apres');
-  const DINHEIRO = /R\$\s?-?\d/;
-  function marcar() {
-    if (!modoLigado()) return;
-    document.querySelectorAll('.main .page').forEach(pg => {
-      if (LIVRES.includes(pg.id) || BLOQUEADAS[pg.id]) return;
-      const w = document.createTreeWalker(pg, NodeFilter.SHOW_TEXT, { acceptNode: n => DINHEIRO.test(n.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT });
-      let n; while ((n = w.nextNode())) { const el = n.parentElement; if (el && !el.closest('input,textarea,select,.ma-oculto')) el.classList.add('ma-oculto'); }
+  function marcarPermitidas() {
+    document.querySelectorAll('.sidebar .nav button, .mobile-nav button').forEach(b => {
+      const id = idDe(b); if (PERMITIDAS.includes(id) || id === 'mais') b.dataset.maOk = '1'; else delete b.dataset.maOk;
+    });
+    const barra = document.querySelector('.mobile-nav'); if (!barra || barra.querySelector('.ma-mob')) return;
+    const mais = [...barra.querySelectorAll('button')].find(b => idDe(b) === 'mais');
+    PERMITIDAS.forEach(id => {
+      const lateral = [...document.querySelectorAll('.sidebar .nav button')].find(x => idDe(x) === id); if (!lateral) return;
+      const ico = lateral.querySelector('.nav-icon'), rot = (lateral.querySelector('.nav-label') || lateral).textContent.trim().split(' ')[0];
+      const b = document.createElement('button'); b.className = 'ma-mob'; b.dataset.maOk = '1'; b.setAttribute('onclick', `show('${id}',this)`);
+      b.innerHTML = `<span class="nav-icon">${ico ? ico.innerHTML.replace(/width="\d+"/, 'width="19"').replace(/height="\d+"/, 'height="19"') : ''}</span><span>${E(rot)}</span>`;
+      barra.insertBefore(b, mais || null);
     });
   }
   function aviso() {
@@ -23248,24 +23252,31 @@ const ASSIST_BASE = [
     if (!a) { a = document.createElement('button'); a.id = 'maAviso'; a.type = 'button'; a.onclick = () => modoApresentacao(false); a.innerHTML = `${SVG(IC.olhoFechado)}<span>Modo apresentação</span><b>Sair</b>`; document.body.appendChild(a); }
     a.style.display = modoLigado() ? 'flex' : 'none';
   }
-  function capas() {
-    Object.keys(BLOQUEADAS).forEach(id => {
-      const pg = document.getElementById(id); if (!pg) return;
+  function capas() {          // se alguma aba escondida for aberta por outro caminho, o conteúdo fica coberto
+    document.querySelectorAll('.main .page').forEach(pg => {
       let c = pg.querySelector(':scope > .ma-capa');
-      if (modoLigado() && !c) { c = document.createElement('div'); c.className = 'ma-capa'; c.innerHTML = `<div>${SVG(IC.olhoFechado)}<h3>${BLOQUEADAS[id]} oculto</h3><p>Esta aba fica escondida no modo apresentação, para ninguém ver valores e dados internos.</p><button class="btn" onclick="modoApresentacao(false)">Sair do modo apresentação</button></div>`; pg.prepend(c); }
-      if (!modoLigado() && c) c.remove();
+      if (modoLigado() && !PERMITIDAS.includes(pg.id) && !c) { c = document.createElement('div'); c.className = 'ma-capa'; c.innerHTML = `<div>${SVG(IC.olhoFechado)}<h3>Aba oculta</h3><p>No modo apresentação ficam só o Simulador, a Calculadora e as Apresentações.</p><button class="btn primary" onclick="show('simulador', null)">Ir para o Simulador</button> <button class="btn" onclick="modoApresentacao(false)">Sair do modo</button></div>`; pg.prepend(c); }
+      if ((!modoLigado() || PERMITIDAS.includes(pg.id)) && c) c.remove();
     });
   }
-  let obs = null, t = 0;
   window.modoApresentacao = function (ligar, silencioso) {
     if (typeof ligar !== 'boolean') ligar = !modoLigado();
+    marcarPermitidas();
     document.body.classList.toggle('modo-apres', ligar);
     try { localStorage.setItem(CHAVE, ligar ? '1' : '0'); } catch (e) {}
-    if (ligar) { marcar(); if (!obs) { obs = new MutationObserver(() => { clearTimeout(t); t = setTimeout(marcar, 120); }); } obs.observe(document.querySelector('.main') || document.body, { childList: true, subtree: true, characterData: true }); }
-    else { if (obs) obs.disconnect(); document.querySelectorAll('.ma-oculto').forEach(e => e.classList.remove('ma-oculto')); }
+    gruposVazios();
+    if (ligar) { const atual = (document.querySelector('.page.active') || {}).id; if (!PERMITIDAS.includes(atual)) { try { show('simulador', document.querySelector(".sidebar .nav button[onclick*=\"show('simulador'\"]")); } catch (e) {} } }
     capas(); aviso(); botaoTopo();
-    if (!silencioso && typeof showToast === 'function') showToast(ligar ? 'Modo apresentação ligado: valores e dados internos escondidos.' : 'Modo apresentação desligado.', 'success');
+    if (!silencioso && typeof showToast === 'function') showToast(ligar ? 'Modo apresentação: só Simulador, Calculadora e Apresentações.' : 'Modo apresentação desligado: todas as abas de volta.', 'success');
   };
+  function gruposVazios() {
+    document.querySelectorAll('.sidebar .nav .nav-section-label').forEach(l => {
+      l.classList.remove('ma-vazio'); if (!modoLigado()) return;
+      let n = l.nextElementSibling, algum = false;
+      while (n && !n.classList.contains('nav-section-label')) { if (n.tagName === 'BUTTON' && getComputedStyle(n).display !== 'none') algum = true; n = n.nextElementSibling; }
+      if (!algum) l.classList.add('ma-vazio');
+    });
+  }
   function botaoTopo() {
     let b = document.getElementById('btnModoApres');
     if (!b) {
@@ -23274,7 +23285,7 @@ const ASSIST_BASE = [
       b.onclick = () => modoApresentacao(); sino.parentNode.insertBefore(b, sino);
     }
     b.innerHTML = SVG(modoLigado() ? IC.olhoFechado : IC.olho).replace(/width="20" height="20"/, 'width="17" height="17"');
-    b.title = modoLigado() ? 'Sair do modo apresentação' : 'Modo apresentação: esconde comissões, gastos, valores e dados de clientes';
+    b.title = modoLigado() ? 'Sair do modo apresentação' : 'Modo apresentação: deixa só Simulador, Calculadora e Apresentações';
     b.classList.toggle('primary', modoLigado());
   }
 
@@ -23289,10 +23300,10 @@ const ASSIST_BASE = [
   .mm-tile:active { transform: scale(.97); background: rgba(127,127,127,.12); }
   .mm-tile.mm-sair { color: #dc2626; } .mm-tile.mm-sair svg { color: #dc2626; }
   .mm-tile.mm-on { border-color: var(--red, #C8102E); background: rgba(200,16,46,.08); }
-  body.modo-apres .ma-oculto { filter: blur(7px); user-select: none; -webkit-user-select: none; }
-  body.modo-apres #leads tbody td, body.modo-apres #agenda .event-item, body.modo-apres #agenda .agenda-day-row, body.modo-apres #aniversarios tbody td,
-  body.modo-apres #paraHoje .ph-linha, body.modo-apres #globalSearchResults { filter: blur(6px); }
-  body.modo-apres #leads tbody td:last-child { filter: none; }
+  body.modo-apres .sidebar .nav button:not([data-ma-ok]), body.modo-apres .mobile-nav button:not([data-ma-ok]),
+  body.modo-apres .sidebar .nav-section-label.ma-vazio, body.modo-apres #globalSearchBox, body.modo-apres #topbarNovoLeadBtn,
+  body.modo-apres .top .notif-btn, body.modo-apres .sidebar-footer, body.modo-apres #backupReminderBanner, body.modo-apres .mm-dados, body.modo-apres .sidebar-tools [onclick*="openCommandPalette"] { display: none !important; }
+  .mobile-nav .ma-mob { display: none; } body.modo-apres .mobile-nav .ma-mob { display: flex; }
   .ma-capa { position: absolute; inset: 0; z-index: 30; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px; background: var(--bg, #f1f5f9); }
   .ma-capa > div { text-align: center; max-width: 360px; padding: 26px; border-radius: 16px; background: var(--card, #fff); border: 1px solid var(--line); }
   .ma-capa svg { width: 40px; height: 40px; color: var(--muted); } .ma-capa h3 { margin: 8px 0 6px; } .ma-capa p { font-size: 13px; color: var(--muted); margin: 0 0 14px; }
@@ -23300,13 +23311,13 @@ const ASSIST_BASE = [
   body.modo-apres .page:has(> .ma-capa) { min-height: 70vh; overflow: hidden; }
   #maAviso { position: fixed; left: 50%; transform: translateX(-50%); bottom: 14px; z-index: 2147482000; display: none; align-items: center; gap: 8px; border: 0; border-radius: 30px; padding: 8px 12px 8px 10px;
     background: rgba(17,17,20,.92); color: #fff; font: 600 12.5px system-ui, sans-serif; box-shadow: 0 8px 24px rgba(0,0,0,.25); cursor: pointer; }
-  #maAviso svg { width: 16px; height: 16px; } #maAviso b { background: rgba(255,255,255,.16); padding: 3px 9px; border-radius: 20px; font-size: 11.5px; }
+  #maAviso { white-space: nowrap; } #maAviso svg { width: 16px; height: 16px; flex: none; } #maAviso b { background: rgba(255,255,255,.16); padding: 3px 9px; border-radius: 20px; font-size: 11.5px; }
   @media (max-width: 768px) { #maAviso { bottom: 78px; } }
   @media print { #maAviso { display: none !important; } }`;
   document.head.appendChild(css);
 
   function iniciar() {
-    aplicarNoCelular(); botaoTopo();
+    aplicarNoCelular(); botaoTopo(); marcarPermitidas();
     let ligado = false; try { ligado = localStorage.getItem(CHAVE) === '1'; } catch (e) {}
     if (ligado) modoApresentacao(true, true);
   }
