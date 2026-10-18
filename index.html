@@ -5725,7 +5725,9 @@ function sendWhatsAppInvite(leadName, leadTel, meetingDateStr, pauta, meetUrl) {
 function applyBrand(){
   try { eloAtualizarStatusCodigo(); eloAtualizarCardNuvem(); } catch (e) {}
   // Migração para a identidade Elo CRM (troca só os nomes antigos/padrão)
-  if (brand) {
+  let migrouElo = false; try { migrouElo = localStorage.getItem('crm_marca_elo_migrada_' + EQUIPE_ID) === '1'; } catch (e) {}
+  if (brand && !migrouElo) {
+    try { localStorage.setItem('crm_marca_elo_migrada_' + EQUIPE_ID, '1'); } catch (e) {}
     if (!brand.title || brand.title === 'Meu CRM' || /(^|[^a-z])WC([^a-z]|$)/i.test(brand.title)) brand.title = 'Elo CRM';
     if (!brand.logo1 || brand.logo1 === 'WC' || brand.logo1 === 'CRM') brand.logo1 = 'ELO';
     if (!brand.logo2 || brand.logo2 === 'LOCAL') brand.logo2 = 'CRM';
