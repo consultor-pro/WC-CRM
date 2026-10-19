@@ -23760,8 +23760,20 @@ const ASSIST_BASE = [
       ${typeof aprAbrirCopia === 'function' ? '<button class="btn" onclick="aprAbrirCopia()">💾 Cópia das apresentações</button>' : ''}
     </div>`;
     el.innerHTML = html;
+    // linha resumida (aparece com o cartão minimizado)
+    const r = document.getElementById('armResumo');
+    if (r) r.innerHTML = `${barra(itens, m.total || m.usado)}<div class="arm-livre"><b>${fmt(m.usado)}</b> usados${m.total ? ` de ${fmt(m.total)} · ${fmt(livre)} livres` : ''}${n ? ` · nuvem ${fmt(n.total)}` : ''}${m.protegido ? ' · 🔒' : ''}</div>`;
   }
   window.armAtualizar = desenhar;
+  // minimizar / mostrar os detalhes (fica lembrado neste aparelho)
+  const K_MIN = 'crm_armazenamento_minimizado';
+  const minimizado = () => { try { return localStorage.getItem(K_MIN) !== '0'; } catch (e) { return true; } };
+  function aplicarMin() {
+    const card = document.getElementById('armCard'); if (!card) return;
+    const min = minimizado(); card.classList.toggle('arm-min', min);
+    const b = document.getElementById('armMinBtn'); if (b) { b.textContent = min ? '▾ Ver detalhes' : '▴ Minimizar'; b.setAttribute('aria-expanded', min ? 'false' : 'true'); }
+  }
+  window.armAlternar = function () { try { localStorage.setItem(K_MIN, minimizado() ? '0' : '1'); } catch (e) {} aplicarMin(); };
   window.armProteger = async function () {
     let ok = false;
     try { if (navigator.storage && navigator.storage.persist) ok = await navigator.storage.persist(); } catch (e) {}
@@ -23774,6 +23786,14 @@ const ASSIST_BASE = [
     const css = document.createElement('style'); css.id = 'armEstilos';
     css.textContent = `
       #armCard h2 { margin: 0 0 2px; }
+      .arm-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+      .arm-cab h2 { white-space: nowrap; font-size: clamp(17px, 5vw, 22px); }
+      .arm-cab > div { min-width: 0; }
+      .arm-cab .btn { flex: none; padding: 5px 11px; font-size: 12.5px; white-space: nowrap; }
+      #armResumo { display: none; margin-top: 8px; }
+      #armCard.arm-min #armResumo { display: block; }
+      #armCard.arm-min #armCorpo, #armCard.arm-min .arm-desc { display: none; }
+      #armCard.arm-min { padding-top: 12px; padding-bottom: 12px; }
       .arm-topo { font-size: 15px; margin: 10px 0 6px; }
       .arm-barra { display: flex; height: 16px; border-radius: 99px; overflow: hidden; background: rgba(127,127,127,.18); }
       .arm-barra span { display: block; height: 100%; }
@@ -23789,8 +23809,8 @@ const ASSIST_BASE = [
       .arm-prot .btn { margin-left: 6px; padding: 4px 10px; font-size: 12.5px; }`;
     document.head.appendChild(css);
     const card = document.createElement('div'); card.className = 'card'; card.id = 'armCard'; card.style.marginBottom = '16px';
-    card.innerHTML = `<h2>💾 Armazenamento</h2><small class="muted">Quanto este aparelho está usando, como no armazenamento do celular.</small><div id="armCorpo"></div>`;
-    sec.insertBefore(card, sec.firstChild);
+    card.innerHTML = `<div class="arm-cab"><div><h2>💾 Armazenamento</h2><small class="muted arm-desc">Quanto este aparelho está usando, como no armazenamento do celular.</small></div><button type="button" class="btn" id="armMinBtn" onclick="armAlternar()"></button></div><div id="armResumo"></div><div id="armCorpo"></div>`;
+    sec.insertBefore(card, sec.firstChild); aplicarMin();
     let jaDesenhou = false;
     const ver = () => { if (sec.classList.contains('active') || sec.offsetParent !== null) { if (!jaDesenhou) { jaDesenhou = true; desenhar(); } } else jaDesenhou = false; };
     new MutationObserver(ver).observe(sec, { attributes: true, attributeFilter: ['class', 'style'] });
