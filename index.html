@@ -3577,11 +3577,31 @@ const defaultBDR = {
 };
 
 const defaultMeetingSteps = [
-  { num: '1', title: 'Rapport (3–5 min)', script: '"Me conta um pouco da história do seu negócio/carreira. O que te fez buscar esse projeto agora?"' },
-  { num: '2', title: 'Institucional Rápido', script: '"Antes de falar dos números, quero te mostrar a segurança da instituição por trás da nossa estratégia..."' },
-  { num: '3', title: 'Diagnóstico Profundo', script: '"Qual o prazo ideal? Se nada for feito nos próximos 3 anos, qual o impacto no seu crescimento?"' },
-  { num: '4', title: 'Estratégia & Produto', script: '"Com base no seu fluxo de caixa de R$ [X], a estratégia ideal combina lance programado e custo reduzido."' },
-  { num: '5', title: 'Fechamento Direto', script: '"Diante do que analisamos, essa estratégia atende suas expectativas para iniciarmos hoje?"' }
+  {
+    "num": "1",
+    "title": "Rapport — Conexão Genuína que Abre Portas",
+    "script": "Antes de qualquer venda, é preciso conquistar a confiança do cliente. O rapport é a base dessa conexão. Aqui, o foco não é vender, mas criar um ambiente confortável e de confiança. Ouça com atenção, demonstre interesse genuíno e procure pontos em comum. Quando o cliente se sente à vontade, ele se abre — e isso facilita todo o processo de venda.\nFunção: Quebrar o gelo, gerar empatia e criar um ambiente propício ao diálogo."
+  },
+  {
+    "num": "2",
+    "title": "Institucional — Mostre a Força da Marca por Trás da Solução",
+    "script": "Após o rapport, é hora de apresentar a empresa com clareza e segurança. Fale brevemente sobre a história, missão e credibilidade do seu negócio. Mostre números, premiações, tempo de mercado ou qualquer outro fator que gere confiança. Lembre-se: antes de confiar em você, o cliente precisa confiar na empresa que você representa.\nFunção: Gerar segurança e credibilidade, reforçando que o cliente está em boas mãos."
+  },
+  {
+    "num": "3",
+    "title": "Objetivo — Descubra o que Realmente Move seu Cliente",
+    "script": "Essa é uma das etapas mais importantes. Aqui você deve investigar e compreender o que o cliente realmente deseja. Seu objetivo é identificar necessidades, dores, sonhos ou inseguranças. Use perguntas abertas e escute com atenção. Muitas vezes, o cliente não sabe exatamente o que precisa — e você pode ajudá-lo a enxergar isso.\nFunção: Mapear as verdadeiras motivações do cliente para oferecer uma solução personalizada."
+  },
+  {
+    "num": "4",
+    "title": "Produto — A Solução que se Encaixa como uma Luva",
+    "script": "Agora sim, é hora de apresentar o produto. Mas atenção: não caia na armadilha de listar características técnicas. O cliente quer saber como aquilo vai mudar a vida dele. Mostre os benefícios reais, adapte a explicação ao objetivo dele e use exemplos ou analogias. Quando o cliente percebe que o produto foi feito para ele, a venda se encaminha naturalmente.\nFunção: Apresentar a solução como resposta direta às necessidades e desejos do cliente."
+  },
+  {
+    "num": "5",
+    "title": "Fechamento — Hora de Concretizar a Conquista",
+    "script": "Com tudo alinhado, chegou a hora do fechamento. Aqui, é importante ser direto, mas sem pressionar. Reforce os benefícios, mostre segurança e convide o cliente para avançar. Use frases de direcionamento e esteja preparado para lidar com dúvidas ou objeções com empatia e argumentos sólidos. O fechamento é natural quando todas as etapas anteriores foram bem conduzidas.\nFunção: Levar o cliente à decisão com confiança, encerrando a venda de forma positiva."
+  }
 ];
 
 const defaultPosVenda = {
@@ -12342,6 +12362,12 @@ function saveBDR(){
 }
 
 function renderMeetingSteps(){
+  try {
+    const ANTIGOS = ['Rapport (3–5 min)', 'Institucional Rápido', 'Diagnóstico Profundo', 'Estratégia & Produto', 'Fechamento Direto'];
+    if (Array.isArray(db.meetingSteps) && db.meetingSteps.length === 5 && db.meetingSteps.every((m, i) => m && m.title === ANTIGOS[i])) {
+      db.meetingSteps = JSON.parse(JSON.stringify(defaultMeetingSteps)); save();
+    }
+  } catch (e) {}
   const view = document.getElementById('meetingStepsView');
   if(view) view.innerHTML = db.meetingSteps.map(m=>`<div class="step"><h3>Passo ${esc(m.num)}: ${esc(m.title)}</h3><div class="script-box" style="background:#0d1117;color:#fff">${esc(m.script)}</div></div>`).join('');
 }
@@ -22820,7 +22846,7 @@ const ASSIST_BASE = [
   for (let i = 0; i < 5; i++) NOS['passo_' + i] = { get ic() { return `<span class="fp-num">${E((passos()[i] || {}).num || i + 1)}</span>`; }, get titulo() { return E((passos()[i] || {}).title || 'Passo ' + (i + 1)); }, cor: '#ea580c', corpo() {
     const m = passos()[i] || {}, inf = PASSOS_INFO[i];
     return `${inf ? `<p class="fp-intro"><b>O que significa:</b> ${inf.sig}</p><div class="fp-chip">⏱️ ${inf.tempo}</div>${bloco('Como executar', `<ol class="fp-lista">${inf.como.map(x => `<li>${x}</li>`).join('')}</ol>`)}${bloco('Evite', lista(inf.evite, 'fp-evite'))}` : ''}
-      ${m.script ? bloco('Sua fala', `<div class="fp-script-txt">${E(m.script)}</div>`) : ''}
+      ${m.script ? bloco('O passo no seu material', `<div class="fp-script-txt">${E(m.script)}</div>`) : ''}
       <div class="fp-nav">${i > 0 ? `<button class="btn" onclick="funilTrocar('passo_${i - 1}')">‹ Passo anterior</button>` : '<span></span>'}${i < passos().length - 1 ? `<button class="btn primary" onclick="funilTrocar('passo_${i + 1}')">Próximo passo ›</button>` : `<button class="btn primary" onclick="funilTrocar('reuniao')">O cliente fechou? ›</button>`}</div>
       <button class="btn" style="margin-top:8px" onclick="funilIrSub('mat5Passos')">✏️ Editar os textos dos 5 passos</button>`;
   } };
