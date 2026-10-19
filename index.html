@@ -13829,8 +13829,8 @@ function montarHtmlComparativo() {
   return `
   <div style="width:900px;background:#fff;font-family:Arial,Helvetica,sans-serif;box-sizing:border-box;padding:44px;color:#0f172a;">
     <div style="text-align:center;margin-bottom:28px;">
-      ${logo || `<div style="font-weight:800;font-size:20px;">${(brand && brand.title) || 'CRM'}</div>`}
-      <div style="font-size:24px;font-weight:800;margin-top:10px;">Consórcio x Financiamento de ${c.modLabel}</div>
+      ${logo}
+      <div style="font-size:24px;font-weight:800;margin-top:${logo ? 10 : 0}px;">Consórcio x Financiamento de ${c.modLabel}</div>
     </div>
 
     <div style="display:flex;gap:22px;">
