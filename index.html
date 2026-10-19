@@ -13037,16 +13037,29 @@ function calcularSimulacao() {
   let paraTrasHoje = 0;
   for (let m = 1; m <= mesC; m++) paraTrasHoje += parcelaCheia - parcelaPlanoMes(m);
   const parcelaPosContemplacaoHoje = prazo - mesC > 0 ? parcelaCheia + Math.max(0, paraTrasHoje) / (prazo - mesC) : 0;
+  // Estratégia de contemplação escolhida (Só sorteio / Lance fixo / Lance limitado / Lance livre) —
+  // usada na Venda da Carta e no Valor Futuro (mesmas regras de lance dos cards do Simulador de Cotas)
+  const estrategiaSim = (typeof window.simEstrategiaAtual === 'function' && window.simEstrategiaAtual()) || 'sorteio';
+  const EST_SIM = {
+    sorteio: ['Só sorteio (sem lance)', 0, 0, parcelaPosContemplacaoHoje],
+    fixo: ['Lance fixo (20% do saldo devedor, embutido)', lanceFixoValor, 0, novaParcelaFixo],
+    limitado: ['Lance limitado (20% embutido + 20% do bolso)', lanceLimCarta, lanceLimBolso, novaParcelaLim],
+    livre: ['Lance livre (70% do crédito, do bolso)', 0, lanceLivreBolso, novaParcelaLivre]
+  };
+  const [estrategiaTxt, lanceEmbHoje, lanceBolsoHoje, parcelaDepoisEstrHoje] = EST_SIM[estrategiaSim] || EST_SIM.sorteio;
+  const quitadoEstr = mesC >= prazo || parcelaDepoisEstrHoje <= valorSeguro + 0.01;
   let pagoAteContemplarReaj = 0, pagoAposContemplarReaj = 0;
   for (let m = 1; m <= prazo; m++) {
     if (m <= mesC) pagoAteContemplarReaj += parcelaPlanoMes(m) * fatorReaj[m];
-    else pagoAposContemplarReaj += parcelaPosContemplacaoHoje * fatorReaj[m];
+    else if (!quitadoEstr) pagoAposContemplarReaj += parcelaDepoisEstrHoje * fatorReaj[m];
   }
   const reajustesAteContemplar = mesesReajuste.filter(m => m <= mesC).length;
   const creditoReajustado = credito * fatorReaj[mesC];     // o crédito só é corrigido até a contemplação
+  const lanceEmbutidoReaj = lanceEmbHoje * fatorReaj[mesC], lanceBolsoReaj = lanceBolsoHoje * fatorReaj[mesC];
+  const creditoLiberadoReaj = creditoReajustado - lanceEmbutidoReaj;   // o lance embutido sai do crédito
   const parcelaNaContemplacao = parcelaPlanoMes(mesC) * fatorReaj[mesC];
-  const parcelaPosContemplacaoReaj = mesC < prazo ? parcelaPosContemplacaoHoje * fatorReaj[mesC + 1] : 0;
-  const parcelaUltimoMes = mesC < prazo ? parcelaPosContemplacaoHoje * fatorReaj[prazo] : 0;
+  const parcelaPosContemplacaoReaj = !quitadoEstr ? parcelaDepoisEstrHoje * fatorReaj[mesC + 1] : 0;
+  const parcelaUltimoMes = !quitadoEstr ? parcelaDepoisEstrHoje * fatorReaj[prazo] : 0;
   const pctPlanoTxt = duracaoReduzidaVeiculo > 0 ? 'parcela reduzida de veículo' : (pctCardsSelecionado >= 100 ? 'parcela cheia (100%)' : 'plano ' + pctCardsSelecionado + '%');
   const nomeMesSim = m => { const d = new Date(anoSim, mesSim + m - 1, 1); return d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', ''); };
 
@@ -13095,17 +13108,20 @@ function calcularSimulacao() {
   ultimaSimulacaoCards = cardsSimulacao;
   renderCardsSimulacao(cardsSimulacao);
 
-  const totalPagoAteContemplar = pagoAteContemplarReaj;      // com o plano escolhido e os reajustes de fevereiro
-  const valorVenda = creditoReajustado * agio;
+  const totalPagoAteContemplar = pagoAteContemplarReaj + lanceBolsoReaj;      // plano escolhido + reajustes de fevereiro + lance do bolso
+  const valorVenda = creditoLiberadoReaj * agio;
   const lucroVenda = valorVenda - totalPagoAteContemplar;
   
   const resVenda = document.getElementById('resultadoVendaCarta');
   if (resVenda) {
     resVenda.innerHTML = `
       Tempo de Contemplação: <b>${mesesPagos} meses</b> (até ${nomeMesSim(mesC)})<br>
-      Total Pago (${pctPlanoTxt}, com reajustes): <b>${formatBR(totalPagoAteContemplar)}</b><br>
+      Estratégia: <b>${estrategiaTxt}</b><br>
+      Parcelas pagas até contemplar (${pctPlanoTxt}, com reajustes): <b>${formatBR(pagoAteContemplarReaj)}</b><br>
+      ${lanceBolsoReaj > 0.01 ? `Lance do bolso: <b>${formatBR(lanceBolsoReaj)}</b><br>` : ''}Total Pago: <b>${formatBR(totalPagoAteContemplar)}</b><br>
       Reajustes de ${indiceReajuste} até contemplar: <b>${reajustesAteContemplar}</b>${reajustesAteContemplar ? ` (todo fevereiro, ${(reajusteAnual * 100).toFixed(2).replace('.', ',')}% ao ano)` : ''}<br>
       Crédito Atualizado (${indiceReajuste}): <b>${formatBR(creditoReajustado)}</b><br>
+      ${lanceEmbutidoReaj > 0.01 ? `Lance embutido (sai do crédito): <b>- ${formatBR(lanceEmbutidoReaj)}</b><br>Crédito liberado: <b>${formatBR(creditoLiberadoReaj)}</b><br>` : ''}
       Valor Oferecido na Venda (${(agio*100).toFixed(2)}%): <b>${formatBR(valorVenda)}</b><br><br>
       <div style="font-size:16px; padding:10px; background:#dcfce7; color:#166534; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid #15803d;">
         LUCRO LÍQUIDO REALIZADO: ${formatBR(lucroVenda)}
@@ -13116,25 +13132,28 @@ function calcularSimulacao() {
   const selicAnual = (parseSimNumber(document.getElementById('simSelicAnual')?.value) / 100) || 0;
   const taxaSelicMes = Math.pow(1 + selicAnual, 1 / 12) - 1;     // taxa mensal equivalente à Selic anual
   const mesesRendendo = prazo - mesesPagos;
-  const valorFinalFundo = creditoReajustado * Math.pow(1 + taxaSelicMes, mesesRendendo);
-  const rendimentoPuro = valorFinalFundo - creditoReajustado;
+  const valorFinalFundo = creditoLiberadoReaj * Math.pow(1 + taxaSelicMes, mesesRendendo);
+  const rendimentoPuro = valorFinalFundo - creditoLiberadoReaj;
 
   const resFuturo = document.getElementById('resultadoValorFuturo');
   if (resFuturo) {
     resFuturo.innerHTML = `
       Crédito contratado hoje: <b>${formatBR(credito)}</b><br>
       Crédito na contemplação (${indiceReajuste} até o ${mesesPagos}º mês): <b>${formatBR(creditoReajustado)}</b><br>
+      ${lanceEmbutidoReaj > 0.01 ? `Lance embutido (sai do crédito): <b>- ${formatBR(lanceEmbutidoReaj)}</b> · Crédito liberado que rende: <b>${formatBR(creditoLiberadoReaj)}</b><br>` : ''}
       Selic: <b>${(selicAnual * 100).toFixed(2).replace('.', ',')}% ao ano</b> (${(taxaSelicMes * 100).toFixed(2).replace('.', ',')}% ao mês)<br>
       Tempo Rendendo na Selic: <b>${mesesRendendo} meses</b><br>
       Montante Final Acumulado: <b>${formatBR(valorFinalFundo)}</b><br>
       <small class="muted">Depois da contemplação o crédito não é mais corrigido pelo ${indiceReajuste}: ele só rende na Selic. O ${indiceReajuste} continua reajustando apenas a parcela, todo fevereiro. O rendimento é lucro do cliente: ele não paga nada sobre isso.</small><br><br>
       <div style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:12px;background:rgba(127,127,127,.04)">
         <b>Se o cliente pagar até o fim do contrato (${prazo} meses, até ${nomeMesSim(prazo)}):</b><br>
+        Estratégia: <b>${estrategiaTxt}</b><br>
         Pago até a contemplação (${pctPlanoTxt}): <b>${formatBR(pagoAteContemplarReaj)}</b><br>
-        Parcela depois de contemplar: <b>${formatBR(parcelaPosContemplacaoReaj)}</b>${paraTrasHoje > 0.01 ? ' <small class="muted">(volta à parcela cheia + o que ficou para trás, diluído)</small>' : ''}<br>
+        ${lanceBolsoReaj > 0.01 ? `Lance do bolso: <b>${formatBR(lanceBolsoReaj)}</b><br>` : ''}
+        Parcela depois de contemplar: <b>${quitadoEstr ? 'cota quitada' : formatBR(parcelaPosContemplacaoReaj)}</b>${!quitadoEstr && estrategiaSim === 'sorteio' && paraTrasHoje > 0.01 ? ' <small class="muted">(volta à parcela cheia + o que ficou para trás, diluído)</small>' : (!quitadoEstr && estrategiaSim !== 'sorteio' ? ' <small class="muted">(saldo depois do lance, diluído no prazo restante)</small>' : '')}<br>
         Parcela no último mês (com os reajustes): <b>${formatBR(parcelaUltimoMes)}</b><br>
         Pago depois da contemplação: <b>${formatBR(pagoAposContemplarReaj)}</b><br>
-        Total pago no contrato: <b>${formatBR(pagoAteContemplarReaj + pagoAposContemplarReaj)}</b><br>
+        Total pago no contrato: <b>${formatBR(pagoAteContemplarReaj + lanceBolsoReaj + pagoAposContemplarReaj)}</b><br>
         <small class="muted">${mesesReajuste.length} reajustes de ${indiceReajuste} no contrato (todo fevereiro), estimados em ${(reajusteAnual * 100).toFixed(2).replace('.', ',')}% ao ano.</small>
       </div>
       <div style="font-size:16px; padding:10px; background:#f0fdf4; color:#166534; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid #bbf7d0;">
@@ -13156,7 +13175,8 @@ function calcularSimulacao() {
     agio, totalPagoAteContemplar, creditoReajustado, valorVenda, lucroVenda,
     mesesRendendo, valorFinalFundo, rendimentoPuro, selicAnual, taxaSelicMes, reajusteAnual,
     pctPlano: pctCardsSelecionado, pctPlanoTxt, reajustesAteContemplar, mesesReajuste, pagoAteContemplarReaj, pagoAposContemplarReaj,
-    totalPagoContrato: pagoAteContemplarReaj + pagoAposContemplarReaj, parcelaPosContemplacaoReaj, parcelaUltimoMes, parcelaNaContemplacao
+    totalPagoContrato: pagoAteContemplarReaj + lanceBolsoReaj + pagoAposContemplarReaj, parcelaPosContemplacaoReaj, parcelaUltimoMes, parcelaNaContemplacao,
+    estrategiaSim, estrategiaTxt, creditoLiberadoReaj, lanceBolsoReaj, lanceEmbutidoReaj
   };
 }
 
@@ -13573,7 +13593,8 @@ function montarHtmlValorFuturo() {
     subtitulo: `Consórcio de ${nomeModalidadeExport(sim.modalidade)} — crédito de ${fmtBRExport(sim.credito)}`,
     cor: '#16a34a',
     linhas: [
-      { label: `Crédito na contemplação (${sim.indiceReajuste} só até contemplar)`, valor: fmtBRExport(sim.creditoReajustado) },
+      { label: 'Estratégia', valor: sim.estrategiaTxt || 'Só sorteio' },
+      { label: `Crédito liberado na contemplação (${sim.indiceReajuste} só até contemplar)`, valor: fmtBRExport(sim.creditoLiberadoReaj != null ? sim.creditoLiberadoReaj : sim.creditoReajustado) },
       { label: `Rendendo na Selic (${((sim.selicAnual || 0) * 100).toFixed(2).replace('.', ',')}% ao ano) por`, valor: `${sim.mesesRendendo} meses` },
       { label: `Depois de contemplar, o ${sim.indiceReajuste} reajusta`, valor: 'só a parcela' },
       { label: 'Rendimento gerado (lucro do cliente)', valor: `+ ${fmtBRExport(sim.rendimentoPuro)}` },
@@ -13593,8 +13614,9 @@ function montarHtmlVendaCarta() {
     cor: '#d97706',
     linhas: [
       { label: 'Tempo até a contemplação', valor: `${sim.mesContemplacao} meses` },
-      { label: `Total pago até lá (${sim.pctPlanoTxt || 'plano escolhido'}, com reajustes)`, valor: fmtBRExport(sim.totalPagoAteContemplar) },
-      { label: `Crédito atualizado (${sim.indiceReajuste})`, valor: fmtBRExport(sim.creditoReajustado) },
+      { label: 'Estratégia', valor: sim.estrategiaTxt || 'Só sorteio' },
+      { label: `Total pago até lá (${sim.pctPlanoTxt || 'plano escolhido'}, com reajustes${sim.lanceBolsoReaj > 0.01 ? ' e lance do bolso' : ''})`, valor: fmtBRExport(sim.totalPagoAteContemplar) },
+      { label: `Crédito liberado (${sim.indiceReajuste}${sim.lanceEmbutidoReaj > 0.01 ? ', sem o lance embutido' : ''})`, valor: fmtBRExport(sim.creditoLiberadoReaj != null ? sim.creditoLiberadoReaj : sim.creditoReajustado) },
       { label: `Valor oferecido na venda (ágio de ${(sim.agio * 100).toFixed(2)}%)`, valor: fmtBRExport(sim.valorVenda) }
     ],
     destaqueLabel: 'Lucro Líquido Realizado',
@@ -20545,8 +20567,8 @@ const ASSIST_BASE = [
   r: 'Nas **Notas à mão**, desenhe a linha ou a forma e **segure parado no fim do traço**: ela vira uma linha reta, círculo, retângulo ou triângulo certinho.\nPara ligar ou desligar: toque de novo na caneta e use a chave **Endireitar as linhas e formas**.', aba: 'apresentacoes' },
 { id: 'laser_crm', t: 'Como ligo o laser para apresentar o CRM?', k: 'laser no crm, laser na tela, apontador, apontar na tela, apresentar o crm, mostrar o crm para cliente, segurar 3 segundos, segurar o dedo, tres toques, ligar laser, desligar laser, ponteiro vermelho, segurar copia o texto, copiar texto ao segurar',
   r: 'Em qualquer tela do CRM:\n- **Segure o dedo parado por 3 segundos** numa área livre (fora de botões e campos): um círculo vai enchendo e o laser **liga**. No computador, segure o botão do mouse.\n- **Três toques rápidos** **desligam** (ou toque em **Desligar** no aviso do alto, ou aperte Esc no computador).\nCom o laser ligado, um ponto vermelho com rastro segue o seu dedo, a caneta ou o mouse, e **segurar o dedo não abre mais o "copiar"** do aparelho. Os botões continuam funcionando com um toque. Para **rolar a tela**, arraste com **dois dedos**.\nA cor é a mesma escolhida para o laser da apresentação de slides. Dentro da apresentação e das Notas à mão ele fica de fora, porque lá já existe o laser próprio (segurar o dedo) e as canetas.', aba: 'apresentacoes' },
-{ id: 'valor_futuro_selic', t: 'Como funciona o Valor Futuro e onde mudo a Selic?', k: 'valor futuro, selic, mudar selic, taxa selic, rendimento do credito, credito rendendo, fundo da administradora, incc depois da contemplacao, credito reajusta depois de contemplar, reajuste da parcela',
-  r: 'Em **Simulador** › **📈 Valor Futuro**:\n- O campo **Selic (% ao ano)** define quanto o crédito rende no fundo da administradora (o CRM converte para a taxa ao mês). O último valor digitado fica salvo no aparelho.\n- O **INCC/INPC corrige o crédito só até a contemplação**. Depois de contemplado, o crédito não é mais reajustado pelo índice: ele só rende na Selic até ser usado.\n- Depois da contemplação, o índice continua reajustando **apenas a parcela**.\n- A simulação começa no **mês de hoje** e aplica o reajuste **todo fevereiro** (o índice sai em janeiro). Crédito e parcela sobem o mesmo percentual até contemplar.\n- Também mostra **quanto o cliente paga se for até o fim do contrato**: o que pagou até contemplar (no plano escolhido: 50%, 55%, 70%, 85% ou 100%), a parcela depois de contemplar (volta à cheia + o que ficou para trás, diluído) e o total. O rendimento da Selic é lucro: o cliente não paga sobre ele.\nO percentual do reajuste (campo **Reajuste/ano**) fica nos Parâmetros do Plano. A **Venda da Carta** usa a mesma conta: o total pago até contemplar já sai no plano escolhido e com os reajustes de fevereiro.', aba: 'simulador' },
+{ id: 'valor_futuro_selic', t: 'Como funciona o Valor Futuro e onde mudo a Selic?', k: 'valor futuro, selic, mudar selic, estrategia, lance fixo, lance limitado, lance livre, so sorteio, sem lance, taxa selic, rendimento do credito, credito rendendo, fundo da administradora, incc depois da contemplacao, credito reajusta depois de contemplar, reajuste da parcela',
+  r: 'Em **Simulador** › **📈 Valor Futuro**:\n- O campo **Selic (% ao ano)** define quanto o crédito rende no fundo da administradora (o CRM converte para a taxa ao mês). O último valor digitado fica salvo no aparelho.\n- O **INCC/INPC corrige o crédito só até a contemplação**. Depois de contemplado, o crédito não é mais reajustado pelo índice: ele só rende na Selic até ser usado.\n- Depois da contemplação, o índice continua reajustando **apenas a parcela**.\n- A simulação começa no **mês de hoje** e aplica o reajuste **todo fevereiro** (o índice sai em janeiro). Crédito e parcela sobem o mesmo percentual até contemplar.\n- Também mostra **quanto o cliente paga se for até o fim do contrato**: o que pagou até contemplar (no plano escolhido: 50%, 55%, 70%, 85% ou 100%), a parcela depois de contemplar (volta à cheia + o que ficou para trás, diluído) e o total. O rendimento da Selic é lucro: o cliente não paga sobre ele.\n- Escolha a **estratégia de contemplação** nos botões **Só sorteio, Lance fixo, Lance limitado ou Lance livre**. A mesma escolha vale para a Venda da Carta, o Valor Futuro e o Consórcio x Financiamento: o lance embutido sai do crédito, o lance do bolso entra no total pago e a parcela depois de contemplar segue o saldo que sobrou.\nO percentual do reajuste (campo **Reajuste/ano**) fica nos Parâmetros do Plano. A **Venda da Carta** usa a mesma conta: o total pago até contemplar já sai no plano escolhido e com os reajustes de fevereiro.', aba: 'simulador' },
 { id: 'funil_vendedor', t: 'Como uso o Funil do Vendedor?', k: 'funil do vendedor, funil de vendas, fluxograma, meta de vendas, quantas reunioes preciso, quantos contatos por dia, 5 vias de prospeccao, vias de prospeccao, redes sociais, networking, pap, porta a porta, indicacoes, ligacao fria, criar lista, como ligar, qualificacao, bdr, script de prospeccao, no show, agendamento, pos venda, follow up, cliente nao fechou, vender mais',
   r: 'Em **Material de Apoio** › **🧭 Funil do Vendedor** fica o fluxograma da venda: **Meta → Prospecção → Criação de lista → Agendamento → Reunião (5 passos) → Fechou?** Se sim, **Pós-venda**; se não, **Follow-up**, que volta para um novo agendamento.\nToque em qualquer etapa para abrir a explicação. Dentro dela, os assuntos ligados abrem novos pop-ups (as 5 vias, a qualificação, como ligar, cada um dos 5 passos, os motivos de não fechar); use **‹** para voltar.\n- Na **Meta** você calcula quantos contatos, agendamentos e reuniões precisa por dia.\n- Os scripts têm **📋 Copiar** e **✏️ Personalizar** (fica salvo para você).\n- As perguntas de qualificação (antigo Processo BDR) ficam em **Criação de lista › Qualificar o contato**.', aba: 'materialApoio' },
 { id: 'central_ajuda', t: 'Onde ficam os manuais e vídeos de ajuda?', k: 'manual, manuais, video de ajuda, tutorial, central de ajuda, ajuda do crm, como usar o crm, pdf do manual, aprender a usar',
@@ -23467,7 +23489,53 @@ const ASSIST_BASE = [
   #simFinanciamento .tab-pills { margin: 0 !important; padding-bottom: 0; border-bottom: 0; }
   #simComparativo > .grid2 { gap: 12px; margin-bottom: 0; }`;
   document.head.appendChild(css2);
-  function ligarTudo() { ligar(); compactarFin(); compactarComp(); }
+  // ---------- Estratégia de contemplação (Só sorteio / Lance fixo / Lance limitado / Lance livre) ----------
+  // Uma escolha só, que vale para a Venda da Carta, o Valor Futuro e o Consórcio x Financiamento.
+  const ESTR = [['sorteio', 'Só sorteio'], ['fixo', 'Lance fixo'], ['limitado', 'Lance limitado'], ['livre', 'Lance livre']];
+  const ESTR_DICA = { sorteio: 'Sem lance: contempla por sorteio.', fixo: 'Lance fixo: 20% do saldo devedor, embutido (sai do crédito).', limitado: 'Lance limitado: 20% embutido + 20% do bolso (sobre o saldo devedor).', livre: 'Lance livre: 70% do crédito, pago do bolso.' };
+  window.simEstrategiaAtual = function () { try { const v = localStorage.getItem('crm_sim_estrategia'); return ESTR.some(e => e[0] === v) ? v : 'sorteio'; } catch (e) { return 'sorteio'; } };
+  function pills() {
+    const atual = simEstrategiaAtual();
+    return `<div class="sp-estr-rot">Estratégia de contemplação</div><div class="sp-estr-bts">${ESTR.map(([v, t]) => `<button type="button" data-estr="${v}" class="${v === atual ? 'on' : ''}" onclick="simEscolherEstrategia('${v}')">${t}</button>`).join('')}</div><small class="sp-estr-dica">${ESTR_DICA[atual]}</small>`;
+  }
+  function sincronizarComparativo() {
+    const sel = document.getElementById('cpTipoLance'); if (!sel) return;
+    const v = simEstrategiaAtual(), alvo = v === 'sorteio' ? 'nenhum' : v;
+    if (sel.value !== alvo) sel.value = alvo;
+  }
+  function desenharPills() { document.querySelectorAll('.sp-estr').forEach(el => { el.innerHTML = pills(); }); }
+  window.simEscolherEstrategia = function (v) {
+    try { localStorage.setItem('crm_sim_estrategia', v); } catch (e) {}
+    desenharPills(); sincronizarComparativo();
+    try { calcularSimulacao(); } catch (e) {}
+    try { renderPreviaComparativo(); } catch (e) {}
+  };
+  function montarEstrategia() {
+    const lugares = [
+      ['resultadoVendaCarta', 'before'], ['resultadoValorFuturo', 'before']
+    ];
+    lugares.forEach(([id]) => { const alvo = document.getElementById(id); if (alvo && !alvo.previousElementSibling?.classList?.contains('sp-estr')) { const d = document.createElement('div'); d.className = 'sp-estr'; alvo.before(d); } });
+    const sel = document.getElementById('cpTipoLance');
+    if (sel && !document.querySelector('#simComparativo .sp-estr')) {
+      const campo = sel.closest('.field'); campo.style.display = 'none';
+      const card = campo.closest('.card'), d = document.createElement('div'); d.className = 'sp-estr';
+      const h = card.querySelector('h3'); (h ? h.after(d) : card.prepend(d));
+      sel.addEventListener('change', () => { const v = sel.value === 'nenhum' ? 'sorteio' : sel.value; try { localStorage.setItem('crm_sim_estrategia', v); } catch (e) {} desenharPills(); });
+    }
+    desenharPills(); sincronizarComparativo();
+    try { calcularSimulacao(); } catch (e) {}
+    try { renderPreviaComparativo(); } catch (e) {}
+  }
+  const css3 = document.createElement('style');
+  css3.textContent = `
+  .sp-estr { margin: 4px 0 12px; }
+  .sp-estr-rot { font-size: 11.5px; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .4px; }
+  .sp-estr-bts { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sp-estr-bts button { border: 1px solid var(--line); background: rgba(127,127,127,.06); color: inherit; border-radius: 20px; padding: 7px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
+  .sp-estr-bts button.on { background: var(--red, #C8102E); border-color: var(--red, #C8102E); color: #fff; }
+  .sp-estr-dica { display: block; margin-top: 6px; font-size: 12px; color: var(--muted); }`;
+  document.head.appendChild(css3);
+  function ligarTudo() { ligar(); compactarFin(); compactarComp(); montarEstrategia(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligarTudo); else ligarTudo();
 })();
 </script>
