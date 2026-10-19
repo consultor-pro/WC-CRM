@@ -1725,13 +1725,14 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         <label class="sp-chk"><input type="checkbox" id="simSeguro" onchange="calcularSimulacao()"><span title="Seguro de vida: R$ 46,45 por 100 mil">Seguro de vida</span></label>
       </div>
       <div class="field sp-reduzida" id="simVeiculoReduzidaWrap" style="display:none">
-        <label>Parcela reduzida (veículo) <i class="sp-info" title="Alguns grupos de veículo têm parcela reduzida (54% da parcela cheia) por um período fixo. Depois desse período, se o cliente ainda não foi contemplado, a parcela volta ao valor cheio acrescida do que ficou para trás, diluído no prazo restante. Use Personalizar para outro prazo.">ⓘ</i></label>
+        <label>Parcela reduzida (veículo) <i class="sp-info" title="Nos grupos de veículo, o plano escolhido no campo Parcela (ex.: 50%) vale por um número de meses (padrão: 25). Depois disso, se o cliente ainda não foi contemplado, a parcela volta à cheia mais o que ficou para trás, diluído no prazo restante. Com Parcela 100% não há redução.">ⓘ</i></label>
         <div class="sp-linha">
           <select id="simVeiculoPrazoReduzido" onchange="calcularSimulacao()">
-            <option value="0">Sem parcela reduzida</option>
+            <option value="25" selected>Reduzida por 25 meses</option>
             <option value="12">Reduzida por 12 meses</option>
             <option value="18">Reduzida por 18 meses</option>
             <option value="24">Reduzida por 24 meses</option>
+            <option value="0">Reduzida até contemplar</option>
             <option value="custom">Personalizar</option>
           </select>
           <input type="number" id="simVeiculoPrazoReduzidoCustom" min="1" placeholder="Meses" style="display:none" oninput="calcularSimulacao()">
@@ -1926,6 +1927,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
           <label>Tipo de lance</label>
           <select id="cpTipoLance" onchange="renderPreviaComparativo()">
             <option value="nenhum">Nenhum (sem lance)</option>
+            <option value="segundo">Segundo fixo — 25% do saldo devedor</option>
             <option value="fixo" selected>Fixo — 20% do saldo devedor</option>
             <option value="limitado">Limitado — 40% do saldo devedor</option>
             <option value="livre">Livre — 70% do crédito</option>
@@ -12737,7 +12739,7 @@ function renderCardsSimulacao(cards) {
       <div class="sim-card-field">
         <span class="lbl">Valor do lance</span>
         <span class="val">${formatBRSim(c.lance)}</span>
-        <div class="sub">${((c.lance / c.creditoContratado) * 100).toFixed(0)}% do crédito contratado</div>
+        <div class="sub">${c.pctLanceSaldo ? c.pctLanceSaldo + '% do saldo devedor' : ((c.lance / c.creditoContratado) * 100).toFixed(0) + '% do crédito contratado'}</div>
         <div class="sim-card-tags">
           <span class="sim-card-tag">💰 Pago: ${formatBRSim(c.lanceBolso)}</span>
           <span class="sim-card-tag">📄 Embutido: ${formatBRSim(c.lanceEmbutido)}</span>
@@ -12747,9 +12749,9 @@ function renderCardsSimulacao(cards) {
 
       ${c.duracaoReduzidaVeiculo > 0 ? `
       <div class="sim-card-field">
-        <span class="lbl">Parcela reduzida (${(c.pctParcelaReduzidaVeiculo * 100).toFixed(0)}%, ${c.duracaoReduzidaVeiculo}x)</span>
-        <span class="val">${formatBRSim(c.parcelaReduzidaVeiculo)}</span>
-        <div class="sub">De: ${formatBRSim(c.parcelaAntes)}</div>
+        <span class="lbl">Parcela antes da contemplação</span>
+        <div class="sub">De: ${formatBRSim(c.parcelaCheia || c.parcelaAntes)}</div>
+        <span class="val">Por: ${c.duracaoReduzidaVeiculo}x de ${formatBRSim(c.parcelaReduzidaVeiculo)}</span>
       </div>
       <div class="sim-card-field">
         <span class="lbl">Parcela após ${c.duracaoReduzidaVeiculo} meses (se não contemplado)</span>
@@ -12763,7 +12765,7 @@ function renderCardsSimulacao(cards) {
       `}
       <div class="sim-card-field">
         <span class="lbl">Parcela após a contemplação</span>
-        <span class="val ${c.quitado ? 'quitado' : ''}">${c.quitado ? 'Quitado' : formatBRSim(c.parcelaDepois)}</span>
+        <span class="val ${c.quitado ? 'quitado' : ''}">${c.quitado ? 'Quitado' : (c.parcelaMinima ? '<small style="font-weight:600">(parcela mínima)</small> ' : '') + formatBRSim(c.parcelaDepois)}</span>
       </div>
       <div class="sim-card-field">
         <span class="lbl">Mês de contemplação</span>
@@ -12780,6 +12782,7 @@ function renderCardsSimulacao(cards) {
           <span class="val">${c.prazoOriginal} meses</span>
         </div>
       </div>
+      ${c.prazoApos != null && !c.quitado && c.prazoApos < (c.prazoOriginal ? Math.min(c.prazoAtual, c.prazoOriginal) : c.prazoAtual) - c.mesContemplacao ? `<div class="sim-card-field"><span class="lbl">Prazo após contemplação</span><span class="val">${c.prazoApos} meses</span></div>` : ''}
 
       <div class="sim-card-actions">
         <button class="sim-card-btn sim-card-btn-primary" onclick="abrirSeletorFundoPublicidade('${c.key}','baixar')">📢 Criar publicidade</button>
@@ -12829,7 +12832,7 @@ function gerarParcelasEstrategia(c) {
   const hoje = new Date();
   let totalPago = 0;
   let linhas = '';
-  const limiteLinhas = Math.min(c.prazoAtual || c.prazoOriginal, 360);
+  const limiteLinhas = Math.min(c.prazoFinal || c.prazoAtual || c.prazoOriginal, 360);
   for (let i = 1; i <= limiteLinhas; i++) {
     const contemplouAgora = i === c.mesContemplacao;
     let parcela;
@@ -12857,8 +12860,8 @@ function gerarParcelasEstrategia(c) {
     } else if (i === c.mesContemplacao) {
       saldo = c.saldoDevedorPosLance;
     } else {
-      const restante = c.prazoAtual - c.mesContemplacao;
-      saldo = restante > 0 ? c.saldoDevedorPosLance * Math.max(0, (c.prazoAtual - i) / restante) : 0;
+      const fimP = c.prazoFinal || c.prazoAtual, restante = fimP - c.mesContemplacao;
+      saldo = restante > 0 ? c.saldoDevedorPosLance * Math.max(0, (fimP - i) / restante) : 0;
     }
     saldo = Math.max(0, saldo);
     const dataRef = new Date(hoje.getFullYear(), hoje.getMonth() + i - 1, 1);
@@ -12965,7 +12968,8 @@ function calcularSimulacao() {
   if (inputReduzidaVeiculoCustom) {
     inputReduzidaVeiculoCustom.style.display = (modalidade === 'veiculo' && isReduzidaVeiculoPersonalizada) ? '' : 'none';
   }
-  const duracaoReduzidaVeiculo = modalidade === 'veiculo'
+  const pctPlanoVeic = Number(document.getElementById('pubParcelaPct')?.value || 100);
+  const duracaoReduzidaVeiculo = modalidade === 'veiculo' && pctPlanoVeic < 100
     ? (isReduzidaVeiculoPersonalizada
         ? (parseInt(inputReduzidaVeiculoCustom?.value, 10) || 0)
         : (parseInt(selectReduzidaVeiculo?.value, 10) || 0))
@@ -12973,7 +12977,7 @@ function calcularSimulacao() {
   let parcelaReduzidaVeiculo = 0;
   let parcelaAposReducaoVeiculo = 0;
   if (duracaoReduzidaVeiculo > 0) {
-    parcelaReduzidaVeiculo = parcelaCheia * PCT_PARCELA_REDUZIDA_VEICULO;
+    parcelaReduzidaVeiculo = (credito / prazo) * (pctPlanoVeic / 100) + (credito * taxaAdmin) / prazo + valorSeguro;   // plano escolhido: % da amortização + taxa
     const diferencaMensalReduzida = parcelaCheia - parcelaReduzidaVeiculo;
     const totalDeixadoParaTrasVeiculo = diferencaMensalReduzida * duracaoReduzidaVeiculo;
     const prazoRestanteAposReducaoVeiculo = prazo - duracaoReduzidaVeiculo;
@@ -13046,12 +13050,27 @@ function calcularSimulacao() {
     limitado: ['Lance limitado (20% embutido + 20% do bolso)', lanceLimCarta, lanceLimBolso, novaParcelaLim],
     livre: ['Lance livre (70% do crédito, do bolso)', 0, lanceLivreBolso, novaParcelaLivre]
   };
-  const [estrategiaTxt, lanceEmbHoje, lanceBolsoHoje, parcelaDepoisEstrHoje] = EST_SIM[estrategiaSim] || EST_SIM.sorteio;
-  const quitadoEstr = mesC >= prazo || parcelaDepoisEstrHoje <= valorSeguro + 0.01;
+  let [estrategiaTxt, lanceEmbHoje, lanceBolsoHoje, parcelaDepoisEstrHoje] = EST_SIM[estrategiaSim] || EST_SIM.sorteio;
+  let prazoAposEstr = prazo - mesC, parcelaMinimaEstr = false;
+  // VEÍCULO — mesmas regras do simulador oficial: lance sobre o saldo devedor (segundo fixo 25% embutido;
+  // fixo 40% = 25% embutido + 15% do bolso), parcela depois de contemplar = saldo que sobrou ÷ meses restantes,
+  // nunca abaixo da parcela mínima (63% da parcela cheia); se ficar abaixo, o prazo diminui.
+  const VEIC = modalidade === 'veiculo' ? (() => {
+    let pagoV = 0; for (let m = 1; m <= mesC; m++) pagoV += parcelaPlanoMes(m) - valorSeguro;
+    const saldoMomentoV = Math.max(0, saldoDevedorInicial - pagoV), restV = prazo - mesC, minV = parcelaCheiaS * 0.63;
+    const pos = lance => { const sd = Math.max(0, saldoMomentoV - lance); if (sd <= 0.01 || restV <= 0) return { parcela: valorSeguro, prazoApos: 0, minima: false, saldo: 0 };
+      const n = sd / restV; return n >= minV ? { parcela: n + valorSeguro, prazoApos: restV, minima: false, saldo: sd } : { parcela: minV + valorSeguro, prazoApos: Math.floor(sd / minV), minima: true, saldo: sd }; };
+    const sdi = saldoDevedorInicial;
+    const L = { sorteio: ['Só sorteio (sem lance)', 0, 0, 0], segundo: ['Lance segundo fixo (25% do saldo devedor, embutido)', sdi * .25, 0, 25], fixo: ['Lance fixo (40% do saldo devedor: 25% embutido + 15% do bolso)', sdi * .25, sdi * .15, 40], limitado: ['Lance limitado (20% embutido + 20% do bolso)', lanceLimCarta, lanceLimBolso, 40], livre: ['Lance livre (70% do crédito, do bolso)', 0, lanceLivreBolso, 0] };
+    Object.keys(L).forEach(k => { const [t, e, b, ps] = L[k]; L[k] = Object.assign({ txt: t, emb: e, bolso: b, pctSaldo: ps }, pos(e + b)); });
+    return { saldoMomentoV, minV, L };
+  })() : null;
+  if (VEIC) { const v = VEIC.L[estrategiaSim] || VEIC.L.sorteio; estrategiaTxt = v.txt; lanceEmbHoje = v.emb; lanceBolsoHoje = v.bolso; parcelaDepoisEstrHoje = v.parcela; prazoAposEstr = v.prazoApos; parcelaMinimaEstr = v.minima; }
+  const quitadoEstr = mesC >= prazo || prazoAposEstr <= 0 || parcelaDepoisEstrHoje <= valorSeguro + 0.01;
   let pagoAteContemplarReaj = 0, pagoAposContemplarReaj = 0;
   for (let m = 1; m <= prazo; m++) {
     if (m <= mesC) pagoAteContemplarReaj += parcelaPlanoMes(m) * fatorReaj[m];
-    else if (!quitadoEstr) pagoAposContemplarReaj += parcelaDepoisEstrHoje * fatorReaj[m];
+    else if (!quitadoEstr && m <= mesC + prazoAposEstr) pagoAposContemplarReaj += parcelaDepoisEstrHoje * fatorReaj[m];
   }
   const reajustesAteContemplar = mesesReajuste.filter(m => m <= mesC).length;
   const creditoReajustado = credito * fatorReaj[mesC];     // o crédito só é corrigido até a contemplação
@@ -13059,7 +13078,7 @@ function calcularSimulacao() {
   const creditoLiberadoReaj = creditoReajustado - lanceEmbutidoReaj;   // o lance embutido sai do crédito
   const parcelaNaContemplacao = parcelaPlanoMes(mesC) * fatorReaj[mesC];
   const parcelaPosContemplacaoReaj = !quitadoEstr ? parcelaDepoisEstrHoje * fatorReaj[mesC + 1] : 0;
-  const parcelaUltimoMes = !quitadoEstr ? parcelaDepoisEstrHoje * fatorReaj[prazo] : 0;
+  const parcelaUltimoMes = !quitadoEstr ? parcelaDepoisEstrHoje * fatorReaj[Math.min(prazo, mesC + prazoAposEstr)] : 0;
   const pctPlanoTxt = duracaoReduzidaVeiculo > 0 ? 'parcela reduzida de veículo' : (pctCardsSelecionado >= 100 ? 'parcela cheia (100%)' : 'plano ' + pctCardsSelecionado + '%');
   const nomeMesSim = m => { const d = new Date(anoSim, mesSim + m - 1, 1); return d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', ''); };
 
@@ -13086,6 +13105,14 @@ function calcularSimulacao() {
       lanceBolso: lanceLivreBolso, lanceEmbutido: 0, lance: lanceLivreBolso,
       parcelaAntes: parcelaAntesPct, parcelaDepois: novaParcelaLivre }
   ];
+  if (VEIC) {                                   // veículo: cards no formato do simulador oficial
+    const mk = (key, nome, icone, fundo, corI) => { const v = VEIC.L[key]; return { key, nome, icone, corBadgeFundo: fundo, corBadgeIcone: corI,
+      creditoContratado: credito, creditoLiberado: credito - v.emb, lanceBolso: v.bolso, lanceEmbutido: v.emb, lance: v.emb + v.bolso, pctLanceSaldo: v.pctSaldo,
+      parcelaAntes: parcelaAntesPct, parcelaDepois: v.parcela, parcelaMinima: v.minima, prazoApos: v.prazoApos, saldoVeic: v.saldo }; };
+    cardsSimulacao.length = 0;
+    cardsSimulacao.push(mk('sorteio', 'Sorteio', '⊘', '#fee2e2', '#dc2626'), mk('segundo', 'Lance Segundo Fixo', '📍', '#fef3c7', '#b45309'),
+      mk('fixo', 'Lance Fixo', '📌', '#f1f5f9', '#334155'), mk('limitado', 'Lance Limitado', '⊘', '#fee2e2', '#dc2626'), mk('livre', 'Lance Livre (Ex: 70%)', '🆓', '#dcfce7', '#16a34a'));
+  }
   cardsSimulacao.forEach(c => {
     c.pctParcela = pctCardsSelecionado;
     c.quitado = c.parcelaDepois <= valorSeguro + 0.01;
@@ -13104,6 +13131,8 @@ function calcularSimulacao() {
     c.tirMensal = c.custoFinanceiroMes;
     c.tirAnual = Math.pow(1 + c.tirMensal, 12) - 1;
     c.seguro = valorSeguro;
+    c.parcelaCheia = parcelaCheia;
+    if (VEIC) { c.saldoAntesLance = VEIC.saldoMomentoV; c.saldoDevedorPosLance = c.saldoVeic || 0; c.quitado = !c.prazoApos; c.prazoFinal = mesesPagos + (c.prazoApos || 0); }
   });
   ultimaSimulacaoCards = cardsSimulacao;
   renderCardsSimulacao(cardsSimulacao);
@@ -13150,7 +13179,7 @@ function calcularSimulacao() {
         Estratégia: <b>${estrategiaTxt}</b><br>
         Pago até a contemplação (${pctPlanoTxt}): <b>${formatBR(pagoAteContemplarReaj)}</b><br>
         ${lanceBolsoReaj > 0.01 ? `Lance do bolso: <b>${formatBR(lanceBolsoReaj)}</b><br>` : ''}
-        Parcela depois de contemplar: <b>${quitadoEstr ? 'cota quitada' : formatBR(parcelaPosContemplacaoReaj)}</b>${!quitadoEstr && estrategiaSim === 'sorteio' && paraTrasHoje > 0.01 ? ' <small class="muted">(volta à parcela cheia + o que ficou para trás, diluído)</small>' : (!quitadoEstr && estrategiaSim !== 'sorteio' ? ' <small class="muted">(saldo depois do lance, diluído no prazo restante)</small>' : '')}<br>
+        Parcela depois de contemplar: <b>${quitadoEstr ? 'cota quitada' : formatBR(parcelaPosContemplacaoReaj)}</b>${!quitadoEstr && estrategiaSim === 'sorteio' && paraTrasHoje > 0.01 ? ' <small class="muted">(volta à parcela cheia + o que ficou para trás, diluído)</small>' : (!quitadoEstr && parcelaMinimaEstr ? ` <small class="muted">(parcela mínima: o lance reduz o prazo para ${prazoAposEstr} meses depois de contemplar)</small>` : (!quitadoEstr && estrategiaSim !== 'sorteio' ? ' <small class="muted">(saldo depois do lance, diluído no prazo restante)</small>' : ''))}<br>
         Parcela no último mês (com os reajustes): <b>${formatBR(parcelaUltimoMes)}</b><br>
         Pago depois da contemplação: <b>${formatBR(pagoAposContemplarReaj)}</b><br>
         Total pago no contrato: <b>${formatBR(pagoAteContemplarReaj + lanceBolsoReaj + pagoAposContemplarReaj)}</b><br>
@@ -13315,6 +13344,10 @@ function pctSelecionadoExport() {
 }
 
 function cenarioExport(chave, sim) {
+  if (sim && sim.modalidade === 'veiculo' && Array.isArray(ultimaSimulacaoCards)) {
+    const card = ultimaSimulacaoCards.find(c => c.key === (chave === 'tradicional' ? 'sorteio' : chave));
+    if (card) return { nome: card.key === 'sorteio' ? 'Sem Lance (Sorteio)' : card.nome, bolso: card.lanceBolso, embutido: card.lanceEmbutido, creditoLiquido: card.creditoLiberado, parcela: card.parcelaDepois };
+  }
   const mapa = {
     tradicional: { nome: 'Sem Lance (Sorteio)', bolso: 0, embutido: 0, creditoLiquido: sim.credito, parcela: sim.novaParcelaTradicional },
     fixo:        { nome: 'Lance Fixo (20%)', bolso: 0, embutido: sim.lanceFixoValor, creditoLiquido: sim.creditoLiqFixo, parcela: sim.novaParcelaFixo },
@@ -13802,7 +13835,9 @@ function calcularComparativo() {
   // Mesmas regras de lance já usadas no Simulador de Cotas: Fixo e Limitado
   // saem do saldo devedor (embutido na carta); Livre sai do bolso, sobre o
   // valor do crédito, sem limite de embutido.
-  const cpLance = cpTipoLance === 'fixo' ? cpSaldoDevedorBruto * 0.20
+  const cpVeic = comparativoModalidadeAtiva !== 'imovel';
+  const cpLance = cpTipoLance === 'segundo' ? cpSaldoDevedorBruto * 0.25
+    : cpTipoLance === 'fixo' ? cpSaldoDevedorBruto * (cpVeic ? 0.40 : 0.20)
     : cpTipoLance === 'limitado' ? cpSaldoDevedorBruto * 0.40
     : cpTipoLance === 'livre' ? cpCredito * 0.70
     : 0;
@@ -13810,7 +13845,7 @@ function calcularComparativo() {
   const cpSaldoDevedor = Math.max(0, cpSaldoDevedorBruto - cpLance); // crédito + taxa, já abatido o lance (quando há)
   // Só a parte EMBUTIDA do lance desconta do crédito (a parte de bolso é
   // dinheiro extra do cliente, não reduz o que ele recebe de crédito).
-  const cpEmbutido = (cpTipoLance === 'fixo' || cpTipoLance === 'limitado') ? cpSaldoDevedorBruto * 0.20 : 0;
+  const cpEmbutido = cpTipoLance === 'segundo' ? cpSaldoDevedorBruto * 0.25 : cpTipoLance === 'fixo' ? cpSaldoDevedorBruto * (cpVeic ? 0.25 : 0.20) : cpTipoLance === 'limitado' ? cpSaldoDevedorBruto * 0.20 : 0;
   const cpValorLiberado = cpCredito - cpEmbutido;
   const cpParcelaReduzida = cpPrazo ? ((cpCredito / cpPrazo) * (cpPct / 100)) + ((cpCredito * cpTaxaTotal) / cpPrazo) : 0;
   const cpCustoEfetivoTotal = cpSaldoDevedor; // já líquido do lance (crédito + taxa - lance, quando houver)
@@ -13864,7 +13899,7 @@ function montarHtmlComparativo() {
         ${linhaComparativo('Taxa Adm. a.a.', c.cpTaxaAA.toFixed(2).replace('.', ',') + '%')}
         ${linhaComparativo('Parcela integral', fmtBRExport(c.cpParcelaIntegral))}
         ${linhaComparativo(`Parcela reduzida (${c.cpPct}%)`, fmtBRExport(c.cpParcelaReduzida))}
-        ${c.cpDarLance ? linhaComparativo('Lance (' + ({fixo:'Fixo — 20% do saldo devedor', limitado:'Limitado — 40% do saldo devedor', livre:'Livre — 70% do crédito'})[c.cpTipoLance] + ')', fmtBRExport(c.cpLance)) : ''}
+        ${c.cpDarLance ? linhaComparativo('Lance (' + ({segundo:'Segundo fixo — 25% do saldo devedor, embutido', fixo: (c.modLabel === 'Imóveis' ? 'Fixo — 20% do saldo devedor' : 'Fixo — 40% do saldo devedor (25% embutido + 15% do bolso)'), limitado:'Limitado — 40% do saldo devedor', livre:'Livre — 70% do crédito'})[c.cpTipoLance] + ')', fmtBRExport(c.cpLance)) : ''}
         ${c.cpDarLance ? linhaComparativo('Valor liberado', fmtBRExport(c.cpValorLiberado)) : ''}
         ${linhaComparativo('Saldo devedor', fmtBRExport(c.cpSaldoDevedor) + (c.cpDarLance ? ' (crédito + taxa, já com o lance abatido)' : ' (crédito + taxa, sem lance)'))}
         ${linhaComparativo('Atualização Anual', c.atualizacaoAnual)}
@@ -20575,6 +20610,8 @@ const ASSIST_BASE = [
   r: 'Na aba **Informações & Arquivos**, toque na sub-aba **📚 Ajuda do CRM**. Lá ficam os manuais em PDF (para ler ou baixar) e em vídeo (botão **▶ Assistir**): o manual do CRM, o do Google Agenda/Meet e o da chave da Prospecção. Eles precisam de internet para abrir.\nA sub-aba **📢 Mural** fica só com as publicações suas e da equipe.', aba: 'informacoes' },
 { id: 'modo_apresentacao', t: 'Como escondo as abas internas quando vou mostrar o CRM para um cliente?', k: 'modo apresentacao, esconder valores, esconder comissao, esconder abas, privacidade, mostrar o crm para cliente, ocultar dados, olho, apresentar o crm',
   r: 'Use o **Modo apresentação**: toque no **olho** no alto da tela (ao lado do sininho) ou, no celular, em **Mais › Modo apresentação**.\n- No menu ficam **só o Simulador, a Calculadora e as Apresentações**, no computador e na barra de baixo do celular.\n- Todas as outras abas saem do menu, junto com a busca de leads, o **+ Novo Lead**, o sininho e o aviso de backup.\n- Se você estiver em outra aba ao ligar, o CRM vai direto para o Simulador.\nPara sair, toque em **Sair** no aviso do rodapé ou no olho de novo: tudo volta como estava. Combine com o **laser** (segure o dedo 3 segundos na tela).', aba: 'simulador' },
+{ id: 'simulacao_veiculo', t: 'Como funciona a simulação de veículo (segundo fixo, lance fixo, parcela mínima)?', k: 'veiculo, simulacao de veiculo, lance segundo fixo, segundo fixo, lance fixo veiculo, parcela minima, prazo apos contemplacao, 25x, parcela reduzida veiculo',
+  r: 'Na modalidade **Veículo**, a simulação segue o simulador oficial:\n- **Parcela antes da contemplação**: "De" a parcela cheia, "Por" o plano escolhido no campo **Parcela** (ex.: 50% da amortização + taxa) durante **25 meses** (dá para mudar em **Parcela reduzida**).\n- **Lance Segundo Fixo**: 25% do saldo devedor, todo embutido (sai do crédito).\n- **Lance Fixo**: 40% do saldo devedor, sendo 25% embutido e 15% do bolso.\n- Depois de contemplar, a parcela é o saldo que sobrou dividido pelos meses restantes. Se ficar abaixo da **parcela mínima (63% da parcela cheia)**, ela fica na mínima e o **prazo diminui** (aparece "Prazo após contemplação").\nOs botões de estratégia da Venda da Carta, do Valor Futuro e do comparativo também têm o **Lance segundo fixo** quando a modalidade é veículo.', aba: 'simulador' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -23491,19 +23528,26 @@ const ASSIST_BASE = [
   document.head.appendChild(css2);
   // ---------- Estratégia de contemplação (Só sorteio / Lance fixo / Lance limitado / Lance livre) ----------
   // Uma escolha só, que vale para a Venda da Carta, o Valor Futuro e o Consórcio x Financiamento.
-  const ESTR = [['sorteio', 'Só sorteio'], ['fixo', 'Lance fixo'], ['limitado', 'Lance limitado'], ['livre', 'Lance livre']];
-  const ESTR_DICA = { sorteio: 'Sem lance: contempla por sorteio.', fixo: 'Lance fixo: 20% do saldo devedor, embutido (sai do crédito).', limitado: 'Lance limitado: 20% embutido + 20% do bolso (sobre o saldo devedor).', livre: 'Lance livre: 70% do crédito, pago do bolso.' };
+  const ESTR = [['sorteio', 'Só sorteio'], ['segundo', 'Lance segundo fixo'], ['fixo', 'Lance fixo'], ['limitado', 'Lance limitado'], ['livre', 'Lance livre']];
+  const ESTR_DICA = { sorteio: 'Sem lance: contempla por sorteio.', segundo: 'Lance segundo fixo (veículo): 25% do saldo devedor, embutido (sai do crédito).', fixoV: 'Lance fixo (veículo): 40% do saldo devedor — 25% embutido + 15% do bolso.', fixo: 'Lance fixo: 20% do saldo devedor, embutido (sai do crédito).', limitado: 'Lance limitado: 20% embutido + 20% do bolso (sobre o saldo devedor).', livre: 'Lance livre: 70% do crédito, pago do bolso.' };
   window.simEstrategiaAtual = function () { try { const v = localStorage.getItem('crm_sim_estrategia'); return ESTR.some(e => e[0] === v) ? v : 'sorteio'; } catch (e) { return 'sorteio'; } };
-  function pills() {
-    const atual = simEstrategiaAtual();
-    return `<div class="sp-estr-rot">Estratégia de contemplação</div><div class="sp-estr-bts">${ESTR.map(([v, t]) => `<button type="button" data-estr="${v}" class="${v === atual ? 'on' : ''}" onclick="simEscolherEstrategia('${v}')">${t}</button>`).join('')}</div><small class="sp-estr-dica">${ESTR_DICA[atual]}</small>`;
+  function ehVeiculo(el) {
+    if (el && el.closest('#simComparativo')) return typeof comparativoModalidadeAtiva === 'undefined' || comparativoModalidadeAtiva !== 'imovel';
+    return (document.getElementById('simModalidade') || {}).value === 'veiculo';
+  }
+  function pills(el) {
+    const veic = ehVeiculo(el); let atual = simEstrategiaAtual(); if (atual === 'segundo' && !veic) atual = 'sorteio';
+    const lista = ESTR.filter(([v]) => v !== 'segundo' || veic);
+    const dica = atual === 'fixo' && veic ? ESTR_DICA.fixoV : ESTR_DICA[atual];
+    return `<div class="sp-estr-rot">Estratégia de contemplação</div><div class="sp-estr-bts">${lista.map(([v, t]) => `<button type="button" data-estr="${v}" class="${v === atual ? 'on' : ''}" onclick="simEscolherEstrategia('${v}')">${t}</button>`).join('')}</div><small class="sp-estr-dica">${dica}</small>`;
   }
   function sincronizarComparativo() {
     const sel = document.getElementById('cpTipoLance'); if (!sel) return;
     const v = simEstrategiaAtual(), alvo = v === 'sorteio' ? 'nenhum' : v;
     if (sel.value !== alvo) sel.value = alvo;
   }
-  function desenharPills() { document.querySelectorAll('.sp-estr').forEach(el => { el.innerHTML = pills(); }); }
+  function desenharPills() { document.querySelectorAll('.sp-estr').forEach(el => { el.innerHTML = pills(el); }); }
+  window.simDesenharEstrategia = desenharPills;
   window.simEscolherEstrategia = function (v) {
     try { localStorage.setItem('crm_sim_estrategia', v); } catch (e) {}
     desenharPills(); sincronizarComparativo();
@@ -23525,6 +23569,8 @@ const ASSIST_BASE = [
     desenharPills(); sincronizarComparativo();
     try { calcularSimulacao(); } catch (e) {}
     try { renderPreviaComparativo(); } catch (e) {}
+    const mod = document.getElementById('simModalidade'); if (mod) mod.addEventListener('change', desenharPills);
+    if (typeof switchComparativoModalidade === 'function' && !switchComparativoModalidade.__sp) { const o = switchComparativoModalidade; window.switchComparativoModalidade = switchComparativoModalidade = function () { const r = o.apply(this, arguments); desenharPills(); return r; }; switchComparativoModalidade.__sp = true; }
   }
   const css3 = document.createElement('style');
   css3.textContent = `
