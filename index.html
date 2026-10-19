@@ -3386,7 +3386,7 @@ async function nuvemGuardarBase(texto, ts){
 async function nuvemUmaVez(){
   if (!(await eloNuvemSessao())) { atualizarBadgeNuvem('☁️ Nuvem desconectada (dados só neste aparelho)'); return; }
   try {
-    const local = { db, usersList, brand, notifications, infoPosts };
+    const local = { db, usersList: nuvemUsuariosComFoto(), brand, notifications, infoPosts };
     const localTxt = JSON.stringify(local);
     const baseTs0 = localStorage.getItem(KEY_NUVEM_BASE_TS);
     // primeiro só a hora da última gravação (leve): se ninguém mexeu na nuvem e nada mudou aqui, não baixa nada
@@ -3435,10 +3435,31 @@ async function nuvemUmaVez(){
     atualizarBadgeNuvem('⚠️ Sem sincronizar (offline ou nuvem indisponível)');
   }
 }
+// ---- o que é pesado não vai para a nuvem ----
+// Para a nuvem vão só textos e a foto do perfil (pequena, ~5 KB). Neste aparelho a foto fica guardada à parte
+// (IndexedDB) e no cadastro há só um marcador "idb:..."; na nuvem vai a foto em si, para aparecer nos outros aparelhos.
+const NUVEM_FOTO_MAX = 20 * 1024;
+function nuvemUsuariosComFoto(){
+  return (usersList || []).map(u => {
+    if (!u || typeof u.avatar !== 'string' || u.avatar.indexOf('idb:') !== 0) return u;
+    const f = arquivoCache[u.avatar.slice(4)];
+    return (f && f.length <= NUVEM_FOTO_MAX) ? Object.assign({}, u, { avatar: f }) : u;
+  });
+}
+// (anexos do Mural já ficam só no aparelho: no cadastro da publicação vai só o marcador "idb:...")
+// a foto que veio da nuvem volta a ser guardada à parte neste aparelho
+function nuvemFotosParaAparelho(lista){
+  return (lista || []).map(u => {
+    if (!u || typeof u.avatar !== 'string' || u.avatar.indexOf('data:') !== 0) return u;
+    const id = 'avatar_' + u.id; arquivoCache[id] = u.avatar;
+    try { idbSetArquivo(id, u.avatar); } catch (e) {}
+    return Object.assign({}, u, { avatar: 'idb:' + id });
+  });
+}
 // põe na tela o que veio junto da nuvem
 function nuvemAplicar(final){
   if (final.db) db = final.db;
-  if (final.usersList) usersList = final.usersList;
+  if (final.usersList) usersList = nuvemFotosParaAparelho(final.usersList);
   if (final.brand) brand = final.brand;
   if (final.notifications) notifications = final.notifications;
   if (final.infoPosts) infoPosts = final.infoPosts;
@@ -20644,6 +20665,10 @@ const ASSIST_BASE = [
   r: 'Na modalidade **Veículo**, a simulação segue o simulador oficial:\n- **Parcela antes da contemplação**: "De" a parcela cheia, "Por" o plano escolhido no campo **Parcela** (ex.: 50% da amortização + taxa) durante **25 meses** (dá para mudar em **Parcela reduzida**).\n- **Lance Segundo Fixo**: 25% do saldo devedor, todo embutido (sai do crédito).\n- **Lance Fixo**: 40% do saldo devedor, sendo 25% embutido e 15% do bolso.\n- Depois de contemplar, a parcela é o saldo que sobrou dividido pelos meses restantes. Se ficar abaixo da **parcela mínima (63% da parcela cheia)**, ela fica na mínima e o **prazo diminui** (aparece "Prazo após contemplação").\nOs botões de estratégia da Venda da Carta, do Valor Futuro e do comparativo também têm o **Lance segundo fixo** quando a modalidade é veículo.', aba: 'simulador' },
 { id: 'simulacao_servico_bens', t: 'Como funciona a simulação de serviço e de bens móveis?', k: 'servico, simulacao de servico, bens moveis, outros bens moveis, parcela reduzida servico, parcela reduzida bens, 12 meses, 24 meses, lance fixo 30, lance livre 41, cota reduzida, cota cheia',
   r: 'Serviço e bens móveis seguem o simulador oficial:\n- **Cota cheia (100%) ou reduzida**: em veículo, serviço e bens o campo **Parcela** só tem essas duas opções.\n- **Reduzida**: serviço por **12 meses** e bens móveis por **24 meses** (dá para trocar para 12, 18 ou 24 em **Parcela reduzida**). Depois disso, se ainda não contemplou, a parcela volta à cheia mais o que ficou para trás, diluído no prazo que falta (já com o reajuste anual).\n- **Serviço** (24,2%): Segundo fixo = 25% do saldo devedor (13% embutido + 12% do bolso); Fixo = 40% (20% embutido + 20% do bolso); parcela mínima de 75% da parcela do prazo original.\n- **Bens móveis** (19%): Fixo = 30% do saldo devedor, todo embutido; Livre = 41% do saldo devedor, do bolso.\n- Depois de contemplar, a parcela é o saldo que sobrou dividido pelos meses restantes.', aba: 'simulador' },
+{ id: 'armazenamento', t: 'Quanto espaço estou usando? O que vai para a nuvem?', k: 'armazenamento, memoria, espaco, espaço, cheio, quanto estou usando, indexeddb, supabase, nuvem, banco de dados, estourar, proteger arquivos, apresentacoes pesadas',
+  r: 'Em **Configurações › 💾 Armazenamento** você vê, como no celular, quanto este aparelho está usando e quanto tem livre, separado por apresentações, PDFs, notas à mão, anexos do Mural, fotos e textos.\n- **Fica só no aparelho**: apresentações, PDFs, notas à mão e anexos do Mural (não vão para a nuvem). Use **💾 Cópia das apresentações** de vez em quando.\n- **Vai para a nuvem**: só os textos (leads, vendas, agenda, ajustes) e a foto do perfil, bem pequena (cerca de 5 KB).\n- **🔒 Proteger agora** pede ao navegador para não apagar os arquivos sozinho quando o aparelho fica sem espaço.', aba: 'configuracoes' },
+{ id: 'publicidade_previa', t: 'Dá para ver a publicidade antes de baixar?', k: 'previa, pré-visualização, pre visualizacao, ver antes de baixar, publicidade, trocar fundo, conferir imagem',
+  r: 'Sim. No **Simulador**, toque em **📢 Criar publicidade** (ou **📲 Enviar por WhatsApp**) e escolha o fundo: a peça aparece na tela primeiro. Dali você **baixa**, **envia pelo WhatsApp** ou **troca o fundo**. Se fechar, nada é baixado.', aba: 'simulador' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -23619,6 +23644,220 @@ const ASSIST_BASE = [
   document.head.appendChild(css3);
   function ligarTudo() { ligar(); compactarFin(); compactarComp(); montarEstrategia(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligarTudo); else ligarTudo();
+})();
+</script>
+<script id="armazenamentoScript">
+// ===== ARMAZENAMENTO (como o "Armazenamento" do celular) =====
+// Mostra quanto este aparelho está usando e quanto ainda tem livre, separado por tipo:
+// apresentações, PDFs, notas, anexos do Mural, fotos e textos do CRM. Tudo que é pesado mora
+// só neste aparelho (IndexedDB do navegador). Para a nuvem (Supabase) vão só textos e a foto
+// do perfil (pequena, cerca de 5 KB), que aparece para as outras pessoas.
+(function () {
+  const CORES = { slides: '#d71920', pdfs: '#f59e0b', notas: '#8b5cf6', mural: '#0ea5e9', fotos: '#10b981', textos: '#2563eb', outros: '#94a3b8' };
+  const NOMES = { slides: 'Apresentações (slides)', pdfs: 'PDFs das apresentações', notas: 'Notas à mão', mural: 'Anexos do Mural', fotos: 'Fotos de perfil', textos: 'Textos do CRM (leads, vendas, agenda…)', outros: 'App, manuais e outros' };
+  const LIMITE_NUVEM = 500 * 1024 * 1024;                     // plano gratuito da Supabase: 500 MB de banco
+  const fmt = b => {
+    b = Math.max(0, Number(b) || 0);
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' KB';
+    if (b < 1024 ** 3) return (b / 1024 / 1024).toLocaleString('pt-BR', { maximumFractionDigits: b < 10 * 1024 * 1024 ? 1 : 0 }) + ' MB';
+    return (b / 1024 ** 3).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + ' GB';
+  };
+  const pct = (a, b) => b > 0 ? Math.min(100, a / b * 100) : 0;
+  function tamanho(v) {
+    if (v == null) return 0;
+    if (typeof Blob !== 'undefined' && v instanceof Blob) return v.size;
+    if (typeof v === 'string') return v.length;
+    if (v instanceof ArrayBuffer) return v.byteLength;
+    try { return JSON.stringify(v).length; } catch (e) { return 0; }
+  }
+  function categoria(chave, loja) {
+    const k = String(chave);
+    if (loja === 'dados') return 'textos';
+    if (/^apr_/.test(k)) { if (/_pdf_/.test(k)) return 'pdfs'; if (/_nota_/.test(k)) return 'notas'; return 'slides'; }
+    if (/^avatar_/.test(k)) return 'fotos';
+    if (/^arquivo_/.test(k)) return 'mural';
+    return 'outros';
+  }
+  async function medirAparelho() {
+    const soma = { slides: 0, pdfs: 0, notas: 0, mural: 0, fotos: 0, textos: 0, outros: 0 }; const qtd = { slides: 0, pdfs: 0, notas: 0, mural: 0, fotos: 0 };
+    try {
+      const con = await abrirIndexedDB();
+      for (const loja of [IDB_STORE, IDB_STORE_ARQUIVOS]) {
+        if (!con.objectStoreNames.contains(loja)) continue;
+        await new Promise(ok => {
+          const req = con.transaction(loja, 'readonly').objectStore(loja).openCursor();
+          req.onsuccess = () => { const c = req.result; if (!c) return ok(); const cat = categoria(c.key, loja); soma[cat] += tamanho(c.value); if (cat in qtd && !/_indice$|_marca_img$/.test(String(c.key))) qtd[cat]++; c.continue(); };
+          req.onerror = () => ok();
+        });
+      }
+    } catch (e) {}
+    let ls = 0; try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); ls += (k.length + (localStorage.getItem(k) || '').length) * 2; } } catch (e) {}
+    soma.textos += ls;
+    let usado = 0, total = 0;
+    try { if (navigator.storage && navigator.storage.estimate) { const e = await navigator.storage.estimate(); usado = e.usage || 0; total = e.quota || 0; } } catch (e) {}
+    const contado = Object.values(soma).reduce((a, b) => a + b, 0);
+    if (usado > contado) soma.outros += usado - contado; else usado = contado;
+    let protegido = null; try { if (navigator.storage && navigator.storage.persisted) protegido = await navigator.storage.persisted(); } catch (e) {}
+    return { soma, qtd, usado, total, protegido };
+  }
+  // o que esta conta manda para a nuvem (só textos + a foto do perfil)
+  function medirNuvem() {
+    const online = typeof ELO_ONLINE !== 'undefined' && ELO_ONLINE;
+    const pessoalNuvem = !online && typeof supabaseClient !== 'undefined' && !!supabaseClient;
+    if (!online && !pessoalNuvem) return null;
+    let textos = 0, foto = 0;
+    try {
+      const d = (typeof db !== 'undefined' && db) || {};
+      const base = online
+        ? { leads: d.leads, meetings: d.meetings, followups: d.followups, indicadores: d.indicadores, indices: d.indices, sales: d.sales, gastos: d.gastos, prospeccao: d.prospeccao, scripts: d.scripts, meetingSteps: d.meetingSteps }
+        : { db: d, brand: typeof brand !== 'undefined' ? brand : null, notifications: typeof notifications !== 'undefined' ? notifications : null, infoPosts: typeof infoPosts !== 'undefined' ? infoPosts : null };
+      textos = JSON.stringify(base).length;
+      (typeof usersList !== 'undefined' && usersList || []).forEach(u => {
+        const x = Object.assign({}, u); delete x.avatar; textos += JSON.stringify(x).length;
+        const f = typeof avatarSrc === 'function' ? avatarSrc(u) : '';
+        if (f && (online ? (currentUser && u.id === currentUser.id) : true)) foto += f.length;
+      });
+    } catch (e) {}
+    return { online, textos, foto, total: textos + foto };
+  }
+  function barra(itens, total) {
+    return `<div class="arm-barra">${itens.filter(i => i.v > 0).map(i => `<span style="width:${Math.max(.6, pct(i.v, total))}%;background:${i.c}" title="${i.n}: ${fmt(i.v)}"></span>`).join('')}</div>`;
+  }
+  async function desenhar() {
+    const el = document.getElementById('armCorpo'); if (!el) return;
+    el.innerHTML = '<p class="muted" style="margin:6px 0">Medindo…</p>';
+    const m = await medirAparelho(), n = medirNuvem();
+    const ordem = ['slides', 'pdfs', 'notas', 'mural', 'fotos', 'textos', 'outros'];
+    const itens = ordem.map(k => ({ k, n: NOMES[k], v: m.soma[k], c: CORES[k] }));
+    const livre = Math.max(0, m.total - m.usado);
+    const qtdTxt = k => m.qtd[k] ? ` <small class="muted">· ${m.qtd[k]} ${m.qtd[k] === 1 ? 'item' : 'itens'}</small>` : '';
+    let html = `
+      <div class="arm-topo"><b>${fmt(m.usado)}</b> usados${m.total ? ` de <b>${fmt(m.total)}</b>` : ''}</div>
+      ${barra(itens, m.total || m.usado)}
+      ${m.total ? `<div class="arm-livre">${fmt(livre)} livres neste aparelho (${(100 - pct(m.usado, m.total)).toFixed(1).replace('.', ',')}%)</div>` : ''}
+      <div class="arm-lista">${itens.map(i => `<div class="arm-item"><i style="background:${i.c}"></i><span>${i.n}${qtdTxt(i.k)}</span><b>${fmt(i.v)}</b></div>`).join('')}</div>
+      <div class="arm-prot ${m.protegido ? 'ok' : ''}">${m.protegido
+        ? '🔒 <b>Arquivos protegidos:</b> o navegador não apaga estes dados sozinho para liberar espaço.'
+        : `⚠️ <b>Arquivos ainda não protegidos:</b> se o aparelho ficar sem espaço, o navegador pode apagar dados guardados. <button class="btn" onclick="armProteger()">🔒 Proteger agora</button>`}</div>`;
+    if (n) {
+      const tot = n.total;
+      html += `
+      <h4 class="arm-sub">☁️ Na nuvem (Supabase)</h4>
+      <div class="arm-topo"><b>${fmt(tot)}</b> ${n.online ? 'enviados pela sua conta' : 'na sua cópia da nuvem'} <small class="muted">(estimativa)</small></div>
+      ${barra([{ n: 'Textos', v: n.textos, c: CORES.textos }, { n: 'Foto do perfil', v: n.foto, c: CORES.fotos }], LIMITE_NUVEM)}
+      <div class="arm-livre">${pct(tot, LIMITE_NUVEM).toFixed(2).replace('.', ',')}% dos 500 MB do plano gratuito${n.online && tot > 0 ? ` · nesse ritmo cabem cerca de <b>${Math.floor(LIMITE_NUVEM / tot).toLocaleString('pt-BR')}</b> pessoas iguais a você` : ''}</div>
+      <div class="arm-lista">
+        <div class="arm-item"><i style="background:${CORES.textos}"></i><span>Textos (leads, vendas, agenda, ajustes)</span><b>${fmt(n.textos)}</b></div>
+        <div class="arm-item"><i style="background:${CORES.fotos}"></i><span>Foto do perfil (aparece para as outras pessoas)</span><b>${fmt(n.foto)}</b></div>
+      </div>
+      <small class="muted" style="display:block;margin-top:6px">Apresentações, PDFs, notas à mão e anexos do Mural <b>nunca</b> vão para a nuvem: ficam só neste aparelho. Faça uma cópia de segurança deles de vez em quando.</small>`;
+    } else {
+      html += `<small class="muted" style="display:block;margin-top:10px">Apresentações, PDFs, notas à mão e anexos do Mural ficam só neste aparelho. Faça uma cópia de segurança deles de vez em quando.</small>`;
+    }
+    html += `<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap">
+      <button class="btn" onclick="armAtualizar()">🔄 Atualizar</button>
+      ${typeof aprAbrirCopia === 'function' ? '<button class="btn" onclick="aprAbrirCopia()">💾 Cópia das apresentações</button>' : ''}
+    </div>`;
+    el.innerHTML = html;
+  }
+  window.armAtualizar = desenhar;
+  window.armProteger = async function () {
+    let ok = false;
+    try { if (navigator.storage && navigator.storage.persist) ok = await navigator.storage.persist(); } catch (e) {}
+    try { showToast(ok ? 'Pronto: os arquivos deste aparelho estão protegidos.' : 'O navegador ainda não liberou a proteção. Instale o CRM como aplicativo (ícone na tela inicial) e tente de novo.', ok ? 'success' : 'info'); } catch (e) {}
+    desenhar();
+  };
+  window.armMedir = async () => ({ aparelho: await medirAparelho(), nuvem: medirNuvem() });   // usado nos testes
+  function montar() {
+    const sec = document.getElementById('configuracoes'); if (!sec || document.getElementById('armCard')) return;
+    const css = document.createElement('style'); css.id = 'armEstilos';
+    css.textContent = `
+      #armCard h2 { margin: 0 0 2px; }
+      .arm-topo { font-size: 15px; margin: 10px 0 6px; }
+      .arm-barra { display: flex; height: 16px; border-radius: 99px; overflow: hidden; background: rgba(127,127,127,.18); }
+      .arm-barra span { display: block; height: 100%; }
+      .arm-barra span + span { box-shadow: -1px 0 0 rgba(255,255,255,.7); }
+      .arm-livre { font-size: 12.5px; color: var(--muted, #64748b); margin-top: 5px; }
+      .arm-lista { margin-top: 10px; display: grid; gap: 6px; }
+      .arm-item { display: grid; grid-template-columns: 12px 1fr auto; gap: 9px; align-items: center; font-size: 13.5px; }
+      .arm-item i { width: 12px; height: 12px; border-radius: 4px; }
+      .arm-item b { font-variant-numeric: tabular-nums; }
+      .arm-sub { margin: 18px 0 0; font-size: 15px; }
+      .arm-prot { margin-top: 12px; padding: 9px 11px; border-radius: 9px; font-size: 13px; line-height: 1.45; background: rgba(245,158,11,.12); }
+      .arm-prot.ok { background: rgba(16,185,129,.12); }
+      .arm-prot .btn { margin-left: 6px; padding: 4px 10px; font-size: 12.5px; }`;
+    document.head.appendChild(css);
+    const card = document.createElement('div'); card.className = 'card'; card.id = 'armCard'; card.style.marginBottom = '16px';
+    card.innerHTML = `<h2>💾 Armazenamento</h2><small class="muted">Quanto este aparelho está usando, como no armazenamento do celular.</small><div id="armCorpo"></div>`;
+    sec.insertBefore(card, sec.firstChild);
+    let jaDesenhou = false;
+    const ver = () => { if (sec.classList.contains('active') || sec.offsetParent !== null) { if (!jaDesenhou) { jaDesenhou = true; desenhar(); } } else jaDesenhou = false; };
+    new MutationObserver(ver).observe(sec, { attributes: true, attributeFilter: ['class', 'style'] });
+    ver();
+  }
+  // pede ao navegador para não apagar os arquivos sozinho (no Chrome isso é silencioso)
+  function protegerSemPerguntar() {
+    try { if (/firefox/i.test(navigator.userAgent)) return; if (navigator.storage && navigator.storage.persist) navigator.storage.persisted().then(j => { if (!j) navigator.storage.persist(); }); } catch (e) {}
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => { montar(); protegerSemPerguntar(); }); else { montar(); protegerSemPerguntar(); }
+})();
+</script>
+<script id="pubPreviaScript">
+// ===== PUBLICIDADE COM PRÉ-VISUALIZAÇÃO =====
+// Depois de escolher o fundo, a peça aparece na tela antes de baixar ou enviar. Dali dá para
+// baixar a imagem, mandar pelo WhatsApp, trocar o fundo ou fechar sem baixar nada.
+(function () {
+  let atual = null;   // { canvas, cardKey, fundoSrc }
+  function previa(canvas, cardKey, fundoSrc, acao) {
+    atual = { canvas, cardKey, fundoSrc };
+    const src = canvas.toDataURL('image/jpeg', 0.9);
+    openModal(`
+      <div class="pub-previa">
+        <div class="between" style="gap:10px;margin-bottom:10px"><h3 style="margin:0;font-size:16px">Pré-visualização da publicidade</h3><button class="btn" onclick="closeModal()" aria-label="Fechar">✕</button></div>
+        <div class="pub-previa-img"><img src="${src}" alt="Publicidade da simulação"></div>
+        <small class="muted" style="display:block;margin:8px 0 12px">Confira os valores e o fundo. A imagem só é baixada ou enviada quando você tocar no botão.</small>
+        <div class="pub-previa-bts">
+          <button class="btn ${acao === 'whatsapp' ? '' : 'primary'}" onclick="pubPreviaBaixar()">⬇️ Baixar imagem</button>
+          <button class="btn ${acao === 'whatsapp' ? 'primary' : ''}" onclick="pubPreviaWhats()">📲 Enviar por WhatsApp</button>
+          <button class="btn" onclick="pubPreviaTrocarFundo()">🖼️ Trocar fundo</button>
+        </div>
+      </div>`);
+  }
+  async function montarCanvas(cardKey, fundoSrc) {
+    const status = document.getElementById('exportSimStatus');
+    if (status) status.textContent = 'Montando a pré-visualização...';
+    if (!ultimaSimulacao || !ultimaSimulacao.credito) calcularSimulacao();
+    try {
+      const c = await renderizarParaExportacao(montarHtmlPublicidade(cardKey, fundoSrc));
+      if (status) status.textContent = '';
+      return c;
+    } catch (e) {
+      console.error('Erro ao gerar publicidade:', e);
+      if (status) status.textContent = typeof html2canvas === 'undefined' ? 'Sem internet para gerar a imagem agora. Conecte e tente de novo.' : 'Não foi possível gerar a publicidade. Tente de novo; se continuar, avise o suporte.';
+      return null;
+    }
+  }
+  const gerarOriginal = window.gerarPublicidade;
+  window.gerarPublicidade = gerarPublicidade = async function (formato, cardKey, fundoSrc) {
+    if (formato === 'pdf' && typeof gerarOriginal === 'function') return gerarOriginal(formato, cardKey, fundoSrc);
+    const c = await montarCanvas(cardKey, fundoSrc); if (c) previa(c, cardKey, fundoSrc, 'baixar');
+  };
+  window.enviarPublicidadeWhatsApp = enviarPublicidadeWhatsApp = async function (cardKey, fundoSrc) {
+    const c = await montarCanvas(cardKey, fundoSrc); if (c) previa(c, cardKey, fundoSrc, 'whatsapp');
+  };
+  window.pubPreviaBaixar = function () { if (!atual) return; baixarCanvasComoImagem(atual.canvas, 'publicidade-simulacao.png'); try { showToast('Imagem baixada.', 'success'); } catch (e) {} };
+  window.pubPreviaWhats = async function () { if (!atual) return; await compartilharCanvasWhatsApp(atual.canvas, 'publicidade-simulacao.png', 'Dá uma olhada nessa oportunidade 📢', 'exportSimStatus'); };
+  window.pubPreviaTrocarFundo = function () { if (!atual) return; const k = atual.cardKey; closeModal(); abrirSeletorFundoPublicidade(k, 'baixar'); };
+  const css = document.createElement('style'); css.id = 'pubPreviaEstilos';
+  css.textContent = `
+    .pub-previa { padding: 18px; max-width: 460px; }
+    .pub-previa-img { background: #0f172a; border-radius: 12px; padding: 8px; text-align: center; }
+    .pub-previa-img img { display: block; width: 100%; max-height: 62vh; object-fit: contain; border-radius: 8px; margin: 0 auto; }
+    .pub-previa-bts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .pub-previa-bts .btn:last-child { grid-column: 1 / -1; }
+    @media (max-width: 420px) { .pub-previa { padding: 12px; } .pub-previa-bts { grid-template-columns: 1fr; } }`;
+  document.head.appendChild(css);
 })();
 </script>
 <script id="laserCrmScript">
