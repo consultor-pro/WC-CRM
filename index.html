@@ -12833,7 +12833,7 @@ function gerarParcelasEstrategia(c) {
   for (let i = 1; i <= limiteLinhas; i++) {
     const contemplouAgora = i === c.mesContemplacao;
     let parcela;
-    if (i < c.mesContemplacao) {
+    if (i <= c.mesContemplacao) {
       // Grupos de Veículo com parcela reduzida: enquanto durar a redução
       // (definida em "Parcela Reduzida") usa o valor reduzido; depois que a
       // redução acaba (e o cliente ainda não foi contemplado), usa o valor
@@ -12848,6 +12848,8 @@ function gerarParcelasEstrategia(c) {
     } else {
       parcela = c.quitado ? 0 : c.parcelaDepois;
     }
+    const fReaj = (c.fatorReaj && c.fatorReaj[i]) || 1;
+    parcela *= fReaj;                                   // reajuste de fevereiro na parcela
     totalPago += parcela;
     let saldo;
     if (i < c.mesContemplacao) {
@@ -12859,14 +12861,14 @@ function gerarParcelasEstrategia(c) {
       saldo = restante > 0 ? c.saldoDevedorPosLance * Math.max(0, (c.prazoAtual - i) / restante) : 0;
     }
     saldo = Math.max(0, saldo);
-    const dataRef = new Date(hoje.getFullYear(), hoje.getMonth() + i, 1);
+    const dataRef = new Date(hoje.getFullYear(), hoje.getMonth() + i - 1, 1);
     const anoTxt = `${dataRef.getMonth() + 1}/${dataRef.getFullYear()}`;
     linhas += `<tr${contemplouAgora ? ' style="background:#fee2e2"' : ''}>
       <td>${i}${contemplouAgora ? ' <span class="badge b-red">Contemplação</span>' : ''}</td>
       <td>${formatBRSim(parcela)}</td>
       <td>${formatBRSim(totalPago)}</td>
       <td>${formatBRSim(saldo)}</td>
-      <td>${formatBRSim(c.creditoContratado)}</td>
+      <td>${formatBRSim(c.creditoContratado * ((c.fatorReaj && c.fatorReaj[Math.min(i, c.mesContemplacao)]) || 1))}</td>
       <td>${anoTxt}</td>
     </tr>`;
   }
@@ -13001,7 +13003,7 @@ function calcularSimulacao() {
   const lanceLivreBolso = credito * 0.70; 
 
   // Pós-Contemplação
-  const diferencaMensal = parcelaCheiaS - (parcela50 - valorSeguro);
+  const diferencaMensal = parcelaCheiaS - (parcelaAntesPct - valorSeguro);   // o que fica para trás no plano escolhido (0 no plano 100%)
   const mesesPagos = mesContemplacao;
   const saldoParaTras = diferencaMensal * mesesPagos;
   const prazoRestante = prazo - mesesPagos;
@@ -13020,9 +13022,33 @@ function calcularSimulacao() {
   const saldoRestanteLivre = Math.max(0, saldoDevedorMomento - lanceLivreBolso);
   const novaParcelaLivre = prazoRestante > 0 ? (saldoRestanteLivre / prazoRestante) + valorSeguro : 0;
 
-  const anosPassados = Math.floor(mesesPagos / 12);
-  const multiplicadorReajuste = Math.pow(1 + reajusteAnual, anosPassados);
-  const creditoReajustado = credito * multiplicadorReajuste;
+  // ===== Linha do tempo mês a mês com o reajuste de fevereiro =====
+  const hojeSim = new Date(), anoSim = hojeSim.getFullYear(), mesSim = hojeSim.getMonth();
+  const fatorReaj = [1]; let reajustesConta = 0; const mesesReajuste = [];
+  for (let m = 1; m <= prazo; m++) {
+    const d = new Date(anoSim, mesSim + m - 1, 1);
+    if (m > 1 && d.getMonth() === 1 && d.getFullYear() > anoSim) { reajustesConta++; mesesReajuste.push(m); }
+    fatorReaj[m] = Math.pow(1 + reajusteAnual, reajustesConta);
+  }
+  const mesC = Math.max(1, Math.min(mesesPagos, prazo));
+  const parcelaPlanoMes = m => duracaoReduzidaVeiculo > 0
+    ? (m <= duracaoReduzidaVeiculo ? parcelaReduzidaVeiculo : parcelaAposReducaoVeiculo)
+    : parcelaAntesPct;                                      // valores de hoje (sem reajuste)
+  let paraTrasHoje = 0;
+  for (let m = 1; m <= mesC; m++) paraTrasHoje += parcelaCheia - parcelaPlanoMes(m);
+  const parcelaPosContemplacaoHoje = prazo - mesC > 0 ? parcelaCheia + Math.max(0, paraTrasHoje) / (prazo - mesC) : 0;
+  let pagoAteContemplarReaj = 0, pagoAposContemplarReaj = 0;
+  for (let m = 1; m <= prazo; m++) {
+    if (m <= mesC) pagoAteContemplarReaj += parcelaPlanoMes(m) * fatorReaj[m];
+    else pagoAposContemplarReaj += parcelaPosContemplacaoHoje * fatorReaj[m];
+  }
+  const reajustesAteContemplar = mesesReajuste.filter(m => m <= mesC).length;
+  const creditoReajustado = credito * fatorReaj[mesC];     // o crédito só é corrigido até a contemplação
+  const parcelaNaContemplacao = parcelaPlanoMes(mesC) * fatorReaj[mesC];
+  const parcelaPosContemplacaoReaj = mesC < prazo ? parcelaPosContemplacaoHoje * fatorReaj[mesC + 1] : 0;
+  const parcelaUltimoMes = mesC < prazo ? parcelaPosContemplacaoHoje * fatorReaj[prazo] : 0;
+  const pctPlanoTxt = duracaoReduzidaVeiculo > 0 ? 'parcela reduzida de veículo' : (pctCardsSelecionado >= 100 ? 'parcela cheia (100%)' : 'plano ' + pctCardsSelecionado + '%');
+  const nomeMesSim = m => { const d = new Date(anoSim, mesSim + m - 1, 1); return d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }).replace('.', ''); };
 
   const formatBR = (val) => Number(val).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
 
@@ -13060,7 +13086,7 @@ function calcularSimulacao() {
     c.saldoDevedorInicial = saldoDevedorInicial;
     c.saldoAntesLance = saldoDevedorMomento;
     c.saldoDevedorPosLance = Math.max(0, saldoDevedorMomento - c.lance);
-    c.totalPago = parcela50 * mesesPagos;
+    c.totalPago = pagoAteContemplarReaj; c.fatorReaj = fatorReaj;
     c.custoFinanceiroMes = prazo > 0 ? taxaAdmin / prazo : 0;
     c.tirMensal = c.custoFinanceiroMes;
     c.tirAnual = Math.pow(1 + c.tirMensal, 12) - 1;
@@ -13069,15 +13095,16 @@ function calcularSimulacao() {
   ultimaSimulacaoCards = cardsSimulacao;
   renderCardsSimulacao(cardsSimulacao);
 
-  const totalPagoAteContemplar = parcela50 * mesesPagos;
+  const totalPagoAteContemplar = pagoAteContemplarReaj;      // com o plano escolhido e os reajustes de fevereiro
   const valorVenda = creditoReajustado * agio;
   const lucroVenda = valorVenda - totalPagoAteContemplar;
   
   const resVenda = document.getElementById('resultadoVendaCarta');
   if (resVenda) {
     resVenda.innerHTML = `
-      Tempo de Contemplação: <b>${mesesPagos} meses</b><br>
-      Total Pago (Parcela 50%): <b>${formatBR(totalPagoAteContemplar)}</b><br>
+      Tempo de Contemplação: <b>${mesesPagos} meses</b> (até ${nomeMesSim(mesC)})<br>
+      Total Pago (${pctPlanoTxt}, com reajustes): <b>${formatBR(totalPagoAteContemplar)}</b><br>
+      Reajustes de ${indiceReajuste} até contemplar: <b>${reajustesAteContemplar}</b>${reajustesAteContemplar ? ` (todo fevereiro, ${(reajusteAnual * 100).toFixed(2).replace('.', ',')}% ao ano)` : ''}<br>
       Crédito Atualizado (${indiceReajuste}): <b>${formatBR(creditoReajustado)}</b><br>
       Valor Oferecido na Venda (${(agio*100).toFixed(2)}%): <b>${formatBR(valorVenda)}</b><br><br>
       <div style="font-size:16px; padding:10px; background:#dcfce7; color:#166534; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid #15803d;">
@@ -13100,7 +13127,16 @@ function calcularSimulacao() {
       Selic: <b>${(selicAnual * 100).toFixed(2).replace('.', ',')}% ao ano</b> (${(taxaSelicMes * 100).toFixed(2).replace('.', ',')}% ao mês)<br>
       Tempo Rendendo na Selic: <b>${mesesRendendo} meses</b><br>
       Montante Final Acumulado: <b>${formatBR(valorFinalFundo)}</b><br>
-      <small class="muted">Depois da contemplação o crédito não é mais corrigido pelo ${indiceReajuste}: ele só rende na Selic. O ${indiceReajuste} continua reajustando apenas a parcela, uma vez por ano.</small><br><br>
+      <small class="muted">Depois da contemplação o crédito não é mais corrigido pelo ${indiceReajuste}: ele só rende na Selic. O ${indiceReajuste} continua reajustando apenas a parcela, todo fevereiro. O rendimento é lucro do cliente: ele não paga nada sobre isso.</small><br><br>
+      <div style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:12px;background:rgba(127,127,127,.04)">
+        <b>Se o cliente pagar até o fim do contrato (${prazo} meses, até ${nomeMesSim(prazo)}):</b><br>
+        Pago até a contemplação (${pctPlanoTxt}): <b>${formatBR(pagoAteContemplarReaj)}</b><br>
+        Parcela depois de contemplar: <b>${formatBR(parcelaPosContemplacaoReaj)}</b>${paraTrasHoje > 0.01 ? ' <small class="muted">(volta à parcela cheia + o que ficou para trás, diluído)</small>' : ''}<br>
+        Parcela no último mês (com os reajustes): <b>${formatBR(parcelaUltimoMes)}</b><br>
+        Pago depois da contemplação: <b>${formatBR(pagoAposContemplarReaj)}</b><br>
+        Total pago no contrato: <b>${formatBR(pagoAteContemplarReaj + pagoAposContemplarReaj)}</b><br>
+        <small class="muted">${mesesReajuste.length} reajustes de ${indiceReajuste} no contrato (todo fevereiro), estimados em ${(reajusteAnual * 100).toFixed(2).replace('.', ',')}% ao ano.</small>
+      </div>
       <div style="font-size:16px; padding:10px; background:#f0fdf4; color:#166534; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid #bbf7d0;">
         RENDIMENTO GERADO (FUNDO): + ${formatBR(rendimentoPuro)}
       </div>
@@ -13118,7 +13154,9 @@ function calcularSimulacao() {
     lanceLivreBolso, novaParcelaLivre,
     novaParcelaTradicional,
     agio, totalPagoAteContemplar, creditoReajustado, valorVenda, lucroVenda,
-    mesesRendendo, valorFinalFundo, rendimentoPuro, selicAnual, taxaSelicMes, reajusteAnual
+    mesesRendendo, valorFinalFundo, rendimentoPuro, selicAnual, taxaSelicMes, reajusteAnual,
+    pctPlano: pctCardsSelecionado, pctPlanoTxt, reajustesAteContemplar, mesesReajuste, pagoAteContemplarReaj, pagoAposContemplarReaj,
+    totalPagoContrato: pagoAteContemplarReaj + pagoAposContemplarReaj, parcelaPosContemplacaoReaj, parcelaUltimoMes, parcelaNaContemplacao
   };
 }
 
@@ -13538,7 +13576,8 @@ function montarHtmlValorFuturo() {
       { label: `Crédito na contemplação (${sim.indiceReajuste} só até contemplar)`, valor: fmtBRExport(sim.creditoReajustado) },
       { label: `Rendendo na Selic (${((sim.selicAnual || 0) * 100).toFixed(2).replace('.', ',')}% ao ano) por`, valor: `${sim.mesesRendendo} meses` },
       { label: `Depois de contemplar, o ${sim.indiceReajuste} reajusta`, valor: 'só a parcela' },
-      { label: 'Rendimento gerado', valor: `+ ${fmtBRExport(sim.rendimentoPuro)}` }
+      { label: 'Rendimento gerado (lucro do cliente)', valor: `+ ${fmtBRExport(sim.rendimentoPuro)}` },
+      { label: 'Se pagar até o fim: total pago no contrato', valor: fmtBRExport(sim.totalPagoContrato || 0) }
     ],
     destaqueLabel: 'Montante Final Estimado',
     destaqueValor: fmtBRExport(sim.valorFinalFundo),
@@ -13554,7 +13593,7 @@ function montarHtmlVendaCarta() {
     cor: '#d97706',
     linhas: [
       { label: 'Tempo até a contemplação', valor: `${sim.mesContemplacao} meses` },
-      { label: 'Total pago até lá (parcela 50%)', valor: fmtBRExport(sim.totalPagoAteContemplar) },
+      { label: `Total pago até lá (${sim.pctPlanoTxt || 'plano escolhido'}, com reajustes)`, valor: fmtBRExport(sim.totalPagoAteContemplar) },
       { label: `Crédito atualizado (${sim.indiceReajuste})`, valor: fmtBRExport(sim.creditoReajustado) },
       { label: `Valor oferecido na venda (ágio de ${(sim.agio * 100).toFixed(2)}%)`, valor: fmtBRExport(sim.valorVenda) }
     ],
@@ -20507,7 +20546,7 @@ const ASSIST_BASE = [
 { id: 'laser_crm', t: 'Como ligo o laser para apresentar o CRM?', k: 'laser no crm, laser na tela, apontador, apontar na tela, apresentar o crm, mostrar o crm para cliente, segurar 3 segundos, segurar o dedo, tres toques, ligar laser, desligar laser, ponteiro vermelho, segurar copia o texto, copiar texto ao segurar',
   r: 'Em qualquer tela do CRM:\n- **Segure o dedo parado por 3 segundos** numa área livre (fora de botões e campos): um círculo vai enchendo e o laser **liga**. No computador, segure o botão do mouse.\n- **Três toques rápidos** **desligam** (ou toque em **Desligar** no aviso do alto, ou aperte Esc no computador).\nCom o laser ligado, um ponto vermelho com rastro segue o seu dedo, a caneta ou o mouse, e **segurar o dedo não abre mais o "copiar"** do aparelho. Os botões continuam funcionando com um toque. Para **rolar a tela**, arraste com **dois dedos**.\nA cor é a mesma escolhida para o laser da apresentação de slides. Dentro da apresentação e das Notas à mão ele fica de fora, porque lá já existe o laser próprio (segurar o dedo) e as canetas.', aba: 'apresentacoes' },
 { id: 'valor_futuro_selic', t: 'Como funciona o Valor Futuro e onde mudo a Selic?', k: 'valor futuro, selic, mudar selic, taxa selic, rendimento do credito, credito rendendo, fundo da administradora, incc depois da contemplacao, credito reajusta depois de contemplar, reajuste da parcela',
-  r: 'Em **Simulador** › **📈 Valor Futuro**:\n- O campo **Selic (% ao ano)** define quanto o crédito rende no fundo da administradora (o CRM converte para a taxa ao mês). O último valor digitado fica salvo no aparelho.\n- O **INCC/INPC corrige o crédito só até a contemplação**. Depois de contemplado, o crédito não é mais reajustado pelo índice: ele só rende na Selic até ser usado.\n- Depois da contemplação, o índice continua reajustando **apenas a parcela**, uma vez por ano.\nO reajuste anual (campo **Reajuste Anual da Carta**) fica nos Parâmetros do Plano.', aba: 'simulador' },
+  r: 'Em **Simulador** › **📈 Valor Futuro**:\n- O campo **Selic (% ao ano)** define quanto o crédito rende no fundo da administradora (o CRM converte para a taxa ao mês). O último valor digitado fica salvo no aparelho.\n- O **INCC/INPC corrige o crédito só até a contemplação**. Depois de contemplado, o crédito não é mais reajustado pelo índice: ele só rende na Selic até ser usado.\n- Depois da contemplação, o índice continua reajustando **apenas a parcela**.\n- A simulação começa no **mês de hoje** e aplica o reajuste **todo fevereiro** (o índice sai em janeiro). Crédito e parcela sobem o mesmo percentual até contemplar.\n- Também mostra **quanto o cliente paga se for até o fim do contrato**: o que pagou até contemplar (no plano escolhido: 50%, 55%, 70%, 85% ou 100%), a parcela depois de contemplar (volta à cheia + o que ficou para trás, diluído) e o total. O rendimento da Selic é lucro: o cliente não paga sobre ele.\nO percentual do reajuste (campo **Reajuste/ano**) fica nos Parâmetros do Plano. A **Venda da Carta** usa a mesma conta: o total pago até contemplar já sai no plano escolhido e com os reajustes de fevereiro.', aba: 'simulador' },
 { id: 'funil_vendedor', t: 'Como uso o Funil do Vendedor?', k: 'funil do vendedor, funil de vendas, fluxograma, meta de vendas, quantas reunioes preciso, quantos contatos por dia, 5 vias de prospeccao, vias de prospeccao, redes sociais, networking, pap, porta a porta, indicacoes, ligacao fria, criar lista, como ligar, qualificacao, bdr, script de prospeccao, no show, agendamento, pos venda, follow up, cliente nao fechou, vender mais',
   r: 'Em **Material de Apoio** › **🧭 Funil do Vendedor** fica o fluxograma da venda: **Meta → Prospecção → Criação de lista → Agendamento → Reunião (5 passos) → Fechou?** Se sim, **Pós-venda**; se não, **Follow-up**, que volta para um novo agendamento.\nToque em qualquer etapa para abrir a explicação. Dentro dela, os assuntos ligados abrem novos pop-ups (as 5 vias, a qualificação, como ligar, cada um dos 5 passos, os motivos de não fechar); use **‹** para voltar.\n- Na **Meta** você calcula quantos contatos, agendamentos e reuniões precisa por dia.\n- Os scripts têm **📋 Copiar** e **✏️ Personalizar** (fica salvo para você).\n- As perguntas de qualificação (antigo Processo BDR) ficam em **Criação de lista › Qualificar o contato**.', aba: 'materialApoio' },
 { id: 'central_ajuda', t: 'Onde ficam os manuais e vídeos de ajuda?', k: 'manual, manuais, video de ajuda, tutorial, central de ajuda, ajuda do crm, como usar o crm, pdf do manual, aprender a usar',
