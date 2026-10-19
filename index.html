@@ -1675,11 +1675,14 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     </div>
   </div>
 
-  <!-- Parâmetros Globais do Consórcio (Ficam visíveis para Cotas, Futuro e Venda) -->
-  <div class="card" id="consorcioParams" style="margin-bottom:16px">
-    <h3 style="margin-top:0;font-size:14px;color:var(--muted)">Parâmetros do Plano</h3>
-    <div class="grid3">
-      <div class="field">
+  <!-- Parâmetros Globais do Consórcio (Ficam visíveis para Cotas, Futuro e Venda) — versão compacta -->
+  <div class="card sp-card" id="consorcioParams">
+    <div class="sp-cab">
+      <h3>Parâmetros do Plano</h3>
+      <button class="btn primary sp-apres" onclick="aprSimulacaoEmSlides()" title="Monta os slides desta simulação na aba Apresentações, prontos para mostrar ao cliente">🎞️ Virar apresentação</button>
+    </div>
+    <div class="sp-grade">
+      <div class="field sp-modal">
         <label>Modalidade</label>
         <select id="simModalidade" onchange="calcularSimulacao()">
           <option value="imovel">🔴 Imóvel (24,2% - 220x)</option>
@@ -1689,75 +1692,56 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         </select>
       </div>
       <div class="field">
-        <label>Valor do Crédito Editável</label>
-        <input type="text" id="simCredito" value="R$ 100.000,00" oninput="maskMoneySim(this); calcularSimulacao()">
+        <label>Valor do crédito</label>
+        <input type="text" id="simCredito" value="R$ 100.000,00" inputmode="decimal" oninput="maskMoneySim(this); calcularSimulacao()">
       </div>
       <div class="field">
-        <label style="display:flex;align-items:center;gap:8px;margin-top:28px;cursor:pointer">
-          <input type="checkbox" id="simSeguro" onchange="calcularSimulacao()" style="width:auto;transform:scale(1.2)">
-          <b>Incluir Seguro de Vida (R$ 46,45 / 100k)</b>
-        </label>
-      </div>
-    </div>
-    <div class="grid3">
-      <div class="field">
-        <label>Meses até Contemplação</label>
+        <label title="Mês da contemplação">Contemplação</label>
         <input type="number" id="simMesContemplacao" value="15" min="1" oninput="calcularSimulacao()">
       </div>
       <div class="field">
-        <label>Reajuste Anual da Carta (%)</label>
-        <input type="text" id="simReajusteAnual" value="5,00%" oninput="maskPercentSim(this); calcularSimulacao()">
+        <label title="Reajuste anual da carta (INCC/INPC)">Reajuste/ano</label>
+        <input type="text" id="simReajusteAnual" value="5,00%" inputmode="decimal" oninput="maskPercentSim(this); calcularSimulacao()">
       </div>
       <div class="field">
-        <label>Lucro na Venda da Carta (%)</label>
-        <input type="text" id="simAgioVenda" value="30,00%" oninput="maskPercentSim(this); calcularSimulacao()">
+        <label title="Lucro (ágio) na venda da carta">Lucro na venda</label>
+        <input type="text" id="simAgioVenda" value="30,00%" inputmode="decimal" oninput="maskPercentSim(this); calcularSimulacao()">
       </div>
-    </div>
-    <div class="grid3">
       <div class="field">
-        <label>Prazo Restante do Grupo (opcional)</label>
-        <input type="number" id="simPrazoRestante" min="1" placeholder="Deixe em branco p/ usar o prazo padrão" oninput="calcularSimulacao()">
-        <small style="color:var(--muted);display:block;margin-top:4px">
-          Preencha somente se o grupo já estiver em andamento e faltar menos meses do que o prazo padrão da modalidade (ex: grupo de 220x com apenas 200 meses restantes). O cálculo de todas as parcelas e valores passará a usar esse número de meses, em qualquer segmento.
-        </small>
+        <label>Prazo grupo <i class="sp-info" title="Preencha só se o grupo já estiver em andamento e faltar menos meses do que o prazo padrão da modalidade (ex.: grupo de 220x com apenas 200 meses restantes). Todas as parcelas e valores passam a usar esse número de meses.">ⓘ</i></label>
+        <input type="number" id="simPrazoRestante" min="1" placeholder="Padrão" oninput="calcularSimulacao()">
       </div>
-      <div class="field" id="simVeiculoReduzidaWrap" style="display:none">
-        <label>Parcela Reduzida (grupos de Veículo)</label>
-        <select id="simVeiculoPrazoReduzido" onchange="calcularSimulacao()">
-          <option value="0">Sem parcela reduzida</option>
-          <option value="12">Reduzida nos primeiros 12 meses</option>
-          <option value="18">Reduzida nos primeiros 18 meses</option>
-          <option value="24">Reduzida nos primeiros 24 meses</option>
-          <option value="custom">Personalizar (outro prazo)</option>
-        </select>
-        <input type="number" id="simVeiculoPrazoReduzidoCustom" min="1" placeholder="Nº de meses reduzidos" style="display:none;margin-top:8px" oninput="calcularSimulacao()">
-        <small style="color:var(--muted);display:block;margin-top:4px">
-          Alguns grupos de veículo têm parcela reduzida (54% da parcela cheia) por um período fixo. Depois desse período, se o cliente ainda não tiver sido contemplado, a parcela volta ao valor cheio acrescida do que ficou para trás, diluído no prazo restante do grupo. Use "Personalizar" para grupos com prazo de redução diferente de 12/18/24 meses.
-        </small>
+      <div class="field sp-check">
+        <label class="sp-chk"><input type="checkbox" id="simSeguro" onchange="calcularSimulacao()"><span title="Seguro de vida: R$ 46,45 por 100 mil">Seguro de vida</span></label>
+      </div>
+      <div class="field sp-reduzida" id="simVeiculoReduzidaWrap" style="display:none">
+        <label>Parcela reduzida (veículo) <i class="sp-info" title="Alguns grupos de veículo têm parcela reduzida (54% da parcela cheia) por um período fixo. Depois desse período, se o cliente ainda não foi contemplado, a parcela volta ao valor cheio acrescida do que ficou para trás, diluído no prazo restante. Use Personalizar para outro prazo.">ⓘ</i></label>
+        <div class="sp-linha">
+          <select id="simVeiculoPrazoReduzido" onchange="calcularSimulacao()">
+            <option value="0">Sem parcela reduzida</option>
+            <option value="12">Reduzida por 12 meses</option>
+            <option value="18">Reduzida por 18 meses</option>
+            <option value="24">Reduzida por 24 meses</option>
+            <option value="custom">Personalizar</option>
+          </select>
+          <input type="number" id="simVeiculoPrazoReduzidoCustom" min="1" placeholder="Meses" style="display:none" oninput="calcularSimulacao()">
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ENVIAR SIMULAÇÃO PARA O CLIENTE (Proposta completa / Peça de Publicidade) -->
-  <div class="card" id="exportSimCard" style="margin-bottom:16px">
-    <h3 style="margin-top:0;font-size:14px;color:var(--muted)">📤 Enviar Simulação para o Cliente</h3>
-    <div class="grid3">
-      <div class="field">
-        <label style="display:flex;align-items:center;gap:8px;margin-top:0;cursor:pointer">
-          <input type="checkbox" id="exportIncluirLogo" style="width:auto;transform:scale(1.2)">
-          <b>Incluir logo da Ademicon</b>
-        </label>
-        <small class="muted">Deixe desmarcado se você não é autorizado a divulgar a marca.</small>
+  <!-- ENVIAR SIMULAÇÃO PARA O CLIENTE (Proposta completa / Peça de Publicidade) — recolhível -->
+  <details class="card sp-card sp-envio" id="exportSimCard">
+    <summary><span>📤 Opções da proposta e da publicidade</span><small id="spEnvioResumo"></small><i>▾</i></summary>
+    <div class="sp-grade sp-grade-envio">
+      <div class="field sp-check">
+        <label class="sp-chk" title="Deixe desmarcado se você não é autorizado a divulgar a marca."><input type="checkbox" id="exportIncluirLogo"><span>Logo Ademicon</span></label>
+      </div>
+      <div class="field sp-check">
+        <label class="sp-chk" title="Desmarque para gerar a peça sem seu nome, telefone e foto (útil quando outro consultor vai postar)."><input type="checkbox" id="exportIncluirDadosConsultor" checked><span>Meus dados</span></label>
       </div>
       <div class="field">
-        <label style="display:flex;align-items:center;gap:8px;margin-top:0;cursor:pointer">
-          <input type="checkbox" id="exportIncluirDadosConsultor" checked style="width:auto;transform:scale(1.2)">
-          <b>Incluir meus dados de consultor</b>
-        </label>
-        <small class="muted">Desmarque para gerar a peça sem seu nome/telefone/foto — útil quando a publicidade ou proposta é feita para outro consultor postar.</small>
-      </div>
-      <div class="field">
-        <label>Percentual da parcela</label>
+        <label>Parcela mostrada <i class="sp-info" title="Define o valor de parcela mostrado na Proposta e na Publicidade. A Proposta em PDF também mostra os 4 cenários de lance completos.">ⓘ</i></label>
         <select id="pubParcelaPct" onchange="calcularSimulacao()">
           <option value="50">Parcela 50%</option>
           <option value="55">Parcela 55%</option>
@@ -1767,31 +1751,17 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         </select>
       </div>
       <div class="field">
-        <label>&nbsp;</label>
-        <small class="muted">Define o valor de parcela mostrado na Proposta e na Publicidade. A Proposta em PDF também mostra os 4 cenários de lance completos.</small>
+        <label>Vagas (opcional)</label>
+        <input type="text" id="pubVagas" placeholder="Ex: Só 2 vagas">
       </div>
-    </div>
-    <div class="grid3" style="margin-top:4px">
-      <div class="field">
-        <label>Vagas disponíveis (opcional)</label>
-        <input type="text" id="pubVagas" placeholder="Ex: Só 2 vagas disponíveis">
-      </div>
-      <div class="field">
-        <label>Observação / Promoção (opcional)</label>
+      <div class="field sp-obs">
+        <label>Observação / promoção (opcional)</label>
         <input type="text" id="pubObservacao" placeholder="Ex: Próxima parcela só no dia 15">
       </div>
-      <div class="field">
-        <label>&nbsp;</label>
-        <small class="muted">Esses dois campos só aparecem na proposta/publicidade se você preencher — deixe em branco pra omitir.</small>
-      </div>
     </div>
-    <small class="muted">Os botões de Publicidade, WhatsApp e Proposta agora ficam embaixo de cada card, logo abaixo ⬇ — essas configurações valem pra todos eles.</small>
-    <div class="row" style="margin-top:10px;align-items:center;gap:8px;flex-wrap:wrap">
-      <button class="btn primary" onclick="aprSimulacaoEmSlides()">🎞️ Virar apresentação</button>
-      <small class="muted">Monta os slides desta simulação na aba Apresentações, prontos para mostrar ao cliente.</small>
-    </div>
-    <div id="exportSimStatus" class="muted" style="font-size:12px;margin-top:6px"></div>
-  </div>
+    <small class="muted sp-nota">Valem para os botões Publicidade, WhatsApp e Proposta de cada card abaixo. Vagas e observação só aparecem se preenchidas.</small>
+  </details>
+  <div id="exportSimStatus" class="muted" style="font-size:12px;margin:-6px 0 10px"></div>
 
   <!-- SUB ABA: COTAS -->
   <div id="simCotas" class="subpage active">
@@ -2355,10 +2325,6 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <h2>🏷️ Identidade Visual do CRM</h2>
       <div class="field"><label>Nome do CRM</label><input id="cfgCrmTitle"></div>
       <div class="field"><label>Subtítulo</label><input id="cfgCrmSub"></div>
-      <div class="grid2" style="gap:10px">
-        <div class="field"><label>Iniciais Logo</label><input id="cfgLogo1" maxlength="4"></div>
-        <div class="field"><label>Texto Inferior</label><input id="cfgLogo2" maxlength="5"></div>
-      </div>
       <button class="btn primary" onclick="saveCrmBranding()">Salvar Identidade</button>
     </div>
   </div>
@@ -5733,6 +5699,7 @@ function applyBrand(){
     if (!brand.logo2 || brand.logo2 === 'LOCAL') brand.logo2 = 'CRM';
     if (brand.sub && /(^|[^a-z])WC([^a-z]|$)/i.test(brand.sub)) brand.sub = brand.sub.replace(/-?\bWC\b-?/ig, 'Elo');
   }
+  if (brand) { brand.logo1 = 'ELO'; brand.logo2 = 'ELO'; }      // texto do logo fixo (não é mais editável)
   const elAuthBrand = document.getElementById('authBrandName');
   if (elAuthBrand) elAuthBrand.textContent = (brand && brand.title) || 'Elo CRM';
   const elTitle = document.getElementById('appBrandTitle');
@@ -5761,8 +5728,7 @@ function applyBrand(){
 function saveCrmBranding(){
   brand.title = document.getElementById('cfgCrmTitle').value.trim() || 'Meu CRM';
   brand.sub = document.getElementById('cfgCrmSub').value.trim() || 'Consultoria & Vendas';
-  brand.logo1 = document.getElementById('cfgLogo1').value.trim() || 'ELO';
-  brand.logo2 = document.getElementById('cfgLogo2').value.trim() || 'CRM';
+  brand.logo1 = 'ELO'; brand.logo2 = 'ELO';     // texto do logo fixo
   persistirChave(KEY_BRAND, JSON.stringify(brand), brand);
   applyBrand();
   save();
@@ -20512,8 +20478,8 @@ const ASSIST_BASE = [
   r: '- **Caneta**: traço firme e uniforme.\n- **Tinteiro**: o traço engrossa e afina como caneta-tinteiro.\n- **Lápis**: traço mais claro, para rascunho.\n- **Pincel**: traço largo que varia bastante.\n- **Marca-texto**: faixa transparente que destaca sem esconder o que está por baixo.\n- **Borracha**: apaga só por onde passar.\nCom **S Pen** ou **Apple Pencil**, apertar mais deixa o traço mais grosso. No dedo, traço rápido fica mais fino.\n**Espessura**: no estilo Samsung, toque de novo na caneta e use − / +; no estilo iPad, toque de novo na caneta e escolha uma das 5 bolinhas.', aba: 'apresentacoes' },
 { id: 'canetas_endireitar', t: 'Como faço linhas retas e formas certinhas com a caneta?', k: 'linha reta, endireitar as linhas, formas, circulo perfeito, quadrado, retangulo, triangulo, desenhar reto',
   r: 'Nas **Notas à mão**, desenhe a linha ou a forma e **segure parado no fim do traço**: ela vira uma linha reta, círculo, retângulo ou triângulo certinho.\nPara ligar ou desligar: toque de novo na caneta e use a chave **Endireitar as linhas e formas**.', aba: 'apresentacoes' },
-{ id: 'laser_crm', t: 'Como ligo o laser para apresentar o CRM?', k: 'laser no crm, laser na tela, apontador, apontar na tela, apresentar o crm, mostrar o crm para cliente, dois toques, tres toques, ligar laser, desligar laser, ponteiro vermelho, segurar copia o texto, copiar texto ao segurar',
-  r: 'Em qualquer tela do CRM:\n- **Dois toques rápidos** numa área livre (fora de botões e campos) **ligam** o laser.\n- **Três toques rápidos** **desligam** (ou toque em **Desligar** no aviso do alto, ou aperte Esc no computador).\nCom o laser ligado, um ponto vermelho com rastro segue o seu dedo, a caneta ou o mouse, e **segurar o dedo não abre mais o "copiar"** do aparelho. Os botões continuam funcionando com um toque. Para **rolar a tela**, arraste com **dois dedos**.\nA cor é a mesma escolhida para o laser da apresentação de slides. Dentro da apresentação e das Notas à mão ele fica de fora, porque lá já existe o laser próprio (segurar o dedo) e as canetas.', aba: 'apresentacoes' },
+{ id: 'laser_crm', t: 'Como ligo o laser para apresentar o CRM?', k: 'laser no crm, laser na tela, apontador, apontar na tela, apresentar o crm, mostrar o crm para cliente, segurar 3 segundos, segurar o dedo, tres toques, ligar laser, desligar laser, ponteiro vermelho, segurar copia o texto, copiar texto ao segurar',
+  r: 'Em qualquer tela do CRM:\n- **Segure o dedo parado por 3 segundos** numa área livre (fora de botões e campos): um círculo vai enchendo e o laser **liga**. No computador, segure o botão do mouse.\n- **Três toques rápidos** **desligam** (ou toque em **Desligar** no aviso do alto, ou aperte Esc no computador).\nCom o laser ligado, um ponto vermelho com rastro segue o seu dedo, a caneta ou o mouse, e **segurar o dedo não abre mais o "copiar"** do aparelho. Os botões continuam funcionando com um toque. Para **rolar a tela**, arraste com **dois dedos**.\nA cor é a mesma escolhida para o laser da apresentação de slides. Dentro da apresentação e das Notas à mão ele fica de fora, porque lá já existe o laser próprio (segurar o dedo) e as canetas.', aba: 'apresentacoes' },
 { id: 'valor_futuro_selic', t: 'Como funciona o Valor Futuro e onde mudo a Selic?', k: 'valor futuro, selic, mudar selic, taxa selic, rendimento do credito, credito rendendo, fundo da administradora, incc depois da contemplacao, credito reajusta depois de contemplar, reajuste da parcela',
   r: 'Em **Simulador** › **📈 Valor Futuro**:\n- O campo **Selic (% ao ano)** define quanto o crédito rende no fundo da administradora (o CRM converte para a taxa ao mês). O último valor digitado fica salvo no aparelho.\n- O **INCC/INPC corrige o crédito só até a contemplação**. Depois de contemplado, o crédito não é mais reajustado pelo índice: ele só rende na Selic até ser usado.\n- Depois da contemplação, o índice continua reajustando **apenas a parcela**, uma vez por ano.\nO reajuste anual (campo **Reajuste Anual da Carta**) fica nos Parâmetros do Plano.', aba: 'simulador' },
 { id: 'funil_vendedor', t: 'Como uso o Funil do Vendedor?', k: 'funil do vendedor, funil de vendas, fluxograma, meta de vendas, quantas reunioes preciso, quantos contatos por dia, 5 vias de prospeccao, vias de prospeccao, redes sociais, networking, pap, porta a porta, indicacoes, ligacao fria, criar lista, como ligar, qualificacao, bdr, script de prospeccao, no show, agendamento, pos venda, follow up, cliente nao fechou, vender mais',
@@ -20521,7 +20487,7 @@ const ASSIST_BASE = [
 { id: 'central_ajuda', t: 'Onde ficam os manuais e vídeos de ajuda?', k: 'manual, manuais, video de ajuda, tutorial, central de ajuda, ajuda do crm, como usar o crm, pdf do manual, aprender a usar',
   r: 'Na aba **Informações & Arquivos**, toque na sub-aba **📚 Ajuda do CRM**. Lá ficam os manuais em PDF (para ler ou baixar) e em vídeo (botão **▶ Assistir**): o manual do CRM, o do Google Agenda/Meet e o da chave da Prospecção. Eles precisam de internet para abrir.\nA sub-aba **📢 Mural** fica só com as publicações suas e da equipe.', aba: 'informacoes' },
 { id: 'modo_apresentacao', t: 'Como escondo as abas internas quando vou mostrar o CRM para um cliente?', k: 'modo apresentacao, esconder valores, esconder comissao, esconder abas, privacidade, mostrar o crm para cliente, ocultar dados, olho, apresentar o crm',
-  r: 'Use o **Modo apresentação**: toque no **olho** no alto da tela (ao lado do sininho) ou, no celular, em **Mais › Modo apresentação**.\n- No menu ficam **só o Simulador, a Calculadora e as Apresentações**, no computador e na barra de baixo do celular.\n- Todas as outras abas saem do menu, junto com a busca de leads, o **+ Novo Lead**, o sininho e o aviso de backup.\n- Se você estiver em outra aba ao ligar, o CRM vai direto para o Simulador.\nPara sair, toque em **Sair** no aviso do rodapé ou no olho de novo: tudo volta como estava. Combine com o **laser** (dois toques na tela).', aba: 'simulador' },
+  r: 'Use o **Modo apresentação**: toque no **olho** no alto da tela (ao lado do sininho) ou, no celular, em **Mais › Modo apresentação**.\n- No menu ficam **só o Simulador, a Calculadora e as Apresentações**, no computador e na barra de baixo do celular.\n- Todas as outras abas saem do menu, junto com a busca de leads, o **+ Novo Lead**, o sininho e o aviso de backup.\n- Se você estiver em outra aba ao ligar, o CRM vai direto para o Simulador.\nPara sair, toque em **Sair** no aviso do rodapé ou no olho de novo: tudo volta como estava. Combine com o **laser** (segure o dedo 3 segundos na tela).', aba: 'simulador' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -23327,9 +23293,79 @@ const ASSIST_BASE = [
   setTimeout(() => { aplicarNoCelular(); botaoTopo(); }, 1500);
 })();
 </script>
+<script id="simuladorCompactoScript">
+// ===== SIMULADOR COMPACTO =====
+// Parâmetros do Plano numa grade enxuta (todos os campos em uma ou duas linhas) e as opções da
+// proposta/publicidade num bloco recolhível, para os cards da simulação aparecerem logo na primeira tela.
+(function () {
+  const css = document.createElement('style');
+  css.textContent = `
+  .sp-card { margin-bottom: 12px !important; padding: 14px 16px !important; }
+  .sp-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .sp-cab h3 { margin: 0; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; }
+  .sp-apres { font-size: 12.5px !important; padding: 7px 12px !important; white-space: nowrap; flex: none; }
+  .sp-cab h3 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .sp-grade { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px 12px; align-items: end; }
+  .sp-grade .sp-modal { grid-column: span 2; }
+  @media (min-width: 1180px) {
+    #consorcioParams .sp-grade { grid-template-columns: minmax(228px, 1.9fr) minmax(135px, 1.2fr) repeat(4, minmax(78px, .8fr)) minmax(142px, 1fr); }
+    #consorcioParams .sp-grade .sp-modal { grid-column: auto; }
+    #consorcioParams .sp-reduzida { grid-column: 1 / 3; }
+  }
+  /* cabeçalho do Simulador mais baixo */
+  #simulador > .card:first-child { padding: 12px 16px !important; margin-bottom: 10px !important; }
+  #simulador > .card:first-child h2 { font-size: 19px !important; }
+  #simulador > .card:first-child small { font-size: 12px; }
+  .sp-grade .field { margin: 0 !important; min-width: 0; }
+  .sp-grade label { font-size: 11.5px !important; margin-bottom: 4px !important; color: var(--muted); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .sp-grade input:not([type=checkbox]), .sp-grade select { height: 38px; padding: 6px 10px !important; font-size: 14px !important; border-radius: 9px; width: 100%; box-sizing: border-box; }
+  .sp-info { font-style: normal; cursor: help; color: var(--muted); font-size: 12px; }
+  .sp-check { align-self: end; }
+  .sp-chk { display: flex !important; align-items: center; gap: 8px; height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; cursor: pointer;
+    color: inherit !important; font-size: 13px !important; font-weight: 600 !important; margin: 0 !important; white-space: nowrap; overflow: hidden; }
+  .sp-chk input { width: auto !important; margin: 0; transform: scale(1.15); flex: none; }
+  .sp-chk span { overflow: hidden; text-overflow: ellipsis; } .sp-chk small { color: var(--muted); font-weight: 500; }
+  .sp-reduzida { grid-column: span 2; } .sp-linha { display: flex; gap: 8px; } .sp-linha input { max-width: 90px; }
+  .sp-envio > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: var(--muted); }
+  .sp-envio > summary::-webkit-details-marker { display: none; }
+  .sp-envio > summary small { flex: 1; font-weight: 500; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sp-envio > summary i { font-style: normal; transition: transform .2s; }
+  .sp-envio[open] > summary i { transform: rotate(180deg); }
+  .sp-envio[open] > summary { margin-bottom: 10px; }
+  .sp-grade-envio .sp-obs { grid-column: span 2; }
+  .sp-nota { display: block; margin-top: 8px; font-size: 11.5px; }
+  #exportSimStatus:empty { display: none; }
+  @media (max-width: 640px) {
+    .sp-grade { grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+    .sp-grade .sp-modal, .sp-reduzida, .sp-grade-envio .sp-obs { grid-column: 1 / -1; }
+    .sp-cab h3 { font-size: 12px; } .sp-apres { padding: 6px 10px !important; }
+  }`;
+  document.head.appendChild(css);
+
+  // resumo das opções quando o bloco está recolhido
+  function resumo() {
+    const r = document.getElementById('spEnvioResumo'); if (!r) return;
+    const v = id => document.getElementById(id);
+    const pct = v('pubParcelaPct'), partes = [];
+    if (pct) partes.push('parcela ' + pct.value + '%');
+    partes.push(v('exportIncluirLogo') && v('exportIncluirLogo').checked ? 'com logo' : 'sem logo');
+    partes.push(v('exportIncluirDadosConsultor') && v('exportIncluirDadosConsultor').checked ? 'com seus dados' : 'sem seus dados');
+    if (v('pubVagas') && v('pubVagas').value.trim()) partes.push('vagas');
+    if (v('pubObservacao') && v('pubObservacao').value.trim()) partes.push('observação');
+    r.textContent = '· ' + partes.join(' · ');
+  }
+  function ligar() {
+    const d = document.getElementById('exportSimCard'); if (!d || d.__sp) return; d.__sp = true;
+    try { if (localStorage.getItem('crm_sim_envio_aberto') === '1') d.open = true; } catch (e) {}
+    d.addEventListener('toggle', () => { try { localStorage.setItem('crm_sim_envio_aberto', d.open ? '1' : '0'); } catch (e) {} });
+    d.addEventListener('input', resumo); d.addEventListener('change', resumo); resumo();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', ligar); else ligar();
+})();
+</script>
 <script id="laserCrmScript">
 // ===== LASER PARA APRESENTAR O CRM =====
-// Dois toques rápidos na tela ligam o laser; três toques rápidos desligam.
+// Segurar o dedo (ou o botão do mouse) parado numa área livre por 3 segundos liga o laser; três toques rápidos desligam.
 // Com o laser ligado, um ponto vermelho brilhante (com rastro que some) segue o dedo, a caneta ou o mouse,
 // e segurar o dedo não abre mais o "copiar/selecionar" do aparelho. A tela continua funcionando normalmente
 // (tocar nos botões; para rolar a tela com o laser ligado, arraste com dois dedos). Os toques que contam são só em área livre: botões, campos e links não contam.
@@ -23351,6 +23387,11 @@ const ASSIST_BASE = [
   #laserCrmAviso span { min-width: 0; } #laserCrmAviso button { flex: none; }
   #laserCrmAviso { width: max-content; max-width: calc(100vw - 24px); }
   #laserCrmAviso.mini span { display: none; }
+  body.laser-segurando, body.laser-segurando * { -webkit-user-select: none !important; user-select: none !important; -webkit-touch-callout: none !important; }
+  #laserCrmCarga { position: fixed; z-index: 2147483002; width: 64px; height: 64px; margin: -32px 0 0 -32px; pointer-events: none; opacity: 0; transition: opacity .2s; }
+  #laserCrmCarga.on { opacity: 1; }
+  #laserCrmCarga circle { fill: rgba(17,17,20,.35); stroke: #ff2a2a; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 170; stroke-dashoffset: 170; transform: rotate(-90deg); transform-origin: 50% 50%; }
+  #laserCrmCarga.on circle { transition: stroke-dashoffset var(--dur, 2.6s) linear; stroke-dashoffset: 0; }
   @media print { #laserCrmTela, #laserCrmAviso { display: none !important; } }`;
   document.head.appendChild(css);
 
@@ -23413,7 +23454,27 @@ const ASSIST_BASE = [
   const pedir = () => { if (!quadro) quadro = requestAnimationFrame(desenhar); };
 
   // ---- contagem dos toques ----
-  let toques = [], tLigar = 0, apertado = false;
+  let toques = [], apertado = false;
+  // ---- segurar 3 segundos para ligar (com um círculo que vai enchendo) ----
+  const SEGURAR = 3000, MOSTRA = 400; let seg = null, carga = null;
+  function comecarSegurar(e) {
+    cancelarSegurar(); if (e.isPrimary === false) return;
+    seg = { id: e.pointerId, x: e.clientX, y: e.clientY };
+    document.body.classList.add('laser-segurando');
+    seg.tMostra = setTimeout(() => {
+      if (!seg) return;
+      if (!carga) { carga = document.createElement('div'); carga.id = 'laserCrmCarga'; carga.innerHTML = '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27"/></svg>'; document.body.appendChild(carga); }
+      carga.classList.remove('on'); carga.style.left = seg.x + 'px'; carga.style.top = seg.y + 'px';
+      carga.querySelector('circle').style.stroke = cor(); carga.style.setProperty('--dur', (SEGURAR - MOSTRA) / 1000 + 's');
+      void carga.offsetWidth; carga.classList.add('on');
+    }, MOSTRA);
+    seg.tLiga = setTimeout(() => { cancelarSegurar(); try { const s = getSelection(); if (s) s.removeAllRanges(); } catch (x) {} ligar(); }, SEGURAR);
+  }
+  function cancelarSegurar() {
+    if (seg) { clearTimeout(seg.tMostra); clearTimeout(seg.tLiga); seg = null; }
+    document.body.classList.remove('laser-segurando'); if (carga) carga.classList.remove('on');
+  }
+  addEventListener('scroll', () => { if (seg) cancelarSegurar(); }, { capture: true, passive: true });
   // com o laser ligado, um dedo aponta e dois dedos rolam a tela
   const dedos = new Map(); let rolar = null;
   function rolavel(el) {
@@ -23428,19 +23489,15 @@ const ASSIST_BASE = [
     if (e.button > 0 || emOutroModo()) { if (ligado && emOutroModo()) desligar(); return; }
     if (ligado && e.pointerType === 'touch') { dedos.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (dedos.size === 2) { rolar = { el: rolavel(e.target), ...meio() }; ponto = null; rastro = []; pedir(); toques = []; return; } }
     if (ligado) { apertado = true; ponto = { x: e.clientX, y: e.clientY }; rastro.push({ x: e.clientX, y: e.clientY, t: performance.now() }); pedir(); }
-    if (!livre(e.target)) { toques = []; return; }
+    if (!livre(e.target)) { toques = []; cancelarSegurar(); return; }
+    if (!ligado) { comecarSegurar(e); return; }           // desligado: só segurar 3 segundos liga
     const agora = performance.now(), ult = toques[toques.length - 1];
     if (ult && (agora - ult.t > JANELA || Math.hypot(e.clientX - ult.x, e.clientY - ult.y) > DIST)) toques = [];
     toques.push({ t: agora, x: e.clientX, y: e.clientY });
-    if (toques.length === 2 && !ligado) {
-      // espera um pouquinho: se vier o 3º toque, era "três toques" (que desliga), então não liga
-      clearTimeout(tLigar); tLigar = setTimeout(() => { if (toques.length === 2) ligar(); }, JANELA);
-    } else if (toques.length >= 3) {
-      clearTimeout(tLigar); toques = [];
-      if (ligado) { desligar(); e.preventDefault(); }
-    }
+    if (toques.length >= 3) { toques = []; desligar(); e.preventDefault(); }   // ligado: 3 toques rápidos desligam
   }, true);
   document.addEventListener('pointermove', e => {
+    if (seg && e.pointerId === seg.id && Math.hypot(e.clientX - seg.x, e.clientY - seg.y) > 12) cancelarSegurar();
     if (!ligado) return;
     if (dedos.has(e.pointerId)) dedos.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (rolar && dedos.size >= 2) { const m = meio(); rolar.el.scrollBy(rolar.x - m.x, rolar.y - m.y); rolar.x = m.x; rolar.y = m.y; return; }
@@ -23449,16 +23506,15 @@ const ASSIST_BASE = [
       if (rastro.length > 60) rastro.shift(); pedir();
     }
   }, { capture: true, passive: true });
-  const soltar = e => { dedos.delete(e.pointerId); if (dedos.size < 2) rolar = null; if (!ligado) return; apertado = false; if (e.pointerType !== 'mouse') { ponto = null; pedir(); } };
+  const soltar = e => { if (seg && e.pointerId === seg.id) cancelarSegurar(); dedos.delete(e.pointerId); if (dedos.size < 2) rolar = null; if (!ligado) return; apertado = false; if (e.pointerType !== 'mouse') { ponto = null; pedir(); } };
   document.addEventListener('pointerup', soltar, true);
   document.addEventListener('pointercancel', soltar, true);
   document.addEventListener('mouseleave', () => { if (ligado) { ponto = null; pedir(); } });
   // com o laser ligado, segurar o dedo não abre o menu de copiar
-  document.addEventListener('contextmenu', e => { if (ligado && livre(e.target)) e.preventDefault(); }, true);
-  document.addEventListener('selectstart', e => { if (ligado && livre(e.target)) e.preventDefault(); }, true);
-  // dois toques rápidos não dão zoom na tela quando é para ligar o laser
-  document.addEventListener('dblclick', e => { if (livre(e.target) && !emOutroModo()) { try { const s = getSelection(); if (s) s.removeAllRanges(); } catch (x) {} } }, true);
+  document.addEventListener('contextmenu', e => { if ((ligado || seg) && livre(e.target)) e.preventDefault(); }, true);
+  document.addEventListener('selectstart', e => { if ((ligado || seg) && livre(e.target)) e.preventDefault(); }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ligado) desligar(); });
+  window.laserCrm.segurando = () => !!seg;
 })();
 </script>
 <script id="simAbasFixasScript">
