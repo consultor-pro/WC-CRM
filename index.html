@@ -2347,6 +2347,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       antes de qualquer importação. Se algo for apagado ou importado por engano, é só voltar para uma delas.
       <b>Essas cópias ficam neste aparelho</b>: se o aparelho for perdido ou o navegador for limpo, o que salva é o
       arquivo de backup baixado. Por isso o CRM também baixa esse arquivo sozinho, na frequência abaixo.
+      <br><b>Elas não usam a nuvem (Supabase)</b>: ocupam só a memória deste aparelho. Se quiser liberar espaço, apague as que não precisar.
     </p>
     <div class="row" style="align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       <label for="bkpBaixarSel" style="font-size:13px;font-weight:700;margin:0">Baixar o arquivo de backup sozinho:</label>
@@ -18797,7 +18798,7 @@ async function bkpRotina(){
   bkpRodando = true;
   try {
     const ind = await bkpIndice();
-    if (!ind.some(x => x.id === 'bkp_dia_' + bkpDataDeHoje())) { await bkpGuardar('dia'); bkpRender(); }
+    if (!bkpPulandoHoje() && !ind.some(x => x.id === 'bkp_dia_' + bkpDataDeHoje())) { await bkpGuardar('dia'); bkpRender(); }
   } finally { bkpRodando = false; }
 }
 function bkpQuando(x){
@@ -18816,8 +18817,27 @@ async function bkpRender(){
       <td data-rot="Cópia"><b>${esc(bkpQuando(x))}</b><span class="tl-sub"> · ${x.tipo === 'dia' ? 'cópia do dia' : esc(x.rotulo || 'antes de uma mudança')}</span></td>
       <td data-rot="O que tinha">${x.leads} lead(s) · ${x.vendas} venda(s)</td>
       <td data-rot="Tamanho">${x.kb > 1024 ? (x.kb / 1024).toFixed(1).replace('.', ',') + ' MB' : x.kb + ' KB'}</td>
-      <td class="tc-acoes"><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn" style="font-size:12px;padding:5px 9px" onclick="bkpRestaurar('${x.id}')">↩ Voltar para esta</button><button class="btn" style="font-size:12px;padding:5px 9px" onclick="bkpBaixarCopia('${x.id}')">Baixar</button></div></td>
-    </tr>`).join('') + '</tbody></table></div>';
+      <td class="tc-acoes"><div class="row" style="gap:6px;flex-wrap:nowrap"><button class="btn" style="font-size:12px;padding:5px 9px" onclick="bkpRestaurar('${x.id}')">↩ Voltar para esta</button><button class="btn" style="font-size:12px;padding:5px 9px" onclick="bkpBaixarCopia('${x.id}')">Baixar</button><button class="btn danger" style="font-size:12px;padding:5px 9px" title="Apagar esta cópia" onclick="bkpApagar('${x.id}')">🗑️ Apagar</button></div></td>
+    </tr>`).join('') + '</tbody></table></div>'
+    + `<div class="row" style="justify-content:space-between;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap"><small class="muted">${ind.length} cópia(s) · ${(() => { const kb = ind.reduce((a, x) => a + (x.kb || 0), 0); return kb > 1024 ? (kb / 1024).toFixed(1).replace('.', ',') + ' MB' : kb + ' KB'; })()} neste aparelho</small><button class="btn danger" style="font-size:12.5px" onclick="bkpApagarTodas()">🗑️ Apagar todas as cópias</button></div>`;
+}
+// Apagar cópias (só deste aparelho). Depois de apagar a de hoje, o CRM não refaz outra no mesmo dia.
+function bkpPularHoje(){ try { localStorage.setItem(`crm_bkp_pular_${EQUIPE_ID}`, bkpDataDeHoje()); } catch (e) {} }
+function bkpPulandoHoje(){ try { return localStorage.getItem(`crm_bkp_pular_${EQUIPE_ID}`) === bkpDataDeHoje(); } catch (e) { return false; } }
+async function bkpApagar(id){
+  const x = (await bkpIndice()).find(i => i.id === id); if (!x) return bkpRender();
+  if (!confirm(`Apagar a cópia de ${bkpQuando(x)}?\n\nEla sai só deste aparelho e não dá para desfazer. Os dados atuais do CRM não mudam.`)) return;
+  await idbDeleteArquivo(id);
+  await idbSetArquivo('bkp_indice', (await bkpIndice()).filter(i => i.id !== id));
+  if (id === 'bkp_dia_' + bkpDataDeHoje()) bkpPularHoje();
+  showToast('Cópia apagada.', 'success'); bkpRender();
+}
+async function bkpApagarTodas(){
+  const ind = await bkpIndice(); if (!ind.length) return bkpRender();
+  if (!confirm(`Apagar as ${ind.length} cópias automáticas deste aparelho?\n\nNão dá para desfazer. Os dados atuais do CRM não mudam, e amanhã o CRM volta a guardar uma cópia por dia.`)) return;
+  for (const x of ind) await idbDeleteArquivo(x.id);
+  await idbSetArquivo('bkp_indice', []); bkpPularHoje();
+  showToast('Todas as cópias automáticas foram apagadas.', 'success'); bkpRender();
 }
 function bkpMudarFrequencia(v){
   setItemSeguro(`crm_bkp_cfg_${EQUIPE_ID}`, JSON.stringify(Object.assign(bkpCfg(), { baixar: v })));
@@ -20669,6 +20689,8 @@ const ASSIST_BASE = [
   r: 'Em **Configurações › 💾 Armazenamento** você vê, como no celular, quanto este aparelho está usando e quanto tem livre, separado por apresentações, PDFs, notas à mão, anexos do Mural, fotos e textos.\n- **Fica só no aparelho**: apresentações, PDFs, notas à mão e anexos do Mural (não vão para a nuvem). Use **💾 Cópia das apresentações** de vez em quando.\n- **Vai para a nuvem**: só os textos (leads, vendas, agenda, ajustes) e a foto do perfil, bem pequena (cerca de 5 KB).\n- **🔒 Proteger agora** pede ao navegador para não apagar os arquivos sozinho quando o aparelho fica sem espaço.', aba: 'configuracoes' },
 { id: 'publicidade_previa', t: 'Dá para ver a publicidade antes de baixar?', k: 'previa, pré-visualização, pre visualizacao, ver antes de baixar, publicidade, trocar fundo, conferir imagem',
   r: 'Sim. No **Simulador**, toque em **📢 Criar publicidade** (ou **📲 Enviar por WhatsApp**) e escolha o fundo: a peça aparece na tela primeiro. Dali você **baixa**, **envia pelo WhatsApp** ou **troca o fundo**. Se fechar, nada é baixado.', aba: 'simulador' },
+{ id: 'bkp_apagar', t: 'Como apago as cópias automáticas? Elas enchem a Supabase?', k: 'apagar copia, apagar copias automaticas, apagar backup, excluir copia, liberar espaco, copias enchem supabase, copia automatica nuvem',
+  r: 'As cópias automáticas **não usam a nuvem (Supabase)**: ficam só na memória deste aparelho.\nPara apagar, vá em **Configurações** › **🛟 Cópias automáticas**: cada cópia tem o botão **🗑️ Apagar**, e embaixo da lista há **🗑️ Apagar todas as cópias**. Os dados atuais do CRM não mudam. Depois de apagar, o CRM só volta a guardar uma cópia no dia seguinte.', aba: 'configuracoes' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -23653,8 +23675,8 @@ const ASSIST_BASE = [
 // só neste aparelho (IndexedDB do navegador). Para a nuvem (Supabase) vão só textos e a foto
 // do perfil (pequena, cerca de 5 KB), que aparece para as outras pessoas.
 (function () {
-  const CORES = { slides: '#d71920', pdfs: '#f59e0b', notas: '#8b5cf6', mural: '#0ea5e9', fotos: '#10b981', textos: '#2563eb', outros: '#94a3b8' };
-  const NOMES = { slides: 'Apresentações (slides)', pdfs: 'PDFs das apresentações', notas: 'Notas à mão', mural: 'Anexos do Mural', fotos: 'Fotos de perfil', textos: 'Textos do CRM (leads, vendas, agenda…)', outros: 'App, manuais e outros' };
+  const CORES = { slides: '#d71920', pdfs: '#f59e0b', notas: '#8b5cf6', mural: '#0ea5e9', fotos: '#10b981', textos: '#2563eb', copias: '#64748b', outros: '#94a3b8' };
+  const NOMES = { slides: 'Apresentações (slides)', pdfs: 'PDFs das apresentações', notas: 'Notas à mão', mural: 'Anexos do Mural', fotos: 'Fotos de perfil', textos: 'Textos do CRM (leads, vendas, agenda…)', copias: 'Cópias automáticas', outros: 'App, manuais e outros' };
   const LIMITE_NUVEM = 500 * 1024 * 1024;                     // plano gratuito da Supabase: 500 MB de banco
   const fmt = b => {
     b = Math.max(0, Number(b) || 0);
@@ -23677,10 +23699,11 @@ const ASSIST_BASE = [
     if (/^apr_/.test(k)) { if (/_pdf_/.test(k)) return 'pdfs'; if (/_nota_/.test(k)) return 'notas'; return 'slides'; }
     if (/^avatar_/.test(k)) return 'fotos';
     if (/^arquivo_/.test(k)) return 'mural';
+    if (/^bkp_/.test(k)) return 'copias';
     return 'outros';
   }
   async function medirAparelho() {
-    const soma = { slides: 0, pdfs: 0, notas: 0, mural: 0, fotos: 0, textos: 0, outros: 0 }; const qtd = { slides: 0, pdfs: 0, notas: 0, mural: 0, fotos: 0 };
+    const soma = { slides: 0, pdfs: 0, notas: 0, mural: 0, fotos: 0, textos: 0, copias: 0, outros: 0 }; const qtd = { slides: 0, pdfs: 0, notas: 0, mural: 0, fotos: 0, copias: 0 };
     try {
       const con = await abrirIndexedDB();
       for (const loja of [IDB_STORE, IDB_STORE_ARQUIVOS]) {
@@ -23728,7 +23751,7 @@ const ASSIST_BASE = [
     const el = document.getElementById('armCorpo'); if (!el) return;
     el.innerHTML = '<p class="muted" style="margin:6px 0">Medindo…</p>';
     const m = await medirAparelho(), n = medirNuvem();
-    const ordem = ['slides', 'pdfs', 'notas', 'mural', 'fotos', 'textos', 'outros'];
+    const ordem = ['slides', 'pdfs', 'notas', 'mural', 'fotos', 'textos', 'copias', 'outros'];
     const itens = ordem.map(k => ({ k, n: NOMES[k], v: m.soma[k], c: CORES[k] }));
     const livre = Math.max(0, m.total - m.usado);
     const qtdTxt = k => m.qtd[k] ? ` <small class="muted">· ${m.qtd[k]} ${m.qtd[k] === 1 ? 'item' : 'itens'}</small>` : '';
