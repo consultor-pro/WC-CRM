@@ -24380,6 +24380,36 @@ const ASSIST_BASE = [
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
 })();
 </script>
+<script id="kpiCorScript">
+// ===== CAIXAS DE NÚMEROS (KPI): faixa de cima na cor do número =====
+// A linha colorida no alto de cada caixa (antes sempre vermelha) passa a ter a mesma cor do número de dentro.
+(function () {
+  const css = document.createElement('style'); css.id = 'kpiCorEstilos';
+  css.textContent = `.kpi::before { background: linear-gradient(90deg, var(--kpi-cor, var(--red)), transparent 75%) !important; }`;
+  document.head.appendChild(css);
+  let agendado = false;
+  function pintar() {
+    agendado = false;
+    document.querySelectorAll('.kpi').forEach(k => {
+      const n = k.querySelector('strong'); if (!n || !n.getClientRects().length) return;
+      const cor = getComputedStyle(n).color;
+      if (cor && k.style.getPropertyValue('--kpi-cor') !== cor) k.style.setProperty('--kpi-cor', cor);
+    });
+  }
+  const pedir = () => { if (!agendado) { agendado = true; requestAnimationFrame(pintar); } };
+  window.kpiPintarCores = pedir;
+  ['renderAll', 'show'].forEach(nome => {
+    const orig = window[nome]; if (typeof orig !== 'function' || orig.__kpiCor) return;
+    const novo = function () { const r = orig.apply(this, arguments); pedir(); return r; };
+    novo.__kpiCor = true; window[nome] = novo;
+    try { if (nome === 'renderAll') renderAll = novo; else show = novo; } catch (e) {}
+  });
+  // troca de tema (claro/escuro) muda a cor do número
+  new MutationObserver(pedir).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', pedir); else pedir();
+  setTimeout(pedir, 1500);
+})();
+</script>
 <script id="laserCrmScript">
 // ===== LASER PARA APRESENTAR O CRM =====
 // Segurar o dedo (ou o botão do mouse) parado numa área livre por 3 segundos liga o laser; três toques rápidos desligam.
