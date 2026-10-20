@@ -1152,7 +1152,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     <button onclick="show('mapaCotas',this)">🔢 Mapa de Cotas</button>
     <button onclick="show('semaforo',this)">🚦 Semáforo & Ranking</button>
     <button onclick="show('agenda',this)">📅 Agenda Comercial</button>
-    <button onclick="show('simulador',this)">📈 Simulador de Consórcio</button>
+    <button onclick="show('simulador',this)">📈 SIMULADOR</button>
 
     <div class="nav-section-label" data-group="financeiro">FINANCEIRO</div>
     <button id="btnNavComissoes" onclick="show('comissoes',this)">📊 Cálculo de Comissão</button>
@@ -1673,7 +1673,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
   <div class="card" style="margin-bottom:16px">
     <div class="between">
       <div>
-        <h2 style="margin:0">📈 Simulador Estratégico de Consórcio & Rentabilidade</h2>
+        <h2 style="margin:0">📈 SIMULADOR</h2>
         <small class="muted">Projeções comparativas de cotas, lances, contemplação e rendimento.</small>
       </div>
     </div>
@@ -6170,7 +6170,7 @@ const TOUR_STEPS = [
   { id:'aba-mapaCotas', title:'🔢 Mapa de Cotas', text:'O mapa das cotas de 1 a 10.000: mostra as cotas já vendidas em cada segmento, as contempladas e as canceladas.', target: tourAlvoAba('mapaCotas') },
   { id:'aba-semaforo', title:'🚦 Semáforo & Ranking', text:'O desempenho do período em cores (semáforo) e o pódio com o ranking de vendas. O Dono de Loja e o Sócio Integral veem aqui também o resultado da loja inteira.', target: tourAlvoAba('semaforo') },
   { id:'aba-agenda', title:'📅 Agenda Comercial', text:'Suas reuniões em visão de dia, semana ou mês. Dá para conectar o Google Agenda e já criar a sala do Google Meet.', target: tourAlvoAba('agenda') },
-  { id:'aba-simulador', title:'📈 Simulador de Consórcio', text:'Simulações de consórcio: cotas e lances, valor futuro, venda da carta, aplicação, financiamento e o comparativo financiamento x consórcio. Daqui saem a publicidade, a proposta e o envio pelo WhatsApp.', target: tourAlvoAba('simulador') },
+  { id:'aba-simulador', title:'📈 SIMULADOR', text:'Simulações de consórcio: cotas e lances, valor futuro, venda da carta, aplicação, financiamento e o comparativo financiamento x consórcio. Daqui saem a publicidade, a proposta e o envio pelo WhatsApp.', target: tourAlvoAba('simulador') },
   { id:'aba-comissoes', title:'📊 Cálculo de Comissão', text:'A planilha das suas comissões, venda por venda, com as parcelas a receber mês a mês. Dá para mudar o mês e o valor de cada parcela e marcar o que já recebeu.', target: tourAlvoAba('comissoes') },
   { id:'aba-gastos', title:'💰 Gastos', text:'Suas receitas e despesas mês a mês, como numa planilha. Dá para trazer as comissões recebidas direto para cá.', target: tourAlvoAba('gastos') },
   { id:'aba-indicesGrupo', title:'📈 INCC e INPC', text:'O reajuste anual do crédito de cada grupo: INCC para imóvel, serviço e bens móveis; INPC para veículo. O reajuste vale só para as parcelas futuras.', target: tourAlvoAba('indicesGrupo') },
@@ -6329,7 +6329,7 @@ function renderIcon(name, size){
 
 const PAGE_TITLES = {
   dashboard: 'Dashboard', leads: 'Leads & Carteira', mapaCotas: 'Mapa de Cotas',
-  comissoes: 'Cálculo de Comissão', semaforo: 'Semáforo & Ranking', simulador: 'Simulador de Consórcio',
+  comissoes: 'Cálculo de Comissão', semaforo: 'Semáforo & Ranking', simulador: 'SIMULADOR',
   materialApoio: 'Material de Apoio', informacoes: 'Informações & Arquivos', aniversarios: 'Aniversariantes',
   calculadora: 'Calculadora',
   agenda: 'Agenda Comercial', usuarios: 'Equipe & Hierarquia', configuracoes: 'Configurações',
@@ -6777,7 +6777,7 @@ function closeModal(){
 function abrirMenuMaisMobile(){
   const itens = [
     { id: 'semaforo', label: '🚦 Semáforo & Ranking' },
-    { id: 'simulador', label: '📈 Simulador de Consórcio' },
+    { id: 'simulador', label: '📈 SIMULADOR' },
     { id: 'calculadora', label: '🧮 Calculadora' },
     { id: 'aniversarios', label: '🎂 Aniversariantes' },
     { id: 'materialApoio', label: '📚 Material de Apoio' },
@@ -14457,7 +14457,7 @@ const MENU_ITENS_OCULTAVEIS = [
   { id: 'mapaCotas', label: '🔢 Mapa de Cotas' },
   { id: 'semaforo', label: '🚦 Semáforo & Ranking' },
   { id: 'agenda', label: '📅 Agenda Comercial' },
-  { id: 'simulador', label: '📈 Simulador de Consórcio' },
+  { id: 'simulador', label: '📈 SIMULADOR' },
   { id: 'comissoes', label: '📊 Cálculo de Comissão' },
   { id: 'indicesGrupo', label: '📈 INCC e INPC' },
   { id: 'gastos', label: '💰 Gastos' },
@@ -20701,7 +20701,7 @@ const ASSIST_BASE = [
 
 // ===================== SIMULADOR =====================
 { id: 'simulador', t: 'Como faço uma simulação para o cliente?', k: 'faco uma simulacao, fazer simulacao, fazer uma simulacao, simular para o cliente, simulacao, simular consorcio, simulador, parcela, lance, contemplacao, calcular plano',
-  r: '1. Vá em **Simulador de Consórcio** › **🔢 Simulador de Cotas**.\n2. Preencha os parâmetros do plano (modalidade, crédito, meses até a contemplação, reajuste…).\n3. Os cartões mostram cada estratégia de contemplação (com lance e sem lance). Em cada cartão:\n- **📢 Criar publicidade**: imagem pronta, com fundo à escolha.\n- **📲 Enviar por WhatsApp**.\n- **📄 Gerar proposta** (PDF).\n- **ℹ️ Mais informações**: a evolução mês a mês.', aba: 'simulador' },
+  r: '1. Vá em **SIMULADOR** › **🔢 Simulador de Cotas**.\n2. Preencha os parâmetros do plano (modalidade, crédito, meses até a contemplação, reajuste…).\n3. Os cartões mostram cada estratégia de contemplação (com lance e sem lance). Em cada cartão:\n- **📢 Criar publicidade**: imagem pronta, com fundo à escolha.\n- **📲 Enviar por WhatsApp**.\n- **📄 Gerar proposta** (PDF).\n- **ℹ️ Mais informações**: a evolução mês a mês.', aba: 'simulador' },
 { id: 'publicidade', t: 'Como crio uma publicidade da simulação?', k: 'publicidade, imagem da simulacao, arte para instagram, divulgacao, post, fundo da publicidade',
   r: 'No **Simulador**, embaixo do cartão da estratégia, toque em **📢 Criar publicidade** e escolha o fundo. A imagem é baixada pronta para postar. Em "Enviar Simulação para o Cliente" você escolhe se vai a logo, os seus dados e o percentual da parcela.', aba: 'simulador' },
 { id: 'proposta', t: 'Como gero a proposta em PDF?', k: 'proposta, pdf da simulacao, enviar proposta, documento para o cliente',
