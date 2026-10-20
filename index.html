@@ -24410,6 +24410,64 @@ const ASSIST_BASE = [
   setTimeout(pedir, 1500);
 })();
 </script>
+<script id="cfgDobraScript">
+// ===== CONFIGURAÇÕES: cada quadro fecha e abre ao tocar no título =====
+// Todos os quadros da aba Configurações começam fechados (só o título aparece). Tocar no título abre as opções;
+// tocar de novo fecha. O CRM lembra quais ficaram abertos. Quadros que outras partes do CRM acrescentam depois
+// (ex.: os do CRM online) também ganham isso. O Armazenamento já tem o próprio botão de minimizar e fica de fora.
+(function () {
+  const K = 'crm_cfg_abertos';
+  const ler = () => { try { return JSON.parse(localStorage.getItem(K) || '[]'); } catch (e) { return []; } };
+  const gravar = l => { try { localStorage.setItem(K, JSON.stringify(l)); } catch (e) {} };
+  const chaveDe = t => (t || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+  function preparar(card) {
+    if (card.dataset.dobra || card.id === 'armCard') return;
+    const cab = [...card.children].find(el => /^H[23]$/.test(el.tagName) || el.querySelector(':scope > h2, :scope > h3, :scope > div > h2'));
+    if (!cab) return;
+    const tit = /^H[23]$/.test(cab.tagName) ? cab : cab.querySelector('h2, h3');
+    const resto = []; let n = cab.nextElementSibling; while (n) { resto.push(n); n = n.nextElementSibling; }
+    if (!resto.length) return;
+    card.dataset.dobra = '1';
+    const corpo = document.createElement('div'); corpo.className = 'cfg-corpo';
+    resto.forEach(el => corpo.appendChild(el)); card.appendChild(corpo);
+    const chave = chaveDe(tit.textContent);
+    cab.classList.add('cfg-cab'); cab.setAttribute('role', 'button'); cab.tabIndex = 0;
+    const seta = document.createElement('span'); seta.className = 'cfg-seta'; seta.setAttribute('aria-hidden', 'true'); seta.textContent = '▸';
+    tit.prepend(seta);
+    const aplicar = abrir => { card.classList.toggle('cfg-fechado', !abrir); cab.setAttribute('aria-expanded', abrir ? 'true' : 'false'); };
+    aplicar(ler().includes(chave));
+    const alternar = ev => {
+      if (ev.target.closest('button, a, input, select, textarea')) return;   // botões no cabeçalho continuam funcionando
+      const abrir = card.classList.contains('cfg-fechado'); aplicar(abrir);
+      const l = ler().filter(x => x !== chave); if (abrir) l.push(chave); gravar(l);
+    };
+    cab.addEventListener('click', alternar);
+    cab.addEventListener('keydown', ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); alternar(ev); } });
+  }
+  function varrer() { const sec = document.getElementById('configuracoes'); if (sec) sec.querySelectorAll('.card').forEach(preparar); }
+  function montar() {
+    const sec = document.getElementById('configuracoes'); if (!sec) return;
+    const css = document.createElement('style'); css.id = 'cfgDobraEstilos';
+    css.textContent = `
+      #configuracoes .cfg-cab { cursor: pointer; user-select: none; }
+      #configuracoes .cfg-cab:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 6px; }
+      #configuracoes .cfg-seta { display: inline-block; width: 1em; color: var(--muted); font-size: .75em; transition: transform .15s; vertical-align: 2px; }
+      #configuracoes .card:not(.cfg-fechado) .cfg-seta { transform: rotate(90deg); }
+      #configuracoes .card.cfg-fechado > .cfg-corpo { display: none; }
+      #configuracoes .card.cfg-fechado { padding-top: 12px; padding-bottom: 12px; }
+      #configuracoes .card.cfg-fechado .cfg-cab, #configuracoes .card.cfg-fechado h2.cfg-cab, #configuracoes .card.cfg-fechado h3.cfg-cab { margin-bottom: 0 !important; }
+      #configuracoes .card.cfg-fechado .cfg-cab h2, #configuracoes .card.cfg-fechado .cfg-cab h3 { margin-bottom: 0 !important; }
+      #configuracoes .grid2 { align-items: start; margin-bottom: 12px; }
+      #configuracoes h2.cfg-cab, #configuracoes .cfg-cab h2 { font-size: 18px !important; margin-top: 0 !important; line-height: 1.3; }
+      #configuracoes .card:not(.cfg-fechado) h2.cfg-cab, #configuracoes .card:not(.cfg-fechado) .cfg-cab { margin-bottom: 12px !important; }
+      #configuracoes > .card[data-dobra] { margin-top: 12px !important; }`;
+    document.head.appendChild(css);
+    varrer();
+    let t = 0; new MutationObserver(() => { clearTimeout(t); t = setTimeout(varrer, 120); }).observe(sec, { childList: true, subtree: true });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => setTimeout(montar, 0)); else setTimeout(montar, 0);
+})();
+</script>
 <script id="laserCrmScript">
 // ===== LASER PARA APRESENTAR O CRM =====
 // Segurar o dedo (ou o botão do mouse) parado numa área livre por 3 segundos liga o laser; três toques rápidos desligam.
