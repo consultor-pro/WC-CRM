@@ -24421,7 +24421,7 @@ const ASSIST_BASE = [
   const gravar = l => { try { localStorage.setItem(K, JSON.stringify(l)); } catch (e) {} };
   const chaveDe = t => (t || '').replace(/\s+/g, ' ').trim().slice(0, 60);
   function preparar(card) {
-    if (card.dataset.dobra || card.id === 'armCard') return;
+    if (card.id === 'armCard' || (card.dataset.dobra && card.querySelector(':scope > .cfg-corpo'))) return;   // quadro redesenhado (ex.: Elo CRM online) é preparado de novo
     const cab = [...card.children].find(el => /^H[23]$/.test(el.tagName) || el.querySelector(':scope > h2, :scope > h3, :scope > div > h2'));
     if (!cab) return;
     const tit = /^H[23]$/.test(cab.tagName) ? cab : cab.querySelector('h2, h3');
@@ -24453,7 +24453,7 @@ const ASSIST_BASE = [
       #configuracoes .cfg-cab:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; border-radius: 6px; }
       #configuracoes .cfg-seta { display: inline-block; width: 1em; color: var(--muted); font-size: .75em; transition: transform .15s; vertical-align: 2px; }
       #configuracoes .card:not(.cfg-fechado) .cfg-seta { transform: rotate(90deg); }
-      #configuracoes .card.cfg-fechado > .cfg-corpo { display: none; }
+      #configuracoes .card.cfg-fechado > *:not(:first-child) { display: none !important; }
       #configuracoes .card.cfg-fechado { padding-top: 12px; padding-bottom: 12px; }
       #configuracoes .card.cfg-fechado .cfg-cab, #configuracoes .card.cfg-fechado h2.cfg-cab, #configuracoes .card.cfg-fechado h3.cfg-cab { margin-bottom: 0 !important; }
       #configuracoes .card.cfg-fechado .cfg-cab h2, #configuracoes .card.cfg-fechado .cfg-cab h3 { margin-bottom: 0 !important; }
