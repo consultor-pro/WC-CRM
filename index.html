@@ -24021,10 +24021,28 @@ const ASSIST_BASE = [
     };
     bt.addEventListener('click', () => { try { localStorage.setItem(K_COL, min() ? '0' : '1'); } catch (e) {} pintar(); });
     const linha = cab.parentElement; linha.after(bt);
+    // legenda das cores, fechada e discreta
+    const leg = document.createElement('details'); leg.className = 'comis-legenda'; leg.id = 'comisLegenda';
+    const q = (estilo, txt) => `<span class="cl-item"><i style="${estilo}"></i>${txt}</span>`;
+    leg.innerHTML = '<summary>ⓘ Legenda das cores</summary><div class="cl-lista">'
+      + q('background:#dcfce7;border:1px solid #bbf7d0', 'Paga')
+      + q('background:#fff;border:1px solid #cbd5e1', 'A receber')
+      + q('background:#fee2e2;border:1px solid #fecaca', 'Venda cancelada (parcela não paga)')
+      + q('background:#ede9fe;box-shadow:inset 0 0 0 2px var(--purple,#7c3aed)', 'Mês pesquisado em "Buscar Mês de Recebimento"')
+      + q('background:#fff;border:1px solid var(--purple,#7c3aed)', 'Valor ou mês alterado à mão (não é o calculado pela regra)')
+      + '</div>';
+    bt.after(leg);
     // minimizado: as 15 parcelas cabem na mesma tela (mês curto "10/26", valor e o "pago" empilhados)
     const css = document.createElement('style'); css.id = 'comisColEstilos';
     css.textContent = `#comissaoExcelTable.comis-sem-detalhes tr > :nth-child(n+3):nth-child(-n+7) { display: none; }
-      .comis-col-bt { font-size: 12.5px; padding: 6px 12px; margin: 4px 0 10px; }
+      .comis-col-bt { font-size: 12.5px; padding: 6px 12px; margin: 4px 8px 10px 0; }
+      .comis-legenda { display: inline-block; vertical-align: top; margin: 6px 0 10px; font-size: 12px; color: var(--muted, #64748b); }
+      .comis-legenda > summary { cursor: pointer; list-style: none; user-select: none; }
+      .comis-legenda > summary::-webkit-details-marker { display: none; }
+      .comis-legenda[open] { display: block; }
+      .comis-legenda .cl-lista { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 6px; }
+      .comis-legenda .cl-item { display: inline-flex; align-items: center; gap: 6px; }
+      .comis-legenda .cl-item i { width: 14px; height: 14px; border-radius: 3px; flex: none; }
       .cmp-mes { display: none; }
       #comissaoExcelTable.comis-sem-detalhes { table-layout: fixed; width: 100%; min-width: 1002px; }
       #comissaoExcelTable.comis-sem-detalhes tr > :nth-child(1) { width: 72px; min-width: 72px !important; padding: 4px 3px !important; font-size: 10.5px; }
