@@ -24007,7 +24007,60 @@ const ASSIST_BASE = [
       @media (max-width: 420px) { .comis-mais-bt small { display: none; } }`;
     document.head.appendChild(css);
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
+  // ---- tabela "Projeção Detalhada": esconder as colunas Vendedor, Segmento, Modalidade, Crédito e Total Comis. ----
+  const K_COL = 'crm_comis_colunas_minimizadas';
+  function montarColunas() {
+    const tab = document.getElementById('comissaoExcelTable'); if (!tab || document.getElementById('comisColBt')) return;
+    const card = tab.closest('.card'); const cab = card && card.querySelector('h3'); if (!cab) return;
+    const bt = document.createElement('button'); bt.type = 'button'; bt.id = 'comisColBt'; bt.className = 'btn comis-col-bt';
+    const min = () => { try { return localStorage.getItem(K_COL) === '1'; } catch (e) { return false; } };
+    const pintar = () => {
+      const m = min(); tab.classList.toggle('comis-sem-detalhes', m);
+      bt.setAttribute('aria-pressed', m ? 'true' : 'false');
+      bt.innerHTML = m ? '▸ Mostrar vendedor, segmento, modalidade, crédito e total' : '◂ Minimizar vendedor, segmento, modalidade, crédito e total';
+    };
+    bt.addEventListener('click', () => { try { localStorage.setItem(K_COL, min() ? '0' : '1'); } catch (e) {} pintar(); });
+    const linha = cab.parentElement; linha.after(bt);
+    // minimizado: as 15 parcelas cabem na mesma tela (mês curto "10/26", valor e o "pago" empilhados)
+    const css = document.createElement('style'); css.id = 'comisColEstilos';
+    css.textContent = `#comissaoExcelTable.comis-sem-detalhes tr > :nth-child(n+3):nth-child(-n+7) { display: none; }
+      .comis-col-bt { font-size: 12.5px; padding: 6px 12px; margin: 4px 0 10px; }
+      .cmp-mes { display: none; }
+      #comissaoExcelTable.comis-sem-detalhes { table-layout: fixed; width: 100%; min-width: 1002px; }
+      #comissaoExcelTable.comis-sem-detalhes tr > :nth-child(1) { width: 72px; min-width: 72px !important; padding: 4px 3px !important; font-size: 10.5px; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(1) small { font-size: 10.5px; }
+      #comissaoExcelTable.comis-sem-detalhes tr > :nth-child(2) { width: 150px; min-width: 150px !important; left: 72px !important; padding: 4px 6px !important; font-size: 11.5px; }
+      #comissaoExcelTable.comis-sem-detalhes tr > :nth-child(n+8) { min-width: 0 !important; width: auto; padding: 4px 2px !important; }
+      #comissaoExcelTable.comis-sem-detalhes th:nth-child(n+8) { font-size: 0 !important; }
+      #comissaoExcelTable.comis-sem-detalhes th:nth-child(n+8)::after { content: attr(data-curto); font-size: 10.5px; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=month] { display: none; }
+      #comissaoExcelTable.comis-sem-detalhes .cmp-mes { display: block; font-size: 10px; text-align: center; color: var(--muted, #64748b); cursor: pointer; font-weight: 700; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) > div > div { flex-direction: column; gap: 2px; align-items: stretch; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=number] { font-size: 10px !important; padding: 2px 1px !important; text-align: center !important; width: 100%; -moz-appearance: textfield; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=number]::-webkit-inner-spin-button,
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=checkbox] { margin: 0 auto !important; }`;
+    document.head.appendChild(css);
+    const marcar = () => {
+      tab.querySelectorAll('tr:first-child th').forEach((th, i) => { const m = (th.textContent || '').match(/Parcela\s+(\d+)/); if (m) th.dataset.curto = 'P' + m[1]; });
+      tab.querySelectorAll('td input[type=month]').forEach(inp => {
+        if (inp.previousElementSibling && inp.previousElementSibling.classList.contains('cmp-mes')) return;
+        const sp = document.createElement('span'); sp.className = 'cmp-mes'; sp.title = 'Alterar competência';
+        const v = inp.value || ''; sp.textContent = v ? v.slice(5, 7) + '/' + v.slice(2, 4) : '—';
+        sp.addEventListener('click', () => { try { inp.showPicker(); } catch (e) { inp.style.display = 'block'; inp.focus(); } });
+        inp.before(sp);
+      });
+    };
+    marcar();
+    if (typeof window.renderComissoes === 'function' && !window.renderComissoes.__cmp) {
+      const orig = window.renderComissoes;
+      window.renderComissoes = renderComissoes = function () { const r = orig.apply(this, arguments); try { marcar(); } catch (e) {} return r; };
+      window.renderComissoes.__cmp = true; window.renderComissoes.__cor = true;
+    }
+    pintar();
+  }
+  function iniciar() { montar(); montarColunas(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
 })();
 </script>
 <script id="laserCrmScript">
