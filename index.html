@@ -7116,6 +7116,7 @@ function renderMapaCotas(){
   });
 
   const totalSold = Object.keys(soldMap).length;
+  window.__mapaSold = soldMap;
   const imovelSold = salesForMap.filter(s => s.segmento === 'Imóvel' && !s.cancelada).length;
   const veiculoSold = salesForMap.filter(s => s.segmento === 'Veículo' && !s.cancelada).length;
   const servicoSold = salesForMap.filter(s => s.segmento === 'Serviço' && !s.cancelada).length;
@@ -7150,6 +7151,7 @@ function renderMapaCotas(){
     if(s.cancelada) return false;
     return s.segmento === categoryFilter;
   };
+  window.__mapaMatch = isMatch;
 
   if(onlySold){
     const sorted = Object.keys(soldMap).map(Number).sort((a,b)=>a-b);
@@ -24258,6 +24260,122 @@ const ASSIST_BASE = [
     }
     sub.addEventListener('input', calcular);
     calcular();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
+})();
+</script>
+<script id="mapaTudoScript">
+// ===== MAPA DE COTAS: as 10.000 cotas numa tela só =====
+// Botão "Ver as 10.000 numa tela" abre uma tela cheia com uma grade de 100 x 100 quadradinhos (cota 1 no canto
+// de cima à esquerda, cota 10.000 no de baixo à direita), nas mesmas cores do mapa e respeitando os filtros
+// de consultor e de segmento/status. Passar o mouse (ou tocar) mostra a cota; clicar abre o detalhe dela.
+(function () {
+  const CORES = { imovel: '#dc2626', veiculo: '#2563eb', servico: '#16a34a', bens: '#ea580c', contemplada: '#f59e0b', cancelada: '#334155', livre: '#e2e8f0', outro: '#64748b' };
+  let tela, ctx, dica, info, lado = 6, dx = 0, dy = 0, dados = null, aberto = false;
+
+  function corDa(s) {
+    if (!s) return CORES.livre;
+    if (s.cancelada) return CORES.cancelada;
+    if (s.contemplada) return CORES.contemplada;
+    return ({ 'Imóvel': CORES.imovel, 'Veículo': CORES.veiculo, 'Serviço': CORES.servico, 'Bens móveis': CORES.bens })[s.segmento] || CORES.outro;
+  }
+  function lerDados() {
+    try { renderMapaCotas(); } catch (e) {}
+    const sold = window.__mapaSold || {}, match = window.__mapaMatch || (() => true);
+    const d = new Array(10001);
+    let visiveis = 0;
+    for (let n = 1; n <= 10000; n++) { const s = sold[n]; const ok = match(s, !!s); d[n] = { s, ok }; if (ok && s) visiveis++; }
+    return { d, vendidas: Object.keys(sold).length, visiveis };
+  }
+  function medir() {
+    const area = tela.parentElement; const w = area.clientWidth, h = area.clientHeight;
+    const rot = w > 560 ? 44 : 0;                      // números das linhas (1, 101, 201…) quando cabe
+    lado = Math.max(2, Math.floor(Math.min((w - rot - 4) / 100, (h - 4) / 100) * 4) / 4);
+    const W = Math.ceil(lado * 100 + rot), H = Math.ceil(lado * 100);
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    tela.width = Math.round(W * dpr); tela.height = Math.round(H * dpr); tela.style.width = W + 'px'; tela.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); dx = rot; dy = 0;
+    desenhar();
+  }
+  function desenhar() {
+    if (!dados) return;
+    const escuro = document.documentElement.getAttribute('data-theme') === 'dark';
+    ctx.clearRect(0, 0, tela.width, tela.height);
+    const gap = lado >= 5 ? 1 : (lado >= 3.5 ? 0.5 : 0), q = lado - gap;
+    for (let n = 1; n <= 10000; n++) {
+      const { s, ok } = dados.d[n], c = (n - 1) % 100, l = Math.floor((n - 1) / 100);
+      ctx.globalAlpha = ok ? 1 : 0.18;
+      ctx.fillStyle = s ? corDa(s) : (escuro ? '#253041' : CORES.livre);
+      ctx.fillRect(dx + c * lado, dy + l * lado, q, q);
+    }
+    ctx.globalAlpha = 1;
+    if (dx) {
+      ctx.fillStyle = escuro ? '#8b949e' : '#64748b'; ctx.font = `600 ${Math.max(8, Math.min(11, lado * 1.6))}px Inter, system-ui, sans-serif`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      for (let l = 0; l < 100; l += (lado >= 7 ? 5 : 10)) ctx.fillText((l * 100 + 1).toLocaleString('pt-BR'), dx - 6, dy + l * lado + lado / 2);
+    }
+  }
+  function cotaNoPonto(ev) {
+    const r = tela.getBoundingClientRect(); const x = ev.clientX - r.left - dx, y = ev.clientY - r.top - dy;
+    const c = Math.floor(x / lado), l = Math.floor(y / lado);
+    if (c < 0 || c > 99 || l < 0 || l > 99) return 0;
+    return l * 100 + c + 1;
+  }
+  function mostrarDica(ev, n) {
+    if (!n) { dica.hidden = true; return; }
+    const { s } = dados.d[n];
+    dica.innerHTML = `<b>Cota ${n.toLocaleString('pt-BR')}</b>` + (s ? `<br>${s.segmento || ''}${s.cancelada ? ' · cancelada' : (s.contemplada ? ' · contemplada' : '')}<br>${(typeof esc === 'function' ? esc(s.lead || '') : (s.lead || ''))}${s.responsavel ? `<br><small>${typeof esc === 'function' ? esc(s.responsavel) : s.responsavel}</small>` : ''}` : '<br>Disponível');
+    dica.hidden = false;
+    const r = dica.parentElement.getBoundingClientRect(); let x = ev.clientX - r.left + 14, y = ev.clientY - r.top + 14;
+    if (x + 220 > r.width) x = ev.clientX - r.left - 220; if (y + 90 > r.height) y = ev.clientY - r.top - 90;
+    dica.style.left = Math.max(4, x) + 'px'; dica.style.top = Math.max(4, y) + 'px';
+  }
+  function abrir() {
+    dados = lerDados(); aberto = true;
+    const filtroSeg = document.getElementById('cotaCategoryFilter'), filtroCons = document.getElementById('cotaFilterConsultor');
+    const filtros = [filtroCons && filtroCons.value !== 'all' ? filtroCons.options[filtroCons.selectedIndex].text : '', filtroSeg && filtroSeg.value !== 'all' ? filtroSeg.options[filtroSeg.selectedIndex].text : ''].filter(Boolean);
+    info.innerHTML = `<b>${dados.vendidas.toLocaleString('pt-BR')}</b> de 10.000 ocupadas` + (filtros.length ? ` · filtro: ${filtros.join(' · ')}` : '');
+    document.getElementById('mapaTudo').hidden = false; document.body.style.overflow = 'hidden';
+    requestAnimationFrame(medir);
+  }
+  function fechar() { aberto = false; if (dica) dica.dataset.n = ''; document.getElementById('mapaTudo').hidden = true; document.body.style.overflow = ''; dica.hidden = true; }
+  window.mapaTudoAbrir = abrir; window.mapaTudoFechar = fechar;
+
+  function montar() {
+    const busca = document.getElementById('cotaSearchNum'); if (!busca || document.getElementById('mapaTudoBt')) return;
+    const bt = document.createElement('button'); bt.type = 'button'; bt.id = 'mapaTudoBt'; bt.className = 'btn'; bt.textContent = '🗺️ Ver as 10.000 numa tela';
+    bt.addEventListener('click', abrir); busca.after(bt);
+    const css = document.createElement('style'); css.id = 'mapaTudoEstilos';
+    css.textContent = `
+      #mapaTudo { position: fixed; inset: 0; z-index: 240; background: var(--bg, #f4f6fa); display: flex; flex-direction: column;
+        padding: calc(10px + env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px)); gap: 8px; }
+      #mapaTudo[hidden] { display: none; }
+      #mapaTudo .mt-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+      #mapaTudo .mt-cab h3 { margin: 0; font-size: 17px; }
+      #mapaTudo .mt-info { font-size: 12.5px; color: var(--muted, #64748b); }
+      #mapaTudo .mt-leg { display: flex; gap: 6px 12px; flex-wrap: wrap; font-size: 12px; color: var(--muted, #64748b); }
+      #mapaTudo .mt-leg i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+      #mapaTudo .mt-area { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; position: relative; overflow: auto; }
+      #mapaTudo canvas { display: block; cursor: pointer; touch-action: pinch-zoom; }
+      #mapaTudo .mt-dica { position: absolute; z-index: 2; pointer-events: none; background: rgba(15,23,42,.94); color: #fff; font-size: 12.5px; line-height: 1.35; padding: 7px 10px; border-radius: 8px; max-width: 220px; box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+      #mapaTudo .mt-dica[hidden] { display: none; }`;
+    document.head.appendChild(css);
+    const ov = document.createElement('div'); ov.id = 'mapaTudo'; ov.hidden = true; ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-label', 'Mapa com as 10.000 cotas');
+    ov.innerHTML = `<div class="mt-cab"><div><h3>🔢 As 10.000 cotas</h3><div class="mt-info" id="mapaTudoInfo"></div></div><button type="button" class="btn" onclick="mapaTudoFechar()">✕ Fechar</button></div>
+      <div class="mt-leg"><span><i style="background:${CORES.imovel}"></i>Imóvel</span><span><i style="background:${CORES.veiculo}"></i>Veículo</span><span><i style="background:${CORES.servico}"></i>Serviço</span><span><i style="background:${CORES.bens}"></i>Bens móveis</span><span><i style="background:${CORES.contemplada}"></i>Contemplada</span><span><i style="background:${CORES.cancelada}"></i>Cancelada</span><span><i style="background:${CORES.livre};border:1px solid #cbd5e1"></i>Disponível</span><span>· cada linha tem 100 cotas</span></div>
+      <div class="mt-area"><canvas id="mapaTudoTela" aria-label="Grade das cotas 1 a 10.000"></canvas><div class="mt-dica" id="mapaTudoDica" hidden></div></div>`;
+    document.body.appendChild(ov);
+    tela = document.getElementById('mapaTudoTela'); ctx = tela.getContext('2d'); dica = document.getElementById('mapaTudoDica'); info = document.getElementById('mapaTudoInfo');
+    tela.addEventListener('pointermove', ev => { if (ev.pointerType === 'mouse') mostrarDica(ev, cotaNoPonto(ev)); });
+    tela.addEventListener('pointerleave', ev => { if (ev.pointerType === 'mouse') dica.hidden = true; });
+    tela.addEventListener('click', ev => {
+      const n = cotaNoPonto(ev); if (!n) return;
+      // no celular: o 1º toque mostra a cota, o 2º toque na mesma cota abre o detalhe
+      if (ev.pointerType && ev.pointerType !== 'mouse' && dica.dataset.n !== String(n)) { mostrarDica(ev, n); dica.dataset.n = String(n); return; }
+      dica.hidden = true; dica.dataset.n = '';
+      try { openCotaDetailModal(n); } catch (e) {}
+    });
+    addEventListener('resize', () => { if (aberto) medir(); });
+    addEventListener('keydown', e => { if (e.key === 'Escape' && aberto && !document.querySelector('#modal.show')) fechar(); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
 })();
