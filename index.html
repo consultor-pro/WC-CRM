@@ -20741,7 +20741,7 @@ const ASSIST_BASE = [
 { id: 'bkp_apagar', t: 'Como apago as cópias automáticas? Elas enchem a Supabase?', k: 'apagar copia, apagar copias automaticas, apagar backup, excluir copia, liberar espaco, copias enchem supabase, copia automatica nuvem',
   r: 'As cópias automáticas **não usam a nuvem (Supabase)**: ficam só na memória deste aparelho.\nPara apagar, vá em **Configurações** › **🛟 Cópias automáticas**: cada cópia tem o botão **🗑️ Apagar**, e embaixo da lista há **🗑️ Apagar todas as cópias**. Os dados atuais do CRM não mudam. Depois de apagar, o CRM só volta a guardar uma cópia no dia seguinte.', aba: 'configuracoes' },
 { id: 'assuncao_divida', t: 'Como funciona o simulador de Assunção de Dívida?', k: 'assuncao de divida, assunção, quitar com desconto, quitação com desconto, desconto de 40%, cedente, cessionario, assumir saldo devedor, repasse de cota, cliente a, cliente b',
-  r: 'No **Simulador** › **🤝 Assunção de Dívida**:\n- **Cliente A** (quem quita): usou o crédito e quita o saldo devedor com desconto (até 40%). O simulador mostra quanto ele já pagou, o valor para quitar e o **total pago comparado ao crédito usado**.\n- **Cliente B** (quem assume): **recebe na hora o valor da quitação** e assume o saldo devedor e as parcelas no prazo que falta.\n- **Aprovação do B**: idade, renda e imóvel de garantia, com o checklist (60 meses ou mais de prazo, terminar antes dos 75 anos, parcela até 30% da renda, imóvel valendo o dobro do saldo, sem FGTS).\n- Também mostra a sua **comissão** (sobre o valor que o B recebe) e a tabela do **melhor momento para quitar**.\nOs valores são ilustrativos: desconto, taxa e comissão reais dependem da análise da Ademicon.', aba: 'simulador' },
+  r: 'No **Simulador** › **🤝 Assunção de Dívida**:\n- **Cliente A** (quem quita): usou o crédito e quita o saldo devedor com desconto (até 40%). O simulador mostra quanto ele já pagou, o valor para quitar e o **total pago comparado ao crédito usado**.\n- **Cliente B** (quem assume): **recebe na hora o valor da quitação** e assume o saldo devedor e as parcelas no prazo que falta.\n- **Aprovação do B**: idade, renda e imóvel de garantia, com o checklist (60 meses ou mais de prazo, terminar antes dos 75 anos, parcela até 30% da renda, imóvel valendo o dobro do saldo, sem FGTS).\n- Também mostra a tabela do **melhor momento para quitar**.\nOs valores são ilustrativos: desconto e taxa reais dependem da análise da Ademicon.', aba: 'simulador' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -24087,8 +24087,8 @@ const ASSIST_BASE = [
 // ===== SIMULADOR › ASSUNÇÃO DE DÍVIDA =====
 // Cliente A usou o crédito (cota de imóvel) e quita o saldo devedor com desconto (até 40%). O valor da quitação
 // vira o crédito do cliente B, que assume o saldo devedor e as parcelas no prazo que falta. Mostra os dois lados,
-// a aprovação de B (60 meses, 75 anos, 30% da renda, imóvel valendo 2x o saldo), a comissão
-// e o melhor momento para A quitar. Valores ilustrativos: desconto, taxa e comissão reais vêm da análise da Ademicon.
+// a aprovação de B (60 meses, 75 anos, 30% da renda, imóvel valendo 2x o saldo)
+// e o melhor momento para A quitar. Valores ilustrativos: desconto e taxa reais vêm da análise da Ademicon.
 (function () {
   const $ = id => document.getElementById(id);
   const num = v => { const t = String(v || '').replace(/[^\d,.-]/g, ''); if (!t) return 0; const n = t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : (/^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return Number(n) || 0; };
@@ -24169,28 +24169,20 @@ const ASSIST_BASE = [
       <div class="card"><h3 style="margin:0">Cliente A, quem quita</h3><div class="ad-lista" id="adListaA"></div><div class="ad-frase" id="adFraseA"></div></div>
       <div class="card"><h3 style="margin:0">Cliente B, quem assume</h3><div class="ad-lista" id="adListaB"></div><div class="ad-frase b" id="adFraseB"></div></div>
     </div>
-    <div class="ad-dois">
-      <div class="card"><h3 style="margin:0">Aprovação do cliente B</h3>
+    <div class="card" style="margin-bottom:16px"><h3 style="margin:0">Aprovação do cliente B</h3>
         <div class="ad-campos">
           ${campo('adIdade', 'Idade de B', '42', '', 'n')}
           ${campo('adRenda', 'Renda comprovada de B', '20.000', 'pode somar a renda de mais pessoas')}
           ${campo('adImovel', 'Valor do imóvel de garantia', '2.000.000')}
         </div>
         <div class="ad-checks" id="adChecks"></div>
-      </div>
-      <div class="card"><h3 style="margin:0">Sua comissão</h3>
-        <div class="ad-campos">
-          ${campo('adComissao', 'Comissão (% sobre o que B recebe)', '0', 'confirme com o time de comissões')}
-        </div>
-        <div class="ad-lista" id="adListaComp"></div>
-      </div>
     </div>
     <div class="card" style="margin-bottom:16px">
       <h3 style="margin:0">Qual o melhor momento para A quitar?</h3>
       <p class="muted ad-sub" style="margin-top:4px">Mesma cota e mesmo desconto, quitando em meses diferentes. A linha destacada é o mês escolhido acima.</p>
       <div class="ad-tab"><table id="adTabela"></table></div>
     </div>
-    <p class="ad-aviso">Valores ilustrativos: o desconto, a taxa, o reajuste e a comissão reais dependem da cota, da negociação e da análise da Ademicon. Regras de aprovação conforme o material de Assunção de Dívida (prazo restante mínimo de 60 meses, parcela até 30% da renda, imóvel valendo o dobro do saldo, fim do contrato antes dos 75 anos, sem FGTS).</p>`;
+    <p class="ad-aviso">Valores ilustrativos: o desconto, a taxa e o reajuste reais dependem da cota, da negociação e da análise da Ademicon. Regras de aprovação conforme o material de Assunção de Dívida (prazo restante mínimo de 60 meses, parcela até 30% da renda, imóvel valendo o dobro do saldo, fim do contrato antes dos 75 anos, sem FGTS).</p>`;
   }
 
   // Cota: a cada mês paga-se (1 + taxa) / prazo do crédito (corrigido pelo reajuste anual).
@@ -24237,10 +24229,6 @@ const ASSIST_BASE = [
       ck(renda ? parcelaB <= renda * 0.30 : null, renda ? `Parcela até 30% da renda (${P(parcelaB / renda * 100)} da renda)` : 'Informe a renda de B') +
       ck(imovel ? imovel >= garantiaMin : null, imovel ? `Imóvel vale pelo menos o dobro do saldo (vale ${(imovel / (assumeB || 1)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}×)` : 'Informe o valor do imóvel') +
       ck(null, 'Sem FGTS, sem pendências financeiras, imóvel regular e não colocado à venda (conferir na documentação)');
-    // comissão (sobre o valor que B recebe)
-    const com = num($('adComissao').value) / 100;
-    $('adListaComp').innerHTML = lin('Base: valor que B recebe', R(recebeB)) +
-      (com > 0 ? lin(`Comissão (${P(com * 100)})`, R2(recebeB * com), true) : '<p class="muted" style="font-size:12.5px;margin:4px 0 0">Preencha o percentual para ver o valor.</p>');
     // corrente
     $('adA1').textContent = R(totalA);
     $('adA2').innerHTML = `pagou no total por <b>${R(credito)}</b> usados · quitou por <b>${R(quitacao)}</b>`;
