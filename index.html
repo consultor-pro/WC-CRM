@@ -12743,7 +12743,7 @@ function switchSimuladorSub(subId, btn) {
 
   const paramsBox = document.getElementById('consorcioParams');
   if (paramsBox) {
-    paramsBox.style.display = (subId === 'simInvest' || subId === 'simFinanciamento' || subId === 'simComparativo') ? 'none' : 'block';
+    paramsBox.style.display = (subId === 'simInvest' || subId === 'simFinanciamento' || subId === 'simComparativo' || subId === 'simAssuncao') ? 'none' : 'block';
   }
 
   // A caixa de "Enviar Simulação para o Cliente" (Proposta/Publicidade) só faz
@@ -20740,6 +20740,8 @@ const ASSIST_BASE = [
   r: 'Sim. No **Simulador**, toque em **📢 Criar publicidade** (ou **📲 Enviar por WhatsApp**) e escolha o fundo: a peça aparece na tela primeiro. Dali você **baixa**, **envia pelo WhatsApp** ou **troca o fundo**. Se fechar, nada é baixado.', aba: 'simulador' },
 { id: 'bkp_apagar', t: 'Como apago as cópias automáticas? Elas enchem a Supabase?', k: 'apagar copia, apagar copias automaticas, apagar backup, excluir copia, liberar espaco, copias enchem supabase, copia automatica nuvem',
   r: 'As cópias automáticas **não usam a nuvem (Supabase)**: ficam só na memória deste aparelho.\nPara apagar, vá em **Configurações** › **🛟 Cópias automáticas**: cada cópia tem o botão **🗑️ Apagar**, e embaixo da lista há **🗑️ Apagar todas as cópias**. Os dados atuais do CRM não mudam. Depois de apagar, o CRM só volta a guardar uma cópia no dia seguinte.', aba: 'configuracoes' },
+{ id: 'assuncao_divida', t: 'Como funciona o simulador de Assunção de Dívida?', k: 'assuncao de divida, assunção, quitar com desconto, quitação com desconto, desconto de 40%, cedente, cessionario, assumir saldo devedor, repasse de cota, cliente a, cliente b',
+  r: 'No **Simulador** › **🤝 Assunção de Dívida**:\n- **Cliente A** (quem quita): usou o crédito e quita o saldo devedor com desconto (até 40%). O simulador mostra quanto ele já pagou, o valor para quitar e o **total pago comparado ao crédito usado**.\n- **Cliente B** (quem assume): **recebe na hora o valor da quitação** e assume o saldo devedor e as parcelas no prazo que falta.\n- **Aprovação do B**: idade, renda e imóvel de garantia, com o checklist (60 meses ou mais de prazo, terminar antes dos 75 anos, parcela até 30% da renda, imóvel valendo o dobro do saldo, sem FGTS).\n- Também mostra a comparação com o **financiamento** e a tabela do **melhor momento para quitar**.\nOs valores são ilustrativos: desconto, taxa e comissão reais dependem da análise da Ademicon.', aba: 'simulador' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -24079,6 +24081,201 @@ const ASSIST_BASE = [
   }
   function iniciar() { montar(); montarColunas(); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar); else iniciar();
+})();
+</script>
+<script id="assuncaoDividaScript">
+// ===== SIMULADOR › ASSUNÇÃO DE DÍVIDA =====
+// Cliente A usou o crédito (cota de imóvel) e quita o saldo devedor com desconto (até 40%). O valor da quitação
+// vira o crédito do cliente B, que assume o saldo devedor e as parcelas no prazo que falta. Mostra os dois lados,
+// a aprovação de B (60 meses, 75 anos, 30% da renda, imóvel valendo 2x o saldo), a comparação com financiamento
+// e o melhor momento para A quitar. Valores ilustrativos: desconto, taxa e comissão reais vêm da análise da Ademicon.
+(function () {
+  const $ = id => document.getElementById(id);
+  const num = v => { const t = String(v || '').replace(/[^\d,.-]/g, ''); if (!t) return 0; const n = t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : (/^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return Number(n) || 0; };
+  const R = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  const R2 = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const P = v => (Number(v) || 0).toLocaleString('pt-BR', { maximumFractionDigits: 1 }) + '%';
+  const anos = m => { const a = Math.floor(m / 12), r = m % 12; return (a ? a + (a === 1 ? ' ano' : ' anos') : '') + (a && r ? ' e ' : '') + (r ? r + (r === 1 ? ' mês' : ' meses') : ''); };
+  const lin = (rot, val, forte) => `<div class="ad-lin${forte ? ' forte' : ''}"><span>${rot}</span><b>${val}</b></div>`;
+  const campo = (id, rot, valor, dica, tipo) => `<div class="field ad-campo"><label for="${id}">${rot}</label><input id="${id}" ${tipo === 'n' ? 'type="number" min="1"' : 'inputmode="decimal"'} value="${valor}">${dica ? `<small class="muted">${dica}</small>` : ''}</div>`;
+
+  const CSS = `
+  #simAssuncao .ad-sub { font-size: 12.5px; margin: 0 0 4px; }
+  #simAssuncao .ad-campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px 12px; align-items: start; margin-top: 10px; }
+  #simAssuncao .ad-campo { margin: 0 !important; min-width: 0; }
+  #simAssuncao .ad-campo label { min-height: 2.5em; display: flex; align-items: flex-end; font-size: 12px; }
+  #simAssuncao .ad-campo input { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+  #simAssuncao .ad-campo small { display: block; font-size: 11px; margin-top: 3px; }
+  #simAssuncao .ad-corrente { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; margin-bottom: 16px; }
+  #simAssuncao .ad-elo { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; min-width: 0; }
+  #simAssuncao .ad-elo.a { border-top: 4px solid var(--green); } #simAssuncao .ad-elo.b { border-top: 4px solid var(--red); }
+  #simAssuncao .ad-quem { font-size: 11.5px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  #simAssuncao .ad-grande { font-family: var(--font-display); font-size: clamp(20px, 3vw, 26px); font-weight: 800; font-variant-numeric: tabular-nums; margin-top: 2px; }
+  #simAssuncao .ad-x { font-size: 13px; color: var(--muted); margin-top: 3px; }
+  #simAssuncao .ad-seta { display: grid; place-items: center; text-align: center; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+  #simAssuncao .ad-seta span { display: block; font-size: 22px; line-height: 1; color: var(--red); }
+  #simAssuncao .ad-dois { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  #simAssuncao .ad-dois > .card { margin: 0; min-width: 0; }
+  #simAssuncao .ad-lista { display: grid; gap: 6px; margin-top: 10px; }
+  #simAssuncao .ad-lin { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; border-bottom: 1px dashed var(--line); padding-bottom: 5px; }
+  #simAssuncao .ad-lin span { color: var(--muted); }
+  #simAssuncao .ad-lin b { font-variant-numeric: tabular-nums; text-align: right; }
+  #simAssuncao .ad-lin.forte { border-bottom: 0; padding-top: 3px; }
+  #simAssuncao .ad-lin.forte span { color: inherit; font-weight: 800; }
+  #simAssuncao .ad-lin.forte b { font-size: 18px; font-family: var(--font-display); }
+  #simAssuncao .ad-frase { margin-top: 10px; padding: 10px 12px; border-radius: 10px; font-size: 14px; background: rgba(22,163,74,.10); }
+  #simAssuncao .ad-frase.b { background: rgba(200,16,46,.08); }
+  #simAssuncao .ad-checks { display: grid; gap: 6px; margin-top: 10px; }
+  #simAssuncao .ad-chk { display: grid; grid-template-columns: 22px 1fr; gap: 6px; font-size: 13.5px; align-items: start; }
+  #simAssuncao .ad-chk i { font-style: normal; font-weight: 800; text-align: center; border-radius: 6px; line-height: 20px; }
+  #simAssuncao .ad-chk.ok i { background: rgba(22,163,74,.14); color: var(--green); }
+  #simAssuncao .ad-chk.nao i { background: rgba(200,16,46,.12); color: var(--red); }
+  #simAssuncao .ad-chk.nd i { background: rgba(217,119,6,.14); color: var(--gold); }
+  #simAssuncao .ad-tab { overflow-x: auto; margin-top: 8px; }
+  #simAssuncao .ad-tab table { width: 100%; border-collapse: collapse; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  #simAssuncao .ad-tab th, #simAssuncao .ad-tab td { text-align: right; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  #simAssuncao .ad-tab th:first-child, #simAssuncao .ad-tab td:first-child { text-align: left; }
+  #simAssuncao .ad-tab th { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  #simAssuncao .ad-tab tr.atual td { background: rgba(200,16,46,.08); font-weight: 800; }
+  #simAssuncao .ad-tag { display: inline-block; font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 99px; }
+  #simAssuncao .ad-tag.bom { background: rgba(22,163,74,.14); color: var(--green); }
+  #simAssuncao .ad-tag.ruim { background: rgba(200,16,46,.12); color: var(--red); }
+  #simAssuncao .ad-aviso { font-size: 12px; color: var(--gold); background: rgba(217,119,6,.10); padding: 8px 12px; border-radius: 8px; margin: 0; }
+  @media (max-width: 860px) {
+    #simAssuncao .ad-corrente, #simAssuncao .ad-dois { grid-template-columns: 1fr; }
+    #simAssuncao .ad-seta span { transform: rotate(90deg); }
+  }`;
+
+  function markup() {
+    return `
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin-top:0">🤝 Assunção de Dívida</h3>
+      <p class="muted ad-sub">O cliente A usou o crédito e quita o saldo com desconto. O valor da quitação vira o crédito do cliente B, que assume o saldo devedor e as parcelas.</p>
+      <div class="ad-campos">
+        ${campo('adCredito', 'Crédito utilizado', '1.000.000')}
+        ${campo('adTaxa', 'Taxa de administração (%)', '24')}
+        ${campo('adPrazo', 'Prazo total (meses)', '220', '', 'n')}
+        ${campo('adPagos', 'A quita no mês', '60', 'parcelas já pagas por A', 'n')}
+        ${campo('adDesconto', 'Desconto na quitação (%)', '40', 'até 40% do saldo que falta')}
+        ${campo('adReajuste', 'Reajuste anual (%)', '0', '0 = sem reajuste')}
+      </div>
+    </div>
+    <div class="ad-corrente">
+      <div class="ad-elo a"><div class="ad-quem">Cliente A · quita</div><div class="ad-grande" id="adA1">—</div><div class="ad-x" id="adA2"></div></div>
+      <div class="ad-seta"><span>→</span>quitação<br>vira crédito</div>
+      <div class="ad-elo b"><div class="ad-quem">Cliente B · assume</div><div class="ad-grande" id="adB1">—</div><div class="ad-x" id="adB2"></div></div>
+    </div>
+    <div class="ad-dois">
+      <div class="card"><h3 style="margin:0">Cliente A, quem quita</h3><div class="ad-lista" id="adListaA"></div><div class="ad-frase" id="adFraseA"></div></div>
+      <div class="card"><h3 style="margin:0">Cliente B, quem assume</h3><div class="ad-lista" id="adListaB"></div><div class="ad-frase b" id="adFraseB"></div></div>
+    </div>
+    <div class="ad-dois">
+      <div class="card"><h3 style="margin:0">Aprovação do cliente B</h3>
+        <div class="ad-campos">
+          ${campo('adIdade', 'Idade de B', '42', '', 'n')}
+          ${campo('adRenda', 'Renda comprovada de B', '20.000', 'pode somar a renda de mais pessoas')}
+          ${campo('adImovel', 'Valor do imóvel de garantia', '2.000.000')}
+        </div>
+        <div class="ad-checks" id="adChecks"></div>
+      </div>
+      <div class="card"><h3 style="margin:0">B: assunção x financiamento</h3>
+        <div class="ad-campos">
+          ${campo('adJuros', 'Juros do financiamento (% ao mês)', '1,00')}
+          ${campo('adComissao', 'Sua comissão (% sobre o que B recebe)', '0', 'confirme com o time de comissões')}
+        </div>
+        <div class="ad-lista" id="adListaComp"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0">Qual o melhor momento para A quitar?</h3>
+      <p class="muted ad-sub" style="margin-top:4px">Mesma cota e mesmo desconto, quitando em meses diferentes. A linha destacada é o mês escolhido acima.</p>
+      <div class="ad-tab"><table id="adTabela"></table></div>
+    </div>
+    <p class="ad-aviso">Valores ilustrativos: o desconto, a taxa, o reajuste e a comissão reais dependem da cota, da negociação e da análise da Ademicon. Regras de aprovação conforme o material de Assunção de Dívida (prazo restante mínimo de 60 meses, parcela até 30% da renda, imóvel valendo o dobro do saldo, fim do contrato antes dos 75 anos, sem FGTS).</p>`;
+  }
+
+  // Cota: a cada mês paga-se (1 + taxa) / prazo do crédito (corrigido pelo reajuste anual).
+  // Saldo devedor no mês m = crédito corrigido x (1 + taxa) x (prazo - m) / prazo.
+  function cota(credito, taxa, prazo, reaj, ini, meses) {
+    const fator = m => Math.pow(1 + reaj, Math.floor((m - 1) / 12));
+    let pago = 0;
+    for (let m = ini + 1; m <= ini + meses; m++) pago += credito * fator(m) * (1 + taxa) / prazo;
+    const fim = ini + meses;
+    return { pago, saldo: credito * fator(fim + 1) * (1 + taxa) * Math.max(0, prazo - fim) / prazo, parcelaAtual: credito * fator(fim + 1) * (1 + taxa) / prazo };
+  }
+  const price = (valor, i, n) => n <= 0 ? 0 : (i <= 0 ? valor / n : valor * i / (1 - Math.pow(1 + i, -n)));
+
+  function calcular() {
+    if (!$('adCredito')) return;
+    const credito = num($('adCredito').value), taxa = num($('adTaxa').value) / 100, prazo = Math.max(2, Math.round(num($('adPrazo').value)));
+    const pagos = Math.min(prazo - 1, Math.max(1, Math.round(num($('adPagos').value))));
+    const desc = Math.min(100, Math.max(0, num($('adDesconto').value))) / 100, reaj = num($('adReajuste').value) / 100;
+    const saldoIni = credito * (1 + taxa), parcela0 = saldoIni / prazo;
+    // A
+    const a = cota(credito, taxa, prazo, reaj, 0, pagos);
+    const quitacao = a.saldo * (1 - desc), economia = a.saldo - quitacao, totalA = a.pago + quitacao;
+    $('adListaA').innerHTML = lin('Saldo devedor inicial', R(saldoIni)) + lin('Parcela inicial', R2(parcela0)) +
+      lin(`Pago em ${pagos} parcelas (${anos(pagos)})`, R(a.pago)) + lin('Saldo devedor no mês da quitação', R(a.saldo)) +
+      lin(`Desconto de ${P(desc * 100)}`, '− ' + R(economia)) + lin('Valor para quitar', R(quitacao)) + lin('Total pago por A', R(totalA), true);
+    const dif = credito - totalA;
+    $('adFraseA').innerHTML = dif >= 0
+      ? `Usou <b>${R(credito)}</b> de crédito e pagou <b>${R(totalA)}</b> no total: <b>${R(dif)} a menos</b> do que usou (${P(totalA / credito * 100)} do crédito).`
+      : `Usou <b>${R(credito)}</b> de crédito e pagou <b>${R(totalA)}</b> no total (${P(totalA / credito * 100)} do crédito). Sem a quitação, pagaria <b>${R(a.pago + a.saldo)}</b>.`;
+    // B
+    const restB = prazo - pagos, recebeB = quitacao, assumeB = a.saldo;
+    const b = cota(credito, taxa, prazo, reaj, pagos, restB), parcelaB = a.parcelaAtual, totalB = b.pago;
+    const garantiaMin = assumeB * 2;
+    $('adListaB').innerHTML = lin('Recebe na hora (crédito)', R(recebeB)) + lin('Assume de saldo devedor', R(assumeB)) +
+      lin('Prazo restante', `${restB} meses (${anos(restB)})`) + lin('Parcela', R2(parcelaB)) +
+      lin('Renda mínima (parcela ÷ 30%)', R(parcelaB / 0.30)) + lin('Imóvel de garantia mínimo (2× o saldo)', R(garantiaMin)) +
+      lin('Total que B paga até o fim', R(totalB), true);
+    $('adFraseB').innerHTML = `Recebe <b>${R(recebeB)}</b> agora e paga <b>${R(totalB)}</b> em ${anos(restB)}, sem juros de banco e sem fiador${reaj > 0 ? ' (com o reajuste anual estimado)' : ''}.`;
+    // aprovação
+    const idade = num($('adIdade').value), renda = num($('adRenda').value), imovel = num($('adImovel').value), idadeFim = idade + restB / 12;
+    const ck = (ok, txt) => `<div class="ad-chk ${ok === null ? 'nd' : ok ? 'ok' : 'nao'}"><i>${ok === null ? '?' : ok ? '✓' : '✕'}</i><span>${txt}</span></div>`;
+    $('adChecks').innerHTML =
+      ck(restB >= 60, `Cota com pelo menos 60 meses de prazo restante (tem ${restB})`) +
+      ck(idade ? idade >= 18 && idadeFim <= 75 : null, idade ? `Termina o contrato antes dos 75 anos (termina com ${idadeFim.toLocaleString('pt-BR', { maximumFractionDigits: 1 })})` : 'Informe a idade de B') +
+      ck(renda ? parcelaB <= renda * 0.30 : null, renda ? `Parcela até 30% da renda (${P(parcelaB / renda * 100)} da renda)` : 'Informe a renda de B') +
+      ck(imovel ? imovel >= garantiaMin : null, imovel ? `Imóvel vale pelo menos o dobro do saldo (vale ${(imovel / (assumeB || 1)).toLocaleString('pt-BR', { maximumFractionDigits: 2 })}×)` : 'Informe o valor do imóvel') +
+      ck(null, 'Sem FGTS, sem pendências financeiras, imóvel regular e não colocado à venda (conferir na documentação)');
+    // comparativo e comissão
+    const i = num($('adJuros').value) / 100, pFin = price(recebeB, i, restB), totalFin = pFin * restB, com = num($('adComissao').value) / 100;
+    $('adListaComp').innerHTML = lin(`Financiamento de ${R(recebeB)} em ${restB} meses`, R2(pFin) + '/mês') + lin('Total no financiamento', R(totalFin)) +
+      lin('Parcela na assunção', R2(parcelaB) + '/mês') + lin('Total na assunção', R(totalB)) +
+      lin(totalFin >= totalB ? 'B economiza com a assunção' : 'Assunção custa a mais', R(Math.abs(totalFin - totalB)), true) +
+      (com > 0 ? lin(`Sua comissão (${P(com * 100)} de ${R(recebeB)})`, R2(recebeB * com)) : '');
+    // corrente
+    $('adA1').textContent = R(totalA);
+    $('adA2').innerHTML = `pagou no total por <b>${R(credito)}</b> usados · quitou por <b>${R(quitacao)}</b>`;
+    $('adB1').textContent = R(recebeB);
+    $('adB2').innerHTML = `recebe na hora · assume <b>${R(assumeB)}</b> em <b>${restB}</b> parcelas de <b>${R2(parcelaB)}</b>`;
+    // melhor momento
+    const marcos = [...new Set([12, 24, 36, 48, 60, 84, 120, 160, pagos].filter(m => m > 0 && m < prazo))].sort((x, y) => x - y);
+    let html = '<thead><tr><th>A quita no mês</th><th>A já pagou</th><th>Saldo</th><th>Quitação</th><th>Total pago por A</th><th>% do crédito</th><th>B recebe / assume</th><th>Prazo de B</th></tr></thead><tbody>';
+    marcos.forEach(m => {
+      const x = cota(credito, taxa, prazo, reaj, 0, m), q = x.saldo * (1 - desc), t = x.pago + q, rest = prazo - m;
+      html += `<tr class="${m === pagos ? 'atual' : ''}"><td>${m} (${anos(m)})</td><td>${R(x.pago)}</td><td>${R(x.saldo)}</td><td>${R(q)}</td><td>${R(t)}</td><td><span class="ad-tag ${t <= credito ? 'bom' : 'ruim'}">${P(t / (credito || 1) * 100)}</span></td><td>${R(q)} / ${R(x.saldo)}</td><td>${rest} m${rest < 60 ? ' <span class="ad-tag ruim">abaixo de 60</span>' : ''}</td></tr>`;
+    });
+    $('adTabela').innerHTML = html + '</tbody>';
+  }
+  window.adCalcular = calcular;
+
+  function montar() {
+    const comp = $('simComparativo'); if (!comp || $('simAssuncao')) return;
+    const css = document.createElement('style'); css.id = 'adEstilos'; css.textContent = CSS; document.head.appendChild(css);
+    const sub = document.createElement('div'); sub.id = 'simAssuncao'; sub.className = 'subpage'; sub.innerHTML = markup();
+    comp.parentNode.insertBefore(sub, comp.nextSibling);
+    const pill = document.querySelector('#simulador .tab-pill[onclick*="simComparativo"]');
+    if (pill) {
+      const b = document.createElement('button'); b.className = 'tab-pill'; b.type = 'button'; b.textContent = '🤝 Assunção de Dívida';
+      b.setAttribute('onclick', "switchSimuladorSub('simAssuncao', this)");
+      pill.after(b);
+    }
+    sub.addEventListener('input', calcular);
+    calcular();
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
 })();
 </script>
 <script id="laserCrmScript">
