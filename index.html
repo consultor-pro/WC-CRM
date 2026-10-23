@@ -6735,6 +6735,7 @@ document.addEventListener('keydown', function(e){
 
   const activeTag = document.activeElement ? document.activeElement.tagName : '';
   if(activeTag === 'INPUT' || activeTag === 'TEXTAREA') return; // não atrapalha campos de texto normais
+  if(e.ctrlKey || e.metaKey || e.altKey) return; // deixa Ctrl+C, Ctrl+V etc. funcionarem (antes o C limpava a calculadora)
 
   const hpAtiva = document.getElementById('calcHp12c')?.classList.contains('active');
   const key = e.key;
@@ -24565,8 +24566,8 @@ const ASSIST_BASE = [
   const SEGURAR = 3000, MOSTRA = 400; let seg = null, carga = null;
   function comecarSegurar(e) {
     cancelarSegurar(); if (e.isPrimary === false) return;
-    seg = { id: e.pointerId, x: e.clientX, y: e.clientY };
-    document.body.classList.add('laser-segurando');
+    seg = { id: e.pointerId, x: e.clientX, y: e.clientY, toque: e.pointerType !== 'mouse' };
+    if (seg.toque) document.body.classList.add('laser-segurando'); // com o mouse não bloqueia a seleção/cópia de texto
     seg.tMostra = setTimeout(() => {
       if (!seg) return;
       if (!carga) { carga = document.createElement('div'); carga.id = 'laserCrmCarga'; carga.innerHTML = '<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="27"/></svg>'; document.body.appendChild(carga); }
@@ -24619,8 +24620,8 @@ const ASSIST_BASE = [
   document.addEventListener('pointercancel', soltar, true);
   document.addEventListener('mouseleave', () => { if (ligado) { ponto = null; pedir(); } });
   // com o laser ligado, segurar o dedo não abre o menu de copiar
-  document.addEventListener('contextmenu', e => { if ((ligado || seg) && livre(e.target)) e.preventDefault(); }, true);
-  document.addEventListener('selectstart', e => { if ((ligado || seg) && livre(e.target)) e.preventDefault(); }, true);
+  document.addEventListener('contextmenu', e => { if ((ligado || (seg && seg.toque)) && livre(e.target)) e.preventDefault(); }, true);
+  document.addEventListener('selectstart', e => { if ((ligado || (seg && seg.toque)) && livre(e.target)) e.preventDefault(); }, true);
   document.addEventListener('keydown', e => { if (e.key === 'Escape' && ligado) desligar(); });
   window.laserCrm.segurando = () => !!seg;
 })();
