@@ -1737,6 +1737,15 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <div class="field sp-check">
         <label class="sp-chk"><input type="checkbox" id="simSeguro" onchange="calcularSimulacao()"><span title="Seguro de vida: R$ 46,45 por 100 mil">Seguro de vida</span></label>
       </div>
+      <div class="field sp-lances" id="simLancesParcWrap">
+        <label>Lances em parcelas <i class="sp-info" title="Na Ademicon o lance é contado em quantidade de parcelas. 1 parcela de lance = saldo devedor (crédito + taxa) ÷ prazo original do grupo. Ex.: 100 mil + 24,2% = 124.200 ÷ 220 = 564,54 por parcela; 44 parcelas = 24.840 (20% do saldo devedor). Fixo: parcelas tiradas do próprio crédito. Limitado: parte do crédito + parte do bolso. Livre: do bolso.">ⓘ</i></label>
+        <div class="sp-lances-linha">
+          <span>Fixo</span><input type="number" id="simLanceFixoParc" value="44" min="0" inputmode="numeric" oninput="calcularSimulacao()" title="Parcelas do lance fixo (embutidas, saem do crédito)">
+          <span>Limitado</span><input type="number" id="simLanceLimEmbParc" value="44" min="0" inputmode="numeric" oninput="calcularSimulacao()" title="Parcelas embutidas do lance limitado (saem do crédito)"><span>+</span><input type="number" id="simLanceLimBolsoParc" value="44" min="0" inputmode="numeric" oninput="calcularSimulacao()" title="Parcelas do bolso do lance limitado">
+          <span>Livre</span><input type="number" id="simLanceLivreParc" value="99" min="0" inputmode="numeric" oninput="calcularSimulacao()" title="Parcelas do lance livre (do bolso)">
+        </div>
+        <small class="muted" id="simLanceParcInfo"></small>
+      </div>
       <div class="field sp-reduzida" id="simVeiculoReduzidaWrap" style="display:none">
         <label>Parcela reduzida <i class="sp-info" title="Veículo, serviço e bens móveis: a cota é cheia (100%) ou reduzida. A reduzida vale por 12, 18 ou 24 meses (veículo: 25 no plano padrão). Depois disso, se o cliente ainda não foi contemplado, a parcela volta à cheia mais o que ficou para trás, diluído no prazo restante.">ⓘ</i></label>
         <div class="sp-linha">
@@ -12812,7 +12821,7 @@ function renderCardsSimulacao(cards) {
       <div class="sim-card-field">
         <span class="lbl">Valor do lance</span>
         <span class="val">${formatBRSim(c.lance)}</span>
-        <div class="sub">${c.pctLanceSaldo ? c.pctLanceSaldo + '% do saldo devedor' : ((c.lance / c.creditoContratado) * 100).toFixed(0) + '% do crédito contratado'}</div>
+        <div class="sub">${c.parcelasLance ? c.parcelasLance + ' parcelas · ' : ''}${c.pctLanceSaldo ? String(c.pctLanceSaldo).replace('.', ',') + '% do saldo devedor' : ((c.lance / c.creditoContratado) * 100).toFixed(0) + '% do crédito contratado'}</div>
         <div class="sim-card-tags">
           <span class="sim-card-tag">💰 Pago: ${formatBRSim(c.lanceBolso)}</span>
           <span class="sim-card-tag">📄 Embutido: ${formatBRSim(c.lanceEmbutido)}</span>
@@ -13087,15 +13096,28 @@ function calcularSimulacao() {
   const adminPctCards = (credito * taxaAdmin) / prazo;
   const parcelaAntesPct = duracaoReduzidaVeiculo > 0 ? parcelaReduzidaVeiculo : amortizacaoPctCards + adminPctCards + valorSeguro;
 
-  // Lances
-  const lanceFixoValor = saldoDevedorInicial * 0.20;
+  // Lances — IMÓVEL: sempre em QUANTIDADE DE PARCELAS (regra da Ademicon).
+  // 1 parcela de lance = saldo devedor ÷ prazo original (ex.: 160 mil + 24,2% = 198.720 ÷ 220 = 903,27).
+  // Fixo 44 parcelas embutidas (20%) · Limitado 44 embutidas + 44 do bolso (40%) · Livre N parcelas do bolso (99 = 45%).
+  const ehImovelLance = modalidade === 'imovel';
+  const wrapLancesParc = document.getElementById('simLancesParcWrap');
+  if (wrapLancesParc) wrapLancesParc.style.display = ehImovelLance ? '' : 'none';
+  const nParcLance = (id, padrao) => { const v = parseInt(document.getElementById(id)?.value, 10); return v >= 0 ? v : padrao; };
+  const parcelaLance = saldoDevedorInicial / prazoModalidadePadrao;
+  const nLanceFixo = nParcLance('simLanceFixoParc', 44), nLanceLimEmb = nParcLance('simLanceLimEmbParc', 44);
+  const nLanceLimBolso = nParcLance('simLanceLimBolsoParc', 44), nLanceLivre = nParcLance('simLanceLivreParc', 99);
+  const pctLanceParc = n => Math.round(n / prazoModalidadePadrao * 1000) / 10;
+  const txtParc = n => `${n} parcela${n === 1 ? '' : 's'} (${String(pctLanceParc(n)).replace('.', ',')}%)`;
+  const lanceFixoValor = ehImovelLance ? Math.min(credito, nLanceFixo * parcelaLance) : saldoDevedorInicial * 0.20;
   const creditoLiqFixo = credito - lanceFixoValor;
 
-  const lanceLimCarta = saldoDevedorInicial * 0.20;
-  const lanceLimBolso = saldoDevedorInicial * 0.20;
+  const lanceLimCarta = ehImovelLance ? Math.min(credito, nLanceLimEmb * parcelaLance) : saldoDevedorInicial * 0.20;
+  const lanceLimBolso = ehImovelLance ? nLanceLimBolso * parcelaLance : saldoDevedorInicial * 0.20;
   const creditoLiqLim = credito - lanceLimCarta;
 
-  const lanceLivreBolso = credito * 0.70; 
+  const lanceLivreBolso = ehImovelLance ? nLanceLivre * parcelaLance : credito * 0.70;
+  const infoLanceParc = document.getElementById('simLanceParcInfo');
+  if (infoLanceParc && ehImovelLance) infoLanceParc.textContent = `1 parcela de lance = ${(parcelaLance || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (saldo devedor ÷ ${prazoModalidadePadrao}). Fixo ${txtParc(nLanceFixo)} · Limitado ${txtParc(nLanceLimEmb + nLanceLimBolso)} · Livre ${txtParc(nLanceLivre)}`;
 
   // Pós-Contemplação
   const diferencaMensal = parcelaCheiaS - (parcelaAntesPct - valorSeguro);   // o que fica para trás no plano escolhido (0 no plano 100%)
@@ -13137,9 +13159,9 @@ function calcularSimulacao() {
   const estrategiaSim = (typeof window.simEstrategiaAtual === 'function' && window.simEstrategiaAtual()) || 'sorteio';
   const EST_SIM = {
     sorteio: ['Só sorteio (sem lance)', 0, 0, parcelaPosContemplacaoHoje],
-    fixo: ['Lance fixo (20% do saldo devedor, embutido)', lanceFixoValor, 0, novaParcelaFixo],
-    limitado: ['Lance limitado (20% embutido + 20% do bolso)', lanceLimCarta, lanceLimBolso, novaParcelaLim],
-    livre: ['Lance livre (70% do crédito, do bolso)', 0, lanceLivreBolso, novaParcelaLivre]
+    fixo: [ehImovelLance ? `Lance fixo (${txtParc(nLanceFixo)}, embutido)` : 'Lance fixo (20% do saldo devedor, embutido)', lanceFixoValor, 0, novaParcelaFixo],
+    limitado: [ehImovelLance ? `Lance limitado (${nLanceLimEmb} embutidas + ${nLanceLimBolso} do bolso = ${txtParc(nLanceLimEmb + nLanceLimBolso)})` : 'Lance limitado (20% embutido + 20% do bolso)', lanceLimCarta, lanceLimBolso, novaParcelaLim],
+    livre: [ehImovelLance ? `Lance livre (${txtParc(nLanceLivre)}, do bolso)` : 'Lance livre (70% do crédito, do bolso)', 0, lanceLivreBolso, novaParcelaLivre]
   };
   let [estrategiaTxt, lanceEmbHoje, lanceBolsoHoje, parcelaDepoisEstrHoje] = EST_SIM[estrategiaSim] || EST_SIM.sorteio;
   let prazoAposEstr = prazo - mesC, parcelaMinimaEstr = false;
@@ -13193,15 +13215,18 @@ function calcularSimulacao() {
       creditoContratado: credito, creditoLiberado: credito,
       lanceBolso: 0, lanceEmbutido: 0, lance: 0,
       parcelaAntes: parcelaAntesPct, parcelaDepois: novaParcelaTradicional },
-    { key: 'fixo', nome: 'Lance Fixo (20%)', icone: '📌', corBadgeFundo: '#f1f5f9', corBadgeIcone: '#334155',
+    { key: 'fixo', nome: ehImovelLance ? 'Lance Fixo' : 'Lance Fixo (20%)', icone: '📌', corBadgeFundo: '#f1f5f9', corBadgeIcone: '#334155',
+      parcelasLance: ehImovelLance ? nLanceFixo : 0, pctLanceSaldo: ehImovelLance ? pctLanceParc(nLanceFixo) : 0,
       creditoContratado: credito, creditoLiberado: creditoLiqFixo,
       lanceBolso: 0, lanceEmbutido: lanceFixoValor, lance: lanceFixoValor,
       parcelaAntes: parcelaAntesPct, parcelaDepois: novaParcelaFixo },
     { key: 'limitado', nome: 'Lance Limitado', icone: '⊘', corBadgeFundo: '#fee2e2', corBadgeIcone: '#dc2626',
+      parcelasLance: ehImovelLance ? nLanceLimEmb + nLanceLimBolso : 0, pctLanceSaldo: ehImovelLance ? pctLanceParc(nLanceLimEmb + nLanceLimBolso) : 0,
       creditoContratado: credito, creditoLiberado: creditoLiqLim,
       lanceBolso: lanceLimBolso, lanceEmbutido: lanceLimCarta, lance: lanceLimBolso + lanceLimCarta,
       parcelaAntes: parcelaAntesPct, parcelaDepois: novaParcelaLim },
-    { key: 'livre', nome: 'Lance Livre (Ex: 70%)', icone: '🆓', corBadgeFundo: '#dcfce7', corBadgeIcone: '#16a34a',
+    { key: 'livre', nome: ehImovelLance ? 'Lance Livre' : 'Lance Livre (Ex: 70%)', icone: '🆓', corBadgeFundo: '#dcfce7', corBadgeIcone: '#16a34a',
+      parcelasLance: ehImovelLance ? nLanceLivre : 0, pctLanceSaldo: ehImovelLance ? pctLanceParc(nLanceLivre) : 0,
       creditoContratado: credito, creditoLiberado: credito,
       lanceBolso: lanceLivreBolso, lanceEmbutido: 0, lance: lanceLivreBolso,
       parcelaAntes: parcelaAntesPct, parcelaDepois: novaParcelaLivre }
@@ -23582,6 +23607,7 @@ const ASSIST_BASE = [
     color: inherit !important; font-size: 13px !important; font-weight: 600 !important; margin: 0 !important; white-space: nowrap; overflow: hidden; }
   .sp-chk input { width: auto !important; margin: 0; transform: scale(1.15); flex: none; }
   .sp-chk span { overflow: hidden; text-overflow: ellipsis; } .sp-chk small { color: var(--muted); font-weight: 500; }
+  .sp-lances { grid-column: 1 / -1; } .sp-lances-linha { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; } .sp-lances-linha span { font-size: 12px; font-weight: 700; color: var(--muted); } .sp-lances-linha input { width: 64px; max-width: 64px; margin: 0; text-align: center; } #simLanceParcInfo { display: block; font-size: 11.5px; margin-top: 4px; }
   .sp-reduzida { grid-column: span 2; } .sp-linha { display: flex; gap: 8px; } .sp-linha input { max-width: 90px; }
   .sp-envio > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 700; color: var(--muted); }
   .sp-envio > summary::-webkit-details-marker { display: none; }
@@ -23675,7 +23701,13 @@ const ASSIST_BASE = [
   function pills(el) {
     const mod = modalidadeDe(el), temSegundo = mod === 'veiculo' || mod === 'servico'; let atual = simEstrategiaAtual(); if (atual === 'segundo' && !temSegundo) atual = 'sorteio';
     const lista = ESTR.filter(([v]) => v !== 'segundo' || temSegundo);
-    const dica = (ESTR_DICA[mod] && ESTR_DICA[mod][atual]) || ESTR_DICA[atual] || ESTR_DICA.imovel.fixo;
+    let dica = (ESTR_DICA[mod] && ESTR_DICA[mod][atual]) || ESTR_DICA[atual] || ESTR_DICA.imovel.fixo;
+    if (mod === 'imovel' && atual !== 'sorteio' && !(el && el.closest('#simComparativo'))) {      // imóvel: lance em quantidade de parcelas
+      const n = id => { const v = parseInt((document.getElementById(id) || {}).value, 10); return v >= 0 ? v : 0; };
+      dica = ({ fixo: `Lance fixo: ${n('simLanceFixoParc')} parcelas tiradas do próprio crédito (embutido).`,
+        limitado: `Lance limitado: ${n('simLanceLimEmbParc')} parcelas embutidas + ${n('simLanceLimBolsoParc')} do bolso.`,
+        livre: `Lance livre: ${n('simLanceLivreParc')} parcelas, pagas do bolso.` })[atual] || dica;
+    }
     return `<div class="sp-estr-rot">Estratégia de contemplação</div><div class="sp-estr-bts">${lista.map(([v, t]) => `<button type="button" data-estr="${v}" class="${v === atual ? 'on' : ''}" onclick="simEscolherEstrategia('${v}')">${t}</button>`).join('')}</div><small class="sp-estr-dica">${dica}</small>`;
   }
   function sincronizarComparativo() {
