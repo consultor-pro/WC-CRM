@@ -8,7 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title id="htmlTitle">Elo CRM | Gestão & Vendas</title>
 
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='115' fill='%233A0A12'/><circle cx='200' cy='256' r='118' fill='none' stroke='%23C8102E' stroke-width='42'/><circle cx='312' cy='256' r='118' fill='none' stroke='%23E8505B' stroke-width='42'/></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='115' fill='%230A1A3F'/><circle cx='200' cy='256' r='118' fill='none' stroke='%232563EB' stroke-width='42'/><circle cx='312' cy='256' r='118' fill='none' stroke='%2360A5FA' stroke-width='42'/></svg>">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
 <meta name="apple-mobile-web-app-title" content="Elo CRM">
@@ -100,7 +100,7 @@ button { cursor: pointer; border: 0; }
 .brand-badge .t1 { display: none; }
 .brand-badge .t2 { color: #fff; font-size: 8px; letter-spacing: .5px; margin-top: 1px; max-width: 42px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .brand-badge .elo-rings { width: 32px; height: 21px; display: block; }
-.brand-badge { background: #3A0A12 !important; border-color: #C8102E !important; }
+.brand-badge { background: #0A1A3F !important; border-color: #2563EB !important; }
 .brand-info h2 { font-size: 15px; margin: 0; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 0 rgba(0,0,0,0.4); }
 .brand-info span { font-size: 11px; color: var(--muted); }
 
@@ -737,29 +737,29 @@ body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user
 
 .cloud-status { font-size: 11px; padding: 3px 8px; border-radius: 6px; background: #dcfce7; color: #166534; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; }
 
-/* ===== ELO CRM — tela de login (tema Anéis vermelho) ===== */
-.auth-screen { position: fixed; inset: 0; background: radial-gradient(circle at 30% 20%, #3A0A12 0%, #24060B 75%); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px 16px; overflow: hidden; }
+/* ===== ELO CRM — tela de login (tema Anéis azul) ===== */
+.auth-screen { position: fixed; inset: 0; background: radial-gradient(circle at 30% 20%, #0A1A3F 0%, #06102A 75%); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 24px 16px; overflow: hidden; }
 .elo-aneis { position: absolute; inset: 0; pointer-events: none; z-index: 0; }
 .elo-anel { position: absolute; border-radius: 50%; border-style: solid; animation: eloGirar 60s linear infinite; }
-.elo-anel.a1 { width: 520px; height: 520px; border-width: 46px; border-color: #C8102E; opacity: .35; top: -180px; left: -200px; }
-.elo-anel.a2 { width: 600px; height: 600px; border-width: 52px; border-color: #E8505B; opacity: .18; bottom: -260px; right: -220px; animation-direction: reverse; animation-duration: 80s; }
-.elo-anel.a3 { width: 220px; height: 220px; border-width: 18px; border-color: #7A1124; opacity: .5; bottom: 12%; left: 8%; animation-duration: 40s; }
+.elo-anel.a1 { width: 520px; height: 520px; border-width: 46px; border-color: #2563EB; opacity: .35; top: -180px; left: -200px; }
+.elo-anel.a2 { width: 600px; height: 600px; border-width: 52px; border-color: #60A5FA; opacity: .18; bottom: -260px; right: -220px; animation-direction: reverse; animation-duration: 80s; }
+.elo-anel.a3 { width: 220px; height: 220px; border-width: 18px; border-color: #1E3A8A; opacity: .5; bottom: 12%; left: 8%; animation-duration: 40s; }
 @keyframes eloGirar { from { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(1.04); } to { transform: rotate(360deg) scale(1); } }
 @media (prefers-reduced-motion: reduce) { .elo-anel { animation: none; } }
-.auth-box { position: relative; z-index: 1; background: #fff; border-radius: 20px; max-width: 380px; width: 100%; padding: 34px 26px 24px; color: #2B1A1D; box-shadow: 0 24px 60px rgba(0,0,0,.35); animation: eloSubir .6s ease-out both; }
+.auth-box { position: relative; z-index: 1; background: #fff; border-radius: 20px; max-width: 380px; width: 100%; padding: 34px 26px 24px; color: #1A2238; box-shadow: 0 24px 60px rgba(0,0,0,.35); animation: eloSubir .6s ease-out both; }
 @keyframes eloSubir { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 .elo-marca { display: flex; flex-direction: column; align-items: center; margin-bottom: 24px; text-align: center; }
 .elo-marca .elo-rings { width: 72px; height: 48px; margin-bottom: 8px; }
-.elo-marca h1 { font-size: 25px; font-weight: 800; color: #7A1124; margin: 0; letter-spacing: -.5px; }
-.elo-marca p { font-size: 13.5px; color: #8A7A7D; margin: 4px 0 0; }
-.auth-box .field label { color: #2B1A1D !important; font-weight: 700; }
-.auth-box .field input { background: #FCFAFA; border: 1.5px solid #EADFE1; border-radius: 12px; height: 48px; font-size: 16px; color: #2B1A1D; }
-.auth-box .field input:focus { outline: none; border-color: #C8102E; box-shadow: 0 0 0 4px rgba(200,16,46,.12); background: #fff; }
+.elo-marca h1 { font-size: 25px; font-weight: 800; color: #1E3A8A; margin: 0; letter-spacing: -.5px; }
+.elo-marca p { font-size: 13.5px; color: #6B7A90; margin: 4px 0 0; }
+.auth-box .field label { color: #1A2238 !important; font-weight: 700; }
+.auth-box .field input { background: #F8FAFD; border: 1.5px solid #DCE3EF; border-radius: 12px; height: 48px; font-size: 16px; color: #1A2238; }
+.auth-box .field input:focus { outline: none; border-color: #2563EB; box-shadow: 0 0 0 4px rgba(37,99,235,.14); background: #fff; }
 .elo-input-wrap { position: relative; }
-.elo-ver-senha { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 13px; font-weight: 700; color: #C8102E; cursor: pointer; padding: 8px; }
-.auth-box .elo-btn-entrar { width: 100%; height: 50px; justify-content: center; margin-top: 16px; border-radius: 12px; background: #C8102E; color: #fff; font-size: 16px; font-weight: 800; border: none; }
-.auth-box .elo-btn-entrar:hover { background: #A80D26; }
-.elo-rodape { text-align: center; font-size: 12px; color: #8A7A7D; margin-top: 18px; }
+.elo-ver-senha { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: none; border: none; font-size: 13px; font-weight: 700; color: #2563EB; cursor: pointer; padding: 8px; }
+.auth-box .elo-btn-entrar { width: 100%; height: 50px; justify-content: center; margin-top: 16px; border-radius: 12px; background: #2563EB; color: #fff; font-size: 16px; font-weight: 800; border: none; }
+.auth-box .elo-btn-entrar:hover { background: #1D4ED8; }
+.elo-rodape { text-align: center; font-size: 12px; color: #6B7A90; margin-top: 18px; }
 .elo-rodape .ponto { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #2EAD5B; margin-right: 6px; vertical-align: middle; }
 .mobile-nav { display: none; position: fixed; bottom: 0; inset-inline: 0; background: #0d1117; padding: 8px 4px; z-index: 40; border-top: 1px solid #30363d; justify-content: space-around; overflow-x: auto; gap: 2px; }
 .mobile-nav button { background: transparent; color: #8b949e; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px; flex-shrink: 0; min-width: 46px; }
@@ -1102,7 +1102,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
   <div class="elo-aneis" aria-hidden="true"><div class="elo-anel a1"></div><div class="elo-anel a2"></div><div class="elo-anel a3"></div></div>
   <div class="auth-box">
     <div class="elo-marca">
-      <svg class="elo-rings" viewBox="0 0 72 48" aria-hidden="true"><circle cx="26" cy="24" r="17" fill="none" stroke="#C8102E" stroke-width="6"/><circle cx="46" cy="24" r="17" fill="none" stroke="#E8505B" stroke-width="6"/></svg>
+      <svg class="elo-rings" viewBox="0 0 72 48" aria-hidden="true"><circle cx="26" cy="24" r="17" fill="none" stroke="#2563EB" stroke-width="6"/><circle cx="46" cy="24" r="17" fill="none" stroke="#60A5FA" stroke-width="6"/></svg>
       <h1 id="authBrandName">Elo CRM</h1>
       <p>Seus clientes, seus resultados</p>
       <span id="authLogo" style="display:none"><span id="authLogoText1"></span><span id="authLogoText2"></span></span>
@@ -1111,7 +1111,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     <div class="field"><label>Usuário ou e-mail</label><input type="text" id="authEmail" placeholder="wc@crm" autocomplete="username"></div>
     <div class="field"><label>Senha</label><div class="elo-input-wrap"><input type="password" id="authPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter') handleAuth()"><button type="button" class="elo-ver-senha" onclick="const p=document.getElementById('authPass');const o=p.type==='password';p.type=o?'text':'password';this.textContent=o?'Ocultar':'Mostrar';">Mostrar</button></div></div>
     <div style="display:flex;justify-content:flex-end;align-items:center;margin-top:4px">
-      <a href="javascript:void(0)" onclick="openForgotPasswordModal()" style="color:#C8102E;font-size:12.5px;text-decoration:none;font-weight:700">Esqueci a senha</a>
+      <a href="javascript:void(0)" onclick="openForgotPasswordModal()" style="color:#2563EB;font-size:12.5px;text-decoration:none;font-weight:700">Esqueci a senha</a>
     </div>
     <button class="btn primary elo-btn-entrar" id="authBtn" onclick="handleAuth()">Entrar</button>
     <div class="elo-rodape"><span class="ponto"></span>Funciona mesmo sem internet</div>
@@ -1121,7 +1121,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
 <div class="app">
 <aside class="sidebar">
   <div class="brand">
-    <div class="brand-badge" id="appLogoBadge"><svg class="elo-rings" viewBox="0 0 72 48" aria-hidden="true"><circle cx="26" cy="24" r="17" fill="none" stroke="#C8102E" stroke-width="6"/><circle cx="46" cy="24" r="17" fill="none" stroke="#E8505B" stroke-width="6"/></svg><span class="t1" id="logoText1">CRM</span><span class="t2" id="logoText2">LOCAL</span></div>
+    <div class="brand-badge" id="appLogoBadge"><svg class="elo-rings" viewBox="0 0 72 48" aria-hidden="true"><circle cx="26" cy="24" r="17" fill="none" stroke="#2563EB" stroke-width="6"/><circle cx="46" cy="24" r="17" fill="none" stroke="#60A5FA" stroke-width="6"/></svg><span class="t1" id="logoText1">CRM</span><span class="t2" id="logoText2">LOCAL</span></div>
     <div class="brand-info"><h2 id="appBrandTitle">Meu CRM</h2><span id="appBrandSub">Crédito & Investimento</span></div>
   </div>
 
