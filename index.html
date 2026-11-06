@@ -12755,7 +12755,7 @@ function switchSimuladorSub(subId, btn) {
 
   const paramsBox = document.getElementById('consorcioParams');
   if (paramsBox) {
-    paramsBox.style.display = (subId === 'simInvest' || subId === 'simFinanciamento' || subId === 'simComparativo' || subId === 'simAssuncao') ? 'none' : 'block';
+    paramsBox.style.display = (subId === 'simInvest' || subId === 'simFinanciamento' || subId === 'simComparativo' || subId === 'simAssuncao' || subId === 'simBanco') ? 'none' : 'block';
   }
 
   // A caixa de "Enviar Simulação para o Cliente" (Proposta/Publicidade) só faz
@@ -20770,6 +20770,8 @@ const ASSIST_BASE = [
   r: 'As cópias automáticas **não usam a nuvem (Supabase)**: ficam só na memória deste aparelho.\nPara apagar, vá em **Configurações** › **🛟 Cópias automáticas**: cada cópia tem o botão **🗑️ Apagar**, e embaixo da lista há **🗑️ Apagar todas as cópias**. Os dados atuais do CRM não mudam. Depois de apagar, o CRM só volta a guardar uma cópia no dia seguinte.', aba: 'configuracoes' },
 { id: 'assuncao_divida', t: 'Como funciona o simulador de Assunção de Dívida?', k: 'assuncao de divida, assunção, quitar com desconto, quitação com desconto, desconto de 40%, cedente, cessionario, assumir saldo devedor, repasse de cota, cliente a, cliente b',
   r: 'No **Simulador** › **🤝 Assunção de Dívida**:\n- **Cliente A** (quem quita): usou o crédito e quita o saldo devedor com desconto (até 40%). O simulador mostra quanto ele já pagou, o valor para quitar e o **total pago comparado ao crédito usado**.\n- **Cliente B** (quem assume): **recebe na hora o valor da quitação** e assume o saldo devedor e as parcelas no prazo que falta.\n- **Aprovação do B**: idade, renda e imóvel de garantia, com o checklist (60 meses ou mais de prazo, terminar antes dos 75 anos, parcela até 30% da renda, imóvel valendo o dobro do saldo, sem FGTS).\n- Também mostra a tabela do **melhor momento para quitar**.\nOs valores são ilustrativos: desconto e taxa reais dependem da análise da Ademicon.', aba: 'simulador' },
+{ id: 'banco_cotas', t: 'Como funciona o Banco de Cotas?', k: 'banco de cotas, varias cotas, várias cotas, cotas menores, espalhar posicoes, posições no grupo, contemplacao planejada, contemplação planejada, custo ao ano, custo ao mes, dinheiro novo, quitar cotas, incc, grupo antigo, 240 meses, ja pagou, relatorio do banco de cotas',
+  r: 'No **Simulador** › **🏦 Banco de Cotas**:\n- Cada linha é um grupo: quantidade e valor das cotas, **prazo original**, quantos meses o grupo **já tinha rodado** quando o cliente comprou e quantas **parcelas ele já pagou**. Prazo do cliente = prazo original − meses rodados.\n- Escolha a forma (lance livre, limitado, fixo ou sorteio), o mês da 1ª contemplação e **de quanto em quanto tempo sai a próxima**. Os lances são em quantidade de parcelas.\n- O resultado mostra o **dinheiro novo** (crédito − lances do bolso), o total pago (dinheiro novo + taxa) e o **custo ao ano e ao mês**. Com INCC, mostra também os valores reajustados.\n- **Situação de hoje**: quanto já pagou, reajustes, parcela de hoje, saldo e o custo daqui para frente.\n- **Quitação**: marque cota por cota e veja o valor com desconto, o que deixa de pagar e o ganho.\n- **⬇ Baixar relatório** gera um arquivo que abre no navegador e pode ser impresso em PDF.', aba: 'simulador' },
 { id: 'apresentar_controles', t: 'Como troco de slide, uso o laser e dou zoom na apresentação?', k: 'trocar slide, passar slide, laser, apontador, zoom na apresentacao, tela cheia, teclas da apresentacao, voltar slide',
   r: '- **Trocar slide**: arraste para o lado, ou use as setas ‹ › da barra de baixo (no computador, as setas do teclado).\n- **Laser**: segure o dedo (ou o botão do mouse) na tela. A bolinha colorida da barra troca a cor do laser.\n- **Zoom**: dois dedos, os botões − e + ou Ctrl + rodinha do mouse. Dois toques rápidos aproximam e voltam.\n- **Canetas**: botão **✏️**. Com uma caneta ligada, o dedo risca; toque na **✋** para voltar a trocar slide e usar o laser.\n- **⛶** tela cheia e **✕** sai.', aba: 'apresentacoes' },
 { id: 'slide_editar', t: 'Como troco a foto, o gráfico ou o tipo de um slide?', k: 'trocar imagem do slide, trocar foto, trocar grafico, editar slide, tipo de slide, capa com foto, grafico ou desenho, tema vivo, cores da apresentacao, mudar ordem dos slides',
@@ -24295,6 +24297,386 @@ const ASSIST_BASE = [
     calcular();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', montar); else montar();
+})();
+</script>
+<script id="bancoCotasScript">
+// ===== SIMULADOR › BANCO DE COTAS =====
+// O cliente compra várias cotas (de valores e grupos diferentes) e espalha as posições pelos grupos.
+// Cada linha é um grupo: prazo original, meses que o grupo já tinha rodado na compra e parcelas já pagas
+// (prazo do cliente = prazo original − meses rodados). Contemplação planejada (1ª no mês X, depois 1 a cada Y meses)
+// por lance livre (bolso), limitado (crédito + bolso), fixo (crédito) ou sorteio, com lances em quantidade de parcelas.
+// Mostra dinheiro novo, total pago, custo a.a./a.m., situação de hoje, INCC, quitação pela Assunção (cota por cota)
+// e baixa um relatório em HTML (que pode ser impresso em PDF).
+(function () {
+  const CSS = "\n#simBanco { --fundo: var(--bg); --papel: var(--card); --tinta: #1e293b; --apagado: var(--muted); --linha: var(--line);\n  --destaque: #c8102e; --destaque-suave: rgba(200,16,46,.08); --bom: #16a34a; --bom-suave: rgba(22,163,74,.10);\n  --alerta: #b45309; --alerta-suave: rgba(217,119,6,.10); --azul: #2457b8; --azul-suave: rgba(37,99,235,.08); --roxo: #6d3fc0;\n  --fonte-titulo: var(--font-display); --fonte-texto: var(--font-body); color: var(--tinta); }\n[data-theme=\"dark\"] #simBanco { --tinta: #e6edf3; --destaque: #ff6b73; --bom: #5fd39a; --alerta: #ffb35c; --azul: #7aa7ff; --roxo: #b69bff; }\n#simBanco .bc-topo { margin-bottom: 4px; } #simBanco .bc-topo h3 { margin: 0 0 4px; }\n#simBanco .bloco { margin-bottom: 16px; }\n#simBanco input, #simBanco select { margin: 0; min-height: 0; }\n#simBanco .kpi b { color: var(--tinta); } #simBanco .kpi.bom b { color: var(--bom); } #simBanco .kpi.ruim b { color: var(--destaque); } #simBanco .kpi.azul b { color: var(--azul); }\n#simBanco table { margin: 0; background: transparent; } #simBanco th { background: transparent; position: static; }\n#simBanco .btn-rel { width: auto; }\n#simBanco .kpi span, #simBanco .kpi small, #simBanco .kpi b { text-transform: none; letter-spacing: normal; }\n#simBanco .kpi { box-shadow: none; text-align: left; }\n\n#simBanco h1, #simBanco h2, #simBanco h3 { font-family: var(--fonte-titulo); margin: 0; text-wrap: balance; letter-spacing: -.01em; }\n#simBanco h1 { font-size: clamp(24px, 4.4vw, 34px); font-weight: 800; }\n#simBanco h2 { font-size: 19px; font-weight: 700; }\n#simBanco .selo { display: inline-block; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--destaque); margin-bottom: 4px; }\n#simBanco .sub { color: var(--apagado); margin: 6px 0 0; max-width: 72ch; }\n#simBanco .bloco { background: var(--papel); border: 1px solid var(--linha); border-radius: 12px; padding: 16px; min-width: 0; }\n#simBanco .passo { font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--apagado); }\n#simBanco .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 14px; margin-top: 12px; align-items: start; }\n#simBanco .campo { display: grid; gap: 4px; min-width: 0; }\n#simBanco .campo label { font-size: 12px; font-weight: 700; color: var(--apagado); min-height: 2.5em; display: flex; align-items: flex-end; }\n#simBanco .campo input, #simBanco .campo select { font: inherit; font-size: 15px; font-weight: 600; color: var(--tinta); background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; padding: 8px 10px; width: 100%; box-sizing: border-box; font-variant-numeric: tabular-nums; }\n#simBanco .campo small { font-size: 11.5px; color: var(--apagado); }\n#simBanco input:focus-visible, #simBanco select:focus-visible { outline: 2px solid var(--destaque); outline-offset: 1px; }\n#simBanco .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 12px; }\n#simBanco .kpi { border: 1px solid var(--linha); border-radius: 10px; padding: 10px 12px; background: var(--fundo); min-width: 0; }\n#simBanco .kpi span { display: block; font-size: 12px; color: var(--apagado); font-weight: 700; }\n#simBanco .kpi b { display: block; font-family: var(--fonte-titulo); font-size: 20px; font-variant-numeric: tabular-nums; margin-top: 2px; }\n#simBanco .kpi small { display: block; font-size: 12px; color: var(--apagado); margin-top: 2px; }\n#simBanco .kpi.bom b { color: var(--bom); } .kpi.ruim b { color: var(--destaque); } .kpi.azul b { color: var(--azul); }\n#simBanco .regua { position: relative; height: 46px; margin: 18px 4px 6px; }\n#simBanco .regua .eixo { position: absolute; left: 0; right: 0; top: 22px; height: 3px; background: var(--linha); border-radius: 3px; }\n#simBanco .regua i { position: absolute; top: 14px; width: 2px; height: 19px; background: var(--destaque); border-radius: 2px; }\n#simBanco .regua .ponta { position: absolute; top: 34px; font-size: 11.5px; color: var(--apagado); font-weight: 700; }\n#simBanco .posicoes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; max-height: 120px; overflow: auto; }\n#simBanco .posicoes span { font-size: 12.5px; font-variant-numeric: tabular-nums; background: var(--destaque-suave); color: var(--destaque); border-radius: 6px; padding: 2px 7px; font-weight: 700; }\n#simBanco .estr { display: grid; gap: 8px; margin-top: 12px; }\n#simBanco .estr-lin { display: grid; grid-template-columns: 1.2fr .6fr .8fr .9fr 1.5fr; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--linha); border-radius: 10px; background: var(--fundo); }\n#simBanco .estr-lin .nome b { display: block; font-size: 15px; }\n#simBanco .estr-lin .nome small { color: var(--apagado); font-size: 12px; }\n#simBanco .estr-lin input { font: inherit; font-weight: 700; width: 100%; box-sizing: border-box; padding: 7px 8px; border: 1px solid var(--linha); border-radius: 8px; background: var(--papel); color: var(--tinta); font-variant-numeric: tabular-nums; }\n#simBanco .estr-lin .mini { font-size: 11.5px; color: var(--apagado); font-weight: 700; display: block; margin-bottom: 2px; }\n#simBanco .estr-lin .parcs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--apagado); }\n#simBanco .estr-lin .parcs input { width: 62px; text-align: center; }\n#simBanco .estr-lin .agenda { grid-column: 1 / -1; font-size: 12px; color: var(--apagado); margin-top: -4px; }\n#simBanco .soma { font-size: 14px; margin-top: 6px; font-weight: 700; }\n#simBanco .soma.erro { color: var(--destaque); } .soma.ok { color: var(--bom); }\n#simBanco .tabela { overflow-x: auto; margin-top: 10px; }\n#simBanco table { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }\n#simBanco th, #simBanco td { text-align: right; padding: 7px 9px; border-bottom: 1px solid var(--linha); white-space: nowrap; }\n#simBanco th:first-child, #simBanco td:first-child { text-align: left; }\n#simBanco th { font-size: 11.5px; color: var(--apagado); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }\n#simBanco tr.total td { font-weight: 800; border-top: 2px solid var(--linha); }\n#simBanco .nota { font-size: 12.5px; color: var(--apagado); margin: 8px 0 0; max-width: 95ch; }\n#simBanco .frase { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--bom-suave); font-size: 14.5px; }\n#simBanco .frase.alerta { background: var(--alerta-suave); }\n#simBanco .aviso-teste { font-size: 12.5px; color: var(--alerta); background: var(--alerta-suave); padding: 8px 12px; border-radius: 8px; }\n#simBanco .dois { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }\n@media (max-width: 860px) {\n  #simBanco .dois { grid-template-columns: 1fr; }\n  #simBanco .estr-lin { grid-template-columns: 1fr 1fr; }\n  #simBanco .estr-lin .nome, #simBanco .estr-lin .parcs-box { grid-column: 1 / -1; }\n}\n#simBanco .linhas { display: grid; gap: 8px; margin-top: 12px; }\n#simBanco .lin { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 10px; align-items: end; padding: 10px 12px; border: 1px solid var(--linha); border-left: 4px solid var(--cor, var(--linha)); border-radius: 10px; background: var(--fundo); }\n#simBanco .lin .mini { font-size: 11.5px; color: var(--apagado); font-weight: 700; display: block; margin-bottom: 2px; }\n#simBanco .lin input, #simBanco .lin select { font: inherit; font-weight: 700; width: 100%; box-sizing: border-box; padding: 7px 8px; border: 1px solid var(--linha); border-radius: 8px; background: var(--papel); color: var(--tinta); font-variant-numeric: tabular-nums; }\n#simBanco .lin .parcs { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--apagado); }\n#simBanco .lin .parcs input { width: 76px; text-align: center; padding-inline: 4px; }\n#simBanco .lin .lance-box { grid-column: span 2; }\n#simBanco .lin .agenda { grid-column: 1 / -1; font-size: 12.5px; color: var(--apagado); }\n#simBanco .lin .tirar { grid-column: 6; grid-row: 1; border: 0; background: none; color: var(--apagado); font-size: 20px; line-height: 1; cursor: pointer; padding: 6px 8px; border-radius: 8px; align-self: center; }\n#simBanco .lin .tirar:hover { color: var(--destaque); background: var(--destaque-suave); }\n#simBanco .btn-add { margin-top: 10px; font: inherit; font-weight: 700; color: var(--azul); background: var(--azul-suave); border: 1px dashed var(--azul); border-radius: 10px; padding: 9px 14px; cursor: pointer; }\n#simBanco .btn-add:hover { filter: brightness(.97); }\n#simBanco .quit-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }\n#simBanco .btn-mini { font: inherit; font-size: 13px; font-weight: 700; color: var(--tinta); background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; padding: 6px 10px; cursor: pointer; }\n#simBanco .btn-mini:hover { border-color: var(--apagado); }\n#simBanco #bctabQuit input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--bom); cursor: pointer; }\n#simBanco #bctabQuit tr.marcada td { background: var(--bom-suave); }\n#simBanco #bctabQuit th:nth-child(2) { text-align: left; }\n#simBanco #bctabQuit tr.bloq td { color: var(--apagado); }\n#simBanco .mapa { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--linha); border-radius: 10px; background: var(--fundo); }\n#simBanco .mapa .tit { font-size: 13px; font-weight: 700; }\n#simBanco .mapa .regua { margin: 6px 4px 2px; }\n#simBanco .mapa .posicoes span { background: var(--papel); border: 1px solid var(--linha); }\n#simBanco .rel-acao { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }\n#simBanco .btn-rel { font: inherit; font-weight: 800; color: #fff; background: var(--bom); border: 0; border-radius: 10px; padding: 12px 18px; cursor: pointer; }\n#simBanco .btn-rel:hover { filter: brightness(1.08); }\n#simBanco #bcavisoRel { font-size: 13.5px; color: var(--apagado); }\n#simBanco .tag { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }\n@media (max-width: 860px) {\n  #simBanco .lin { grid-template-columns: 1fr 1fr; }\n  #simBanco .lin .lance-box { grid-column: 1 / -1; }\n  #simBanco .lin .tirar { position: absolute; right: 6px; top: 6px; grid-column: auto; grid-row: auto; }\n  #simBanco .lin { position: relative; padding-top: 30px; }\n}\n";
+  const REL_CSS = "\n/* Layout: ferramenta de consultor — 1) montar o banco (cotas e posições no grupo), 2) estratégia de contemplação, 3) resultado da operação, 4) quitação parcial pela Assunção. */\n:root {\n  --fundo: #f4f5f7; --papel: #ffffff; --tinta: #1b2230; --apagado: #5d6676; --linha: #dfe3ea;\n  --destaque: #b4232c; --destaque-suave: #fbe9ea; --bom: #1f7a4d; --bom-suave: #e5f4ec;\n  --alerta: #a35a00; --alerta-suave: #fdf1df; --azul: #2457b8; --azul-suave: #e7eefb; --roxo: #6d3fc0;\n  --fonte-titulo: \"Archivo\", \"Arial Narrow\", system-ui, sans-serif;\n  --fonte-texto: \"Source Sans 3\", \"Segoe UI\", system-ui, sans-serif;\n}\n@media (prefers-color-scheme: dark) {\n  :root:not([data-theme=\"light\"]) {\n    --fundo: #12161d; --papel: #1a2029; --tinta: #e9edf3; --apagado: #9aa4b4; --linha: #2c3441;\n    --destaque: #ff6b73; --destaque-suave: #3a1e22; --bom: #5fd39a; --bom-suave: #17302a;\n    --alerta: #ffb35c; --alerta-suave: #3a2c17; --azul: #7aa7ff; --azul-suave: #1b2740; --roxo: #b69bff; color-scheme: dark;\n  }\n}\n:root[data-theme=\"dark\"] {\n  --fundo: #12161d; --papel: #1a2029; --tinta: #e9edf3; --apagado: #9aa4b4; --linha: #2c3441;\n  --destaque: #ff6b73; --destaque-suave: #3a1e22; --bom: #5fd39a; --bom-suave: #17302a;\n  --alerta: #ffb35c; --alerta-suave: #3a2c17; --azul: #7aa7ff; --azul-suave: #1b2740; --roxo: #b69bff; color-scheme: dark;\n}\nbody { background: var(--fundo); color: var(--tinta); font-family: var(--fonte-texto); font-size: 15px; line-height: 1.45; }\n.pagina { max-width: 1140px; margin: 0 auto; padding-block: 22px 40px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; }\nh1, h2, h3 { font-family: var(--fonte-titulo); margin: 0; text-wrap: balance; letter-spacing: -.01em; }\nh1 { font-size: clamp(24px, 4.4vw, 34px); font-weight: 800; }\nh2 { font-size: 19px; font-weight: 700; }\n.selo { display: inline-block; font-size: 11.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--destaque); margin-bottom: 4px; }\n.sub { color: var(--apagado); margin: 6px 0 0; max-width: 72ch; }\n.bloco { background: var(--papel); border: 1px solid var(--linha); border-radius: 12px; padding: 16px; min-width: 0; }\n.passo { font-size: 11.5px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--apagado); }\n.campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px 14px; margin-top: 12px; align-items: start; }\n.campo { display: grid; gap: 4px; min-width: 0; }\n.campo label { font-size: 12px; font-weight: 700; color: var(--apagado); min-height: 2.5em; display: flex; align-items: flex-end; }\n.campo input, .campo select { font: inherit; font-size: 15px; font-weight: 600; color: var(--tinta); background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; padding: 8px 10px; width: 100%; box-sizing: border-box; font-variant-numeric: tabular-nums; }\n.campo small { font-size: 11.5px; color: var(--apagado); }\ninput:focus-visible, select:focus-visible { outline: 2px solid var(--destaque); outline-offset: 1px; }\n.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 12px; }\n.kpi { border: 1px solid var(--linha); border-radius: 10px; padding: 10px 12px; background: var(--fundo); min-width: 0; }\n.kpi span { display: block; font-size: 12px; color: var(--apagado); font-weight: 700; }\n.kpi b { display: block; font-family: var(--fonte-titulo); font-size: 20px; font-variant-numeric: tabular-nums; margin-top: 2px; }\n.kpi small { display: block; font-size: 12px; color: var(--apagado); margin-top: 2px; }\n.kpi.bom b { color: var(--bom); } .kpi.ruim b { color: var(--destaque); } .kpi.azul b { color: var(--azul); }\n/* régua do grupo */\n.regua { position: relative; height: 46px; margin: 18px 4px 6px; }\n.regua .eixo { position: absolute; left: 0; right: 0; top: 22px; height: 3px; background: var(--linha); border-radius: 3px; }\n.regua i { position: absolute; top: 14px; width: 2px; height: 19px; background: var(--destaque); border-radius: 2px; }\n.regua .ponta { position: absolute; top: 34px; font-size: 11.5px; color: var(--apagado); font-weight: 700; }\n.posicoes { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; max-height: 120px; overflow: auto; }\n.posicoes span { font-size: 12.5px; font-variant-numeric: tabular-nums; background: var(--destaque-suave); color: var(--destaque); border-radius: 6px; padding: 2px 7px; font-weight: 700; }\n/* estratégia */\n.estr { display: grid; gap: 8px; margin-top: 12px; }\n.estr-lin { display: grid; grid-template-columns: 1.2fr .6fr .8fr .9fr 1.5fr; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--linha); border-radius: 10px; background: var(--fundo); }\n.estr-lin .nome b { display: block; font-size: 15px; }\n.estr-lin .nome small { color: var(--apagado); font-size: 12px; }\n.estr-lin input { font: inherit; font-weight: 700; width: 100%; box-sizing: border-box; padding: 7px 8px; border: 1px solid var(--linha); border-radius: 8px; background: var(--papel); color: var(--tinta); font-variant-numeric: tabular-nums; }\n.estr-lin .mini { font-size: 11.5px; color: var(--apagado); font-weight: 700; display: block; margin-bottom: 2px; }\n.estr-lin .parcs { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12.5px; color: var(--apagado); }\n.estr-lin .parcs input { width: 62px; text-align: center; }\n.estr-lin .agenda { grid-column: 1 / -1; font-size: 12px; color: var(--apagado); margin-top: -4px; }\n.soma { font-size: 14px; margin-top: 6px; font-weight: 700; }\n.soma.erro { color: var(--destaque); } .soma.ok { color: var(--bom); }\n.tabela { overflow-x: auto; margin-top: 10px; }\ntable { border-collapse: collapse; width: 100%; font-size: 14px; font-variant-numeric: tabular-nums; }\nth, td { text-align: right; padding: 7px 9px; border-bottom: 1px solid var(--linha); white-space: nowrap; }\nth:first-child, td:first-child { text-align: left; }\nth { font-size: 11.5px; color: var(--apagado); font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }\ntr.total td { font-weight: 800; border-top: 2px solid var(--linha); }\n.nota { font-size: 12.5px; color: var(--apagado); margin: 8px 0 0; max-width: 95ch; }\n.frase { margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: var(--bom-suave); font-size: 14.5px; }\n.frase.alerta { background: var(--alerta-suave); }\n.aviso-teste { font-size: 12.5px; color: var(--alerta); background: var(--alerta-suave); padding: 8px 12px; border-radius: 8px; }\n.dois { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }\n@media (max-width: 860px) {\n  .dois { grid-template-columns: 1fr; }\n  .estr-lin { grid-template-columns: 1fr 1fr; }\n  .estr-lin .nome, .estr-lin .parcs-box { grid-column: 1 / -1; }\n}\n.linhas { display: grid; gap: 8px; margin-top: 12px; }\n.lin { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 10px; align-items: end; padding: 10px 12px; border: 1px solid var(--linha); border-left: 4px solid var(--cor, var(--linha)); border-radius: 10px; background: var(--fundo); }\n.lin .mini { font-size: 11.5px; color: var(--apagado); font-weight: 700; display: block; margin-bottom: 2px; }\n.lin input, .lin select { font: inherit; font-weight: 700; width: 100%; box-sizing: border-box; padding: 7px 8px; border: 1px solid var(--linha); border-radius: 8px; background: var(--papel); color: var(--tinta); font-variant-numeric: tabular-nums; }\n.lin .parcs { display: flex; gap: 6px; align-items: center; font-size: 12.5px; color: var(--apagado); }\n.lin .parcs input { width: 76px; text-align: center; padding-inline: 4px; }\n.lin .lance-box { grid-column: span 2; }\n.lin .agenda { grid-column: 1 / -1; font-size: 12.5px; color: var(--apagado); }\n.lin .tirar { grid-column: 6; grid-row: 1; border: 0; background: none; color: var(--apagado); font-size: 20px; line-height: 1; cursor: pointer; padding: 6px 8px; border-radius: 8px; align-self: center; }\n.lin .tirar:hover { color: var(--destaque); background: var(--destaque-suave); }\n.btn-add { margin-top: 10px; font: inherit; font-weight: 700; color: var(--azul); background: var(--azul-suave); border: 1px dashed var(--azul); border-radius: 10px; padding: 9px 14px; cursor: pointer; }\n.btn-add:hover { filter: brightness(.97); }\n.quit-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }\n.btn-mini { font: inherit; font-size: 13px; font-weight: 700; color: var(--tinta); background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; padding: 6px 10px; cursor: pointer; }\n.btn-mini:hover { border-color: var(--apagado); }\n#tabQuit input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--bom); cursor: pointer; }\n#tabQuit tr.marcada td { background: var(--bom-suave); }\n#tabQuit th:nth-child(2) { text-align: left; }\n#tabQuit tr.bloq td { color: var(--apagado); }\n.mapa { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--linha); border-radius: 10px; background: var(--fundo); }\n.mapa .tit { font-size: 13px; font-weight: 700; }\n.mapa .regua { margin: 6px 4px 2px; }\n.mapa .posicoes span { background: var(--papel); border: 1px solid var(--linha); }\n.rel-acao { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }\n.btn-rel { font: inherit; font-weight: 800; color: #fff; background: var(--bom); border: 0; border-radius: 10px; padding: 12px 18px; cursor: pointer; }\n.btn-rel:hover { filter: brightness(1.08); }\n#avisoRel { font-size: 13.5px; color: var(--apagado); }\n.tag { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 6px; vertical-align: 0; }\n@media (max-width: 860px) {\n  .lin { grid-template-columns: 1fr 1fr; }\n  .lin .lance-box { grid-column: 1 / -1; }\n  .lin .tirar { position: absolute; right: 6px; top: 6px; grid-column: auto; grid-row: auto; }\n  .lin { position: relative; padding-top: 30px; }\n}\n";
+  const HTML = "\n  <div class=\"bc-topo\"><h3>🏦 Banco de Cotas</h3>\n    <p class=\"muted\">Monte o banco do cliente com cotas de valores e grupos diferentes, planeje quando cada cota é contemplada (lance livre, limitado, fixo ou sorteio), veja o custo ao ano e ao mês, a situação de quem já está pagando e quanto ganha quitando cotas pela Assunção de Dívida.</p></div>\n\n  <section class=\"bloco\" aria-labelledby=\"t1\">\n    <div class=\"passo\">Passo 1</div>\n    <h2 id=\"t1\">Regras gerais</h2>\n    <div class=\"campos\">\n      <div class=\"campo\"><label for=\"bccliente\">Nome do cliente (para o relatório)</label><input id=\"bccliente\" placeholder=\"opcional\"></div>\n      <div class=\"campo\"><label for=\"bcseg\">Segmento</label><select id=\"bcseg\">\n        <option value=\"imovel\">Imóvel</option><option value=\"veiculo\">Veículo</option><option value=\"servico\">Serviço</option><option value=\"bens\">Bens móveis</option></select></div>\n      <div class=\"campo\"><label for=\"bctaxa\">Taxa de administração (%)</label><input id=\"bctaxa\" inputmode=\"decimal\" value=\"24,2\"></div>\n      <div class=\"campo\"><label for=\"bcplano\">Parcela até contemplar</label><select id=\"bcplano\"><option value=\"100\">100% (cheia)</option><option value=\"85\">85%</option><option value=\"70\">70%</option><option value=\"55\">55%</option><option value=\"50\">50%</option></select></div>\n      <div class=\"campo\"><label for=\"bcparticipantes\">Participantes por grupo</label><input id=\"bcparticipantes\" type=\"number\" min=\"10\" value=\"5000\"></div>\n      <div class=\"campo\"><label for=\"bcprimeira\">Primeira posição</label><input id=\"bcprimeira\" type=\"number\" min=\"1\" value=\"115\"><small>as outras se espalham pelo grupo</small></div>\n      <div class=\"campo\"><label for=\"bcincc\">Reajuste anual (INCC) %</label><input id=\"bcincc\" inputmode=\"decimal\" value=\"0\"><small>crédito, parcelas e saldo sobem 1 vez por ano; 0 = sem reajuste</small></div>\n      <div class=\"campo\"><label for=\"bcsorteiosMes\">Cotas sorteadas por mês em cada grupo</label><input id=\"bcsorteiosMes\" type=\"number\" min=\"0\" value=\"1\"></div>\n    </div>\n  </section>\n\n  <section class=\"bloco\" aria-labelledby=\"t2\">\n    <div class=\"passo\">Passo 2</div>\n    <h2 id=\"t2\">As cotas do cliente e como contemplar</h2>\n    <p class=\"nota\" style=\"margin-top:4px\">Uma linha para cada grupo de consórcio: quantas cotas, de qual valor, o prazo original do grupo, quantos meses ele já tinha rodado quando o cliente comprou e quantas parcelas o cliente já pagou. Depois, a forma de contemplar, quando sai a primeira e de quanto em quanto tempo sai a próxima (0 = todas no mesmo mês). Os meses contam a partir da compra. Prazo do cliente = prazo original − meses que o grupo já tinha rodado; 1 parcela de lance = saldo devedor da cota ÷ prazo do cliente.</p>\n    <div class=\"linhas\" id=\"bclinhas\"></div>\n    <button type=\"button\" class=\"btn-add\" id=\"bcaddLinha\">+ Adicionar cotas</button>\n    <div class=\"kpis\" id=\"bckpisBanco\"></div>\n    <h3 style=\"margin-top:16px;font-family:var(--fonte-titulo);font-size:15px\">Posição das cotas em cada grupo</h3>\n    <div id=\"bcmapas\"></div>\n  </section>\n\n  <section class=\"bloco so-ok\" aria-labelledby=\"bcth\" id=\"bcblocoHoje\">\n    <div class=\"passo\">Situação de hoje</div>\n    <h2 id=\"bcth\">O que o cliente já pagou e o que falta</h2>\n    <div class=\"kpis\" id=\"bckpisHoje\"></div>\n    <div class=\"frase\" id=\"bcfraseHoje\"></div>\n  </section>\n\n  <section class=\"bloco so-ok\" aria-labelledby=\"t3\">\n    <div class=\"passo\">Resultado</div>\n    <h2 id=\"t3\">Custo da operação</h2>\n    <div class=\"kpis\" id=\"bckpisRes\"></div>\n    <div class=\"tabela\"><table id=\"bctabGrupos\"></table></div>\n    <div class=\"frase\" id=\"bcfraseRes\"></div>\n    <h3 style=\"margin-top:16px;font-family:var(--fonte-titulo);font-size:15px\">Contemplações mês a mês</h3>\n    <div class=\"tabela\"><table id=\"bctabTempo\"></table></div>\n    <p class=\"nota\">Dinheiro novo: o crédito que sobra depois do lance embutido, menos o que você tirou do bolso no lance (esse dinheiro já era seu e abate o saldo devedor). Total pago: dinheiro novo + taxa de administração. Custo ao ano: quanto paga a mais em parcelas sobre o dinheiro novo, dividido pelos anos do grupo; custo ao mês: o custo ao ano dividido por 12. Com INCC, o crédito sobe no ano da contemplação, e as parcelas e o saldo devedor sobem todo ano; o total pago e o custo já mostram esse reajuste. Só no sorteio e sem INCC, uma cota de imóvel dá cerca de 1,3% ao ano; com lance, o custo sobe, porque você paga sobre menos dinheiro novo.</p>\n  </section>\n\n  <section class=\"bloco so-ok\" aria-labelledby=\"t4\">\n    <div class=\"passo\">Quitação</div>\n    <h2 id=\"t4\">Quitar parte das cotas pela Assunção de Dívida</h2>\n    <div class=\"campos\">\n      <div class=\"campo\"><label for=\"bcmodoQuit\">Como escolher as cotas</label><select id=\"bcmodoQuit\"><option value=\"manual\">Marcar cota por cota</option><option value=\"auto\">Automático, por quantidade</option></select></div>\n      <div class=\"campo so-auto\"><label for=\"bcqQuit\">Quantas cotas quitar</label><input id=\"bcqQuit\" type=\"number\" min=\"0\" value=\"5\"><small>só cotas já contempladas</small></div>\n      <div class=\"campo so-auto\"><label for=\"bcordemQuit\">Quais quitar primeiro</label><select id=\"bcordemQuit\"><option value=\"antigas\">As contempladas há mais tempo</option><option value=\"maiores\">As de maior valor</option><option value=\"menores\">As de menor valor</option></select></div>\n      <div class=\"campo\"><label for=\"bcmQuit\">Mês da quitação (contado da compra)</label><input id=\"bcmQuit\" type=\"number\" min=\"1\" value=\"60\"></div>\n      <div class=\"campo\"><label for=\"bcdesc\">Desconto na quitação (%)</label><input id=\"bcdesc\" inputmode=\"decimal\" value=\"40\"><small>até 40% do saldo</small></div>\n    </div>\n    <div class=\"so-manual\">\n      <div class=\"quit-acoes\"><button type=\"button\" class=\"btn-mini\" id=\"bcquitTodas\">Marcar todas as contempladas</button><button type=\"button\" class=\"btn-mini\" id=\"bcquitNenhuma\">Desmarcar todas</button></div>\n      <div class=\"tabela\"><table id=\"bctabQuit\"></table></div>\n    </div>\n    <div class=\"kpis\" id=\"bckpisQuit\"></div>\n    <div class=\"frase\" id=\"bcfraseQuit\"></div>\n  </section>\n\n  <div class=\"rel-acao\"><button type=\"button\" class=\"btn-rel\" id=\"bcbaixarRel\">⬇ Baixar relatório da simulação</button><span id=\"bcavisoRel\" role=\"status\"></span></div>\n\n  <p class=\"aviso-teste\">Valores estimados. O INCC é uma média anual. Meses de contemplação, desconto e chance de sorteio são estimativas: a contemplação depende das assembleias, e o desconto da Assunção depende da análise da Ademicon.</p>";
+  function iniciar() {
+  const $ = id => document.getElementById('bc' + id);
+  const num = v => { const t = String(v || '').replace(/[^\d,.-]/g, ''); if (!t) return 0; const n = t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : (/^\d{1,3}(\.\d{3})+$/.test(t) ? t.replace(/\./g, '') : t); return Number(n) || 0; };
+  const int = id => Math.max(0, Math.round(num($(id).value)));
+  const inteiro = v => Math.max(0, Math.round(num(v)));
+  const R = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  const R2 = v => (Number(v) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const P = (v, d = 1) => (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: d, maximumFractionDigits: d }) + '%';
+  const anos = m => { const a = Math.floor(m / 12), r = m % 12; return (a ? a + (a === 1 ? ' ano' : ' anos') : '') + (a && r ? ' e ' : '') + (r ? r + (r === 1 ? ' mês' : ' meses') : '') || '0 mês'; };
+  const kpi = (rot, val, extra, cls) => `<div class="kpi ${cls || ''}"><span>${rot}</span><b>${val}</b>${extra ? `<small>${extra}</small>` : ''}</div>`;
+  const milhar = v => { const x = Number(v) || 0; return x.toLocaleString('pt-BR', Number.isInteger(x) ? {} : { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+
+  // segmento: [taxa, prazo, fixo, lim. embutido, lim. bolso, livre]
+  const SEG = { imovel: [24.2, 220, 44, 44, 44, 99], veiculo: [16.2, 90, 18, 18, 18, 41], servico: [24.2, 50, 10, 10, 10, 23], bens: [19, 100, 20, 20, 20, 45] };
+  const FORMAS = {
+    livre: { nome: 'Lance livre', cor: '#2457b8' },
+    lim: { nome: 'Lance limitado', cor: '#a35a00' },
+    fixo: { nome: 'Lance fixo', cor: '#6d3fc0' },
+    sort: { nome: 'Sorteio', cor: '#1f7a4d' }
+  };
+  const segAtual = () => SEG[$('seg').value];
+  const lancePadrao = forma => { const s = segAtual(); return forma === 'livre' ? { emb: 0, bolso: s[5] } : forma === 'lim' ? { emb: s[3], bolso: s[4] } : forma === 'fixo' ? { emb: s[2], bolso: 0 } : { emb: 0, bolso: 0 }; };
+
+  // exemplo: cliente que comprou cotas em grupos antigos de 240 meses e já pagou 30 parcelas
+  let linhas = [
+    { q: 5, v: 790525.85, pz: 240, rodou: 55, pagas: 30, forma: 'livre', m: 31, cada: 2, emb: 0, bolso: 99 },
+    { q: 5, v: 553368.10, pz: 240, rodou: 55, pagas: 30, forma: 'lim', m: 36, cada: 6, emb: 44, bolso: 44 },
+    { q: 9, v: 255598.30, pz: 240, rodou: 31, pagas: 30, forma: 'sort', m: 48, cada: 18, emb: 0, bolso: 0 }
+  ];
+
+  const campo = (i, c, rot, val, extra = '', attrs = 'type="number" min="0"') =>
+    `<div><span class="mini">${rot}</span>${extra ? `<div class="parcs">${extra.replace('%', `<input data-i="${i}" data-c="${c}" ${attrs} value="${val}">`)}</div>` : `<input data-i="${i}" data-c="${c}" ${attrs} value="${val}">`}</div>`;
+  function htmlLance(l, i) {
+    if (l.forma === 'livre') return `<div class="parcs"><input data-i="${i}" data-c="bolso" type="number" min="0" value="${l.bolso}" aria-label="Parcelas do bolso"> parcelas do bolso</div>`;
+    if (l.forma === 'lim') return `<div class="parcs"><input data-i="${i}" data-c="emb" type="number" min="0" value="${l.emb}" aria-label="Parcelas do crédito"> do crédito + <input data-i="${i}" data-c="bolso" type="number" min="0" value="${l.bolso}" aria-label="Parcelas do bolso"> do bolso</div>`;
+    if (l.forma === 'fixo') return `<div class="parcs"><input data-i="${i}" data-c="emb" type="number" min="0" value="${l.emb}" aria-label="Parcelas do crédito"> parcelas do crédito</div>`;
+    return `<div class="parcs" style="padding:8px 0">sem lance</div>`;
+  }
+  function desenharLinhas() {
+    $('linhas').innerHTML = linhas.map((l, i) => `
+      <div class="lin" style="--cor:${FORMAS[l.forma].cor}">
+        ${campo(i, 'q', 'Cotas', l.q)}
+        ${campo(i, 'v', 'Valor de cada cota', milhar(l.v), '', 'inputmode="decimal"')}
+        ${campo(i, 'pz', 'Prazo original do grupo', l.pz, '% meses', 'type="number" min="12" list="bcprazosLista"')}
+        ${campo(i, 'rodou', 'Grupo já tinha rodado na compra', l.rodou, '% meses')}
+        ${campo(i, 'pagas', 'Cliente já pagou', l.pagas, '% parcelas')}
+        <button type="button" class="tirar" data-tirar="${i}" title="Tirar esta linha" aria-label="Tirar esta linha">×</button>
+        <div><span class="mini">Forma</span><select data-i="${i}" data-c="forma">${Object.entries(FORMAS).map(([k, f]) => `<option value="${k}" ${k === l.forma ? 'selected' : ''}>${f.nome}</option>`).join('')}</select></div>
+        ${campo(i, 'm', '1ª contemplação', l.m, 'mês %', 'type="number" min="1"')}
+        ${campo(i, 'cada', 'Depois, 1 a cada', l.cada, '% meses')}
+        <div class="lance-box"><span class="mini">Lance</span>${htmlLance(l, i)}</div>
+        <div class="agenda" id="bcag${i}"></div>
+      </div>`).join('') + '<datalist id="bcprazosLista"><option value="240"><option value="220"><option value="100"><option value="90"><option value="50"></datalist>';
+  }
+  $('linhas').addEventListener('input', e => {
+    const el = e.target, i = +el.dataset.i, c = el.dataset.c; if (!c) return;
+    if (c === 'forma') { linhas[i].forma = el.value; Object.assign(linhas[i], lancePadrao(el.value)); desenharLinhas(); }
+    else if (c === 'v') linhas[i].v = num(el.value);
+    else linhas[i][c] = inteiro(el.value);
+    calcular();
+  });
+  $('linhas').addEventListener('change', e => { if (e.target.dataset.c === 'v') e.target.value = milhar(num(e.target.value)); });
+  $('linhas').addEventListener('click', e => { const b = e.target.closest('[data-tirar]'); if (!b) return; linhas.splice(+b.dataset.tirar, 1); selQuit.clear(); desenharLinhas(); calcular(); });
+  $('addLinha').addEventListener('click', () => {
+    const ult = linhas[linhas.length - 1];
+    linhas.push({ q: 5, v: ult ? ult.v : 100000, pz: ult ? ult.pz : segAtual()[1], rodou: 0, pagas: 0, forma: 'sort', m: 60, cada: 12, emb: 0, bolso: 0 });
+    desenharLinhas(); calcular();
+    const ins = $('linhas').querySelectorAll('.lin'); ins[ins.length - 1].querySelector('input').focus();
+  });
+  $('seg').addEventListener('change', () => {
+    const s = segAtual(); $('taxa').value = String(s[0]).replace('.', ',');
+    linhas.forEach(l => { Object.assign(l, lancePadrao(l.forma)); l.pz = s[1]; }); desenharLinhas(); calcular();
+  });
+
+  const selQuit = new Set(); let primeiraVez = true;
+  function calcular() {
+    const taxa = num($('taxa').value) / 100, plano = Number($('plano').value) / 100;
+    // INCC: a cada 12 meses (contados da compra) o crédito, a parcela e o saldo devedor sobem pelo índice
+    const incc = Math.max(0, num($('incc').value)) / 100, comIncc = incc > 0;
+    const F = t => Math.pow(1 + incc, Math.floor((Math.max(1, t) - 1) / 12));
+    const Npart = Math.max(2, int('participantes')), primeiraPos = Math.max(1, int('primeira')), k = int('sorteiosMes');
+    const ativas = linhas.map((l, i) => ({ ...l, i, f: FORMAS[l.forma] })).filter(l => l.q > 0 && l.v > 0);
+    const n = ativas.reduce((a, l) => a + l.q, 0);
+    document.querySelectorAll('#simBanco .so-ok').forEach(el => el.style.display = n ? '' : 'none');
+    linhas.forEach((_, i) => { const a = $('ag' + i); if (a) a.innerHTML = ''; });
+    if (!n) { $('kpisBanco').innerHTML = ''; $('mapas').innerHTML = ''; return; }
+
+    // "hoje" é o mesmo para todas as linhas: quem pagou menos parcelas comprou depois
+    const H = Math.max(...ativas.map(l => Math.min(l.pagas, Math.max(12, l.pz) - Math.min(l.rodou, Math.max(12, l.pz) - 12) - 1)));
+    const cotas = [];
+    ativas.forEach(l => {
+      l.pzOrig = Math.max(12, l.pz); l.rod = Math.min(l.rodou, l.pzOrig - 12);
+      l.prazo = l.pzOrig - l.rod;                      // prazo do cliente, contado da compra
+      l.pg = Math.min(l.pagas, l.prazo - 1);
+      l.o = H - l.pg;                                  // deslocamento da linha na linha do tempo comum
+      l.sdi = l.v * (1 + taxa); l.pCheia = l.sdi / l.prazo; l.pLance = l.sdi / l.prazo;
+      l.pAntes = plano < 1 ? (l.v / l.prazo) * plano + (l.v * taxa) / l.prazo : l.pCheia;
+      l.embR = Math.min(l.v, l.emb * l.pLance); l.bolsoR = l.bolso * l.pLance;
+      l.liberado = l.v - l.embR; l.novo = l.liberado - l.bolsoR;
+      l.pctLance = (l.emb + l.bolso) / l.prazo * 100;
+      l.foraPrazo = 0; l.meses = [];
+      const ultimo = l.prazo - 1;
+      for (let j = 0; j < l.q; j++) {
+        let m = Math.max(1, l.m) + j * l.cada;
+        if (m > ultimo) { l.foraPrazo++; m = ultimo; }
+        const saldoDepois = Math.max(0, l.sdi - l.pAntes * m - l.embR - l.bolsoR), restante = l.prazo - m;
+        const pDepois = restante > 0 ? saldoDepois / restante : 0;
+        const parcela = t => (t <= m ? l.pAntes : pDepois) * F(t);   // parcela no mês t da compra
+        let parcTotN = 0; for (let t = 1; t <= l.prazo; t++) parcTotN += parcela(t);
+        cotas.push({ key: `${l.i}-${j}`, j, l, m, fm: F(m), saldoDepois, pDepois, parcela, parcTot: l.pAntes * m + pDepois * restante, parcTotN });
+        l.meses.push(m);
+      }
+      const minhas = cotas.filter(c => c.l === l);
+      l.pDepoisTot = minhas.reduce((a, c) => a + c.pDepois, 0);
+      l.parcTot = minhas.reduce((a, c) => a + c.parcTot, 0);
+      l.libN = minhas.reduce((a, c) => a + l.liberado * c.fm, 0); l.bolsoN = minhas.reduce((a, c) => a + l.bolsoR * c.fm, 0);
+      l.embN = minhas.reduce((a, c) => a + l.embR * c.fm, 0); l.novoN = l.libN - l.bolsoN;
+      l.parcTotN = minhas.reduce((a, c) => a + c.parcTotN, 0);
+      l.custo = l.novoN > 0 ? (l.parcTotN / l.novoN - 1) / (l.prazo / 12) : null;
+      const ini = l.meses[0], fim = l.meses[l.meses.length - 1];
+      const passo = Math.max(1, Math.floor(Npart / l.q)), pos = Array.from({ length: l.q }, (_, j) => Math.min(primeiraPos, passo) + j * passo);
+      const lanceTxt = l.emb + l.bolso ? ` · lance de ${l.emb + l.bolso} parcelas = ${R(l.embR + l.bolsoR)} por cota${l.embR && l.bolsoR ? ` (${R(l.embR)} do crédito + ${R(l.bolsoR)} do bolso)` : l.embR ? ' (do crédito)' : ' (do bolso)'}` : '';
+      $('ag' + l.i).innerHTML = `<b>${l.q} × ${R2(l.v)} = ${R(l.q * l.v)}</b> · prazo do cliente: ${l.prazo} meses (${l.pzOrig} − ${l.rod}) · parcela de ${R2(l.pAntes)} por cota no início · 1 parcela de lance = ${R2(l.pLance)}${lanceTxt} · ` +
+        (l.q === 1 || ini === fim ? `${l.q === 1 ? 'contempla' : 'todas contemplam'} no mês ${ini}` : `contempla do mês ${ini} ao ${fim}`) + ' da compra.' +
+        (l.pg && ini <= l.pg ? ` <b>${l.meses.filter(m => m <= l.pg).length} já contemplada(s) até hoje.</b>` : '') +
+        (l.foraPrazo ? ` <b style="color:var(--destaque)">${l.foraPrazo} cota(s) passariam do prazo do cliente e foram colocadas no último mês (${ultimo}).</b>` : '') +
+        (l.novo < 0 ? ` <b style="color:var(--destaque)">O lance passa do valor da cota.</b>` : '') +
+        `<br>Posições sugeridas no grupo: ${pos.map(milhar).join(', ')}.`;
+      l.pos = pos;
+    });
+    $('mapas').innerHTML = ativas.map(l => `<div class="mapa"><div class="tit"><span class="tag" style="background:${l.f.cor}"></span>${l.q} × ${R(l.v)} · ${l.f.nome} · grupo de ${milhar(Npart)} participantes, 1 cota a cada ${milhar(Math.max(1, Math.floor(Npart / l.q)))} posições</div>` +
+      `<div class="regua" aria-label="Posições das cotas de ${R(l.v)} no grupo"><div class="eixo"></div>` +
+      l.pos.map((x, j) => `<i style="left:${(x / Npart * 100).toFixed(2)}%;background:${l.f.cor}" title="Cota ${j + 1} · posição ${milhar(x)}"></i>`).join('') +
+      `<span class="ponta" style="left:0">1</span><span class="ponta" style="right:0">${milhar(Npart)}</span></div>` +
+      `<div class="posicoes">${l.pos.map(x => `<span style="color:${l.f.cor}">${milhar(x)}</span>`).join('')}</div></div>`).join('');
+
+    // linha do tempo comum (mês 1 = primeira compra)
+    const T = Math.max(...ativas.map(l => l.o + l.prazo));
+    const soma = fn => ativas.reduce((a, l) => a + fn(l), 0);
+    const creditoTotal = soma(l => l.q * l.v), parcInicial = soma(l => l.q * l.pAntes);
+    $('kpisBanco').innerHTML = kpi('Cotas', milhar(n), `${ativas.length} grupo(s)`) +
+      kpi('Crédito total', R(creditoTotal), 'soma de todas as cotas') +
+      kpi('Parcela inicial de todas', R(parcInicial), plano < 1 ? `reduzida ${P(plano * 100, 0)}, até contemplar` : 'cheia, até contemplar', 'azul') +
+      kpi('Prazo do cliente', [...new Set(ativas.map(l => l.prazo))].join(' / ') + ' meses', 'prazo original − meses que o grupo já tinha rodado');
+
+    function fluxoOperacao(quit) {
+      const parc = new Array(T + 2).fill(0);
+      let restQ = quit ? quit.q : 0, quitTotal = 0, quitDesc = 0, quitadas = 0;
+      const ordem = [...cotas].sort(quit && quit.ordem === 'maiores' ? (a, b) => b.l.v - a.l.v || (a.m + a.l.o) - (b.m + b.l.o) : quit && quit.ordem === 'menores' ? (a, b) => a.l.v - b.l.v || (a.m + a.l.o) - (b.m + b.l.o) : (a, b) => (a.m + a.l.o) - (b.m + b.l.o));
+      ordem.forEach(c => {
+        const mq = quit ? quit.m - c.l.o : 0;          // mês da quitação no tempo desta cota
+        const quitaEsta = quit && c.m <= mq && mq < c.l.prazo && (quit.keys ? quit.keys.has(c.key) : restQ > 0);
+        if (quitaEsta) restQ--;
+        for (let t = 1; t <= c.l.prazo; t++) {
+          if (quitaEsta && t > mq) break;
+          parc[t + c.l.o] += c.parcela(t);
+        }
+        if (quitaEsta) {
+          const saldoQ = Math.max(0, c.saldoDepois - c.pDepois * (mq - c.m)) * F(mq), valorQ = saldoQ * (1 - quit.desc);
+          quitTotal += valorQ; quitDesc += saldoQ - valorQ; quitadas++;
+        }
+      });
+      return { parc, quitTotal, quitDesc, quitadas, faltou: restQ };
+    }
+    const base = fluxoOperacao(null);
+    const totLiberado = soma(l => l.libN), totBolso = soma(l => l.bolsoN), totEmb = soma(l => l.embN);
+    const totParcelas = base.parc.reduce((a, b) => a + b, 0), totPago = totParcelas;   // o lance do bolso abate o saldo e volta no crédito: não conta como pago
+    const totTaxa = creditoTotal * taxa, totNovo = totLiberado - totBolso, totIncc = totPago - totNovo - totTaxa;
+    const realNovo = soma(l => l.novo * l.q), realPago = soma(l => l.parcTot);
+    // anos de referência: prazo de cada grupo, pesado pelo dinheiro novo
+    const anosRef = Math.max(1, soma(l => Math.max(0, l.novoN) * l.prazo)) / Math.max(1, soma(l => Math.max(0, l.novoN))) / 12;
+    const custoAA = (parcTotal, novo, a = anosRef) => novo > 0 ? (parcTotal / novo - 1) / Math.max(0.1, a) : null;
+    const simples = custoAA(totParcelas, totNovo);
+    const anosReal = Math.max(1, soma(l => Math.max(0, l.novo * l.q) * l.prazo)) / Math.max(1, soma(l => Math.max(0, l.novo * l.q))) / 12;
+    const PC = v => v === null ? '—' : P(v * 100, 2) + ' a.a.';
+    const PM = v => v === null ? '—' : P(v / 12 * 100, 3) + ' a.m.';
+
+    // ---- situação de hoje ----
+    $('blocoHoje').style.display = H ? '' : 'none';
+    if (H) {
+      const jaPago = base.parc.slice(1, H + 1).reduce((a, b) => a + b, 0);
+      const parc1 = soma(l => l.q * l.pAntes), parcHoje = base.parc[H + 1] || 0;
+      const jaCont = cotas.filter(c => c.m <= c.l.pg), faltam = cotas.filter(c => c.m > c.l.pg);
+      const saldoHoje = cotas.reduce((a, c) => { const p = c.l.pg; return a + (c.m <= p ? Math.max(0, c.saldoDepois - c.pDepois * (p - c.m)) : c.l.sdi - c.l.pAntes * p) * F(p); }, 0);
+      const creditoHoje = faltam.reduce((a, c) => a + c.l.v * F(c.l.pg + 1), 0);
+      const novoRecebido = jaCont.reduce((a, c) => a + c.l.novo * c.fm, 0);
+      const faltaPagarFut = faltam.reduce((a, c) => { let x = 0; for (let t = c.l.pg + 1; t <= c.l.prazo; t++) x += c.parcela(t); return a + x; }, 0);
+      const novoFut = faltam.reduce((a, c) => a + c.l.novo * c.fm, 0);
+      const mesesRest = faltam.length ? faltam.reduce((a, c) => a + (c.l.prazo - c.l.pg) * c.l.novo, 0) / Math.max(1, faltam.reduce((a, c) => a + c.l.novo, 0)) : 0;
+      const custoFuturo = novoFut > 0 ? (faltaPagarFut / novoFut - 1) / (mesesRest / 12) : null;
+      const faltaPagarTudo = base.parc.slice(H + 1).reduce((a, b) => a + b, 0);
+      const reaj = Math.max(...ativas.map(l => Math.floor(l.pg / 12))), fH = Math.pow(1 + incc, reaj);
+      $('kpisHoje').innerHTML =
+        kpi('Já pagou', R(jaPago), ativas.map(l => `${l.pg} parc.`).filter((x, i, a) => a.indexOf(x) === i).join(' / ') + ' até hoje', 'ruim') +
+        kpi('Reajustes de INCC', comIncc ? `${reaj}×` : '—', comIncc ? `crédito e parcela subiram ${P((fH - 1) * 100)}` : 'sem INCC na simulação') +
+        kpi('Parcela de hoje', R(parcHoje), `começou em ${R(parc1)}${parcHoje && parc1 && Math.abs(parcHoje / parc1 - 1) > 0.0005 ? ` (${parcHoje >= parc1 ? '+' : ''}${P((parcHoje / parc1 - 1) * 100)})` : ''}`) +
+        kpi('Saldo devedor hoje', R(saldoHoje), 'de todas as cotas') +
+        kpi('Contempladas até hoje', `${jaCont.length} de ${n}`, jaCont.length ? `dinheiro novo recebido: ${R(novoRecebido)}` : 'nenhuma ainda') +
+        kpi('Crédito de hoje', R(creditoHoje), `das ${faltam.length} cotas que faltam contemplar`, 'bom') +
+        kpi('Falta pagar', R(faltaPagarTudo), 'todas as parcelas daqui até o fim') +
+        kpi('Custo daqui para frente', PC(custoFuturo), custoFuturo === null ? 'todas já contempladas' : `${PM(custoFuturo)} · só as cotas que faltam`, 'azul');
+      $('fraseHoje').innerHTML = ativas.map(l => `<span class="tag" style="background:${l.f.cor}"></span>${l.q} × ${R(l.v)}: grupo de ${l.pzOrig} meses, comprou com ${l.rod} rodados (prazo de ${l.prazo}), já pagou ${l.pg}.`).join('<br>') +
+        `<br>Já pagou <b>${R(jaPago)}</b> no total.` +
+        (custoFuturo !== null ? ` Para as ${faltam.length} cotas que ainda não saíram, vai pagar <b>${R(faltaPagarFut)}</b> daqui até o fim e receber <b>${R(novoFut)}</b> de dinheiro novo: custo de <b>${PC(custoFuturo)}</b> (<b>${PM(custoFuturo)}</b>) daqui para frente. Quanto mais parcelas já pagou, mais barato fica o que falta.` : '');
+    }
+
+    // ---- resultado ----
+    $('kpisRes').innerHTML =
+      kpi('Lances do bolso', R(totBolso), 'abatem o saldo devedor', 'ruim') +
+      kpi('Lances embutidos', R(totEmb), 'saem do crédito') +
+      kpi('Crédito liberado', R(totLiberado), `de ${R(creditoTotal)} contratados`) +
+      kpi('Dinheiro novo', R(totNovo), comIncc ? 'já com o crédito reajustado na contemplação' : 'crédito liberado − lances do bolso', 'bom') +
+      kpi('Total pago até o fim', R(totPago), comIncc ? `dinheiro novo + taxa de adm. ${R(totTaxa)} + reajuste ${R(totIncc)} · sem INCC: ${R(realPago)}` : `dinheiro novo ${R(totNovo)} + taxa de adm. ${R(totTaxa)}`) +
+      kpi('Custo ao ano', PC(simples), comIncc ? `com INCC de ${P(incc * 100)} · sem INCC: ${PC(custoAA(realPago, realNovo, anosReal))}` : 'sobre o dinheiro novo, da compra até o fim', 'azul') +
+      kpi('Custo ao mês', PM(simples), totNovo > 0 ? `paga ${R(totParcelas)} por ${R(totNovo)} novos (${P((totParcelas / totNovo - 1) * 100)} a mais)` : 'os lances do bolso passaram do crédito', 'azul');
+    const txtMeses = l => { const a = l.meses[0], b = l.meses[l.meses.length - 1]; return a === b ? `${a}º` : `${a}º ao ${b}º<br><small style="color:var(--apagado)">1 a cada ${l.cada} m</small>`; };
+    let h = '<thead><tr><th>Cotas</th><th>Forma</th><th>Prazo</th><th>Meses</th><th>Lance</th><th>Do bolso</th><th>Do crédito</th><th>Crédito liberado</th><th>Parcela antes</th><th>Parcela depois</th><th>Dinheiro novo</th><th>Custo</th></tr></thead><tbody>';
+    ativas.forEach(l => {
+      h += `<tr><td><span class="tag" style="background:${l.f.cor}"></span>${l.q} × ${R(l.v)}</td><td>${l.f.nome}</td><td>${l.prazo} m<br><small style="color:var(--apagado)">${l.pzOrig} − ${l.rod}</small></td><td>${txtMeses(l)}</td><td>${l.emb + l.bolso ? `${l.emb + l.bolso} parc. (${P(l.pctLance)})` : '—'}</td><td>${R(l.bolsoN)}</td><td>${R(l.embN)}</td><td>${R(l.libN)}</td><td>${R(l.pAntes * l.q)}</td><td>${R(l.pDepoisTot)}<br><small style="color:var(--apagado)">depois de todas contempladas${comIncc ? ', valor da compra' : ''}</small></td><td>${R(l.novoN)}</td><td><b>${PC(l.custo)}</b><br><b>${PM(l.custo)}</b></td></tr>`;
+    });
+    h += `<tr class="total"><td>${n} cotas · ${R(creditoTotal)}</td><td></td><td></td><td></td><td></td><td>${R(totBolso)}</td><td>${R(totEmb)}</td><td>${R(totLiberado)}</td><td>${R(parcInicial)}</td><td>${R(soma(l => l.pDepoisTot))}</td><td>${R(totNovo)}</td><td><b>${PC(simples)}</b><br><b>${PM(simples)}</b></td></tr>`;
+    $('tabGrupos').innerHTML = h + '</tbody>';
+    const nSort = soma(l => l.forma === 'sort' ? l.q : 0);
+    $('fraseRes').innerHTML = (totBolso > 0 ? `Recebe <b>${R(totLiberado)}</b> de crédito, mas <b>${R(totBolso)}</b> saíram do bolso nos lances: o dinheiro novo é <b>${R(totNovo)}</b>.` : `O dinheiro novo é <b>${R(totNovo)}</b>${totEmb > 0 ? ` (os lances embutidos de ${R(totEmb)} saíram do próprio crédito)` : ''}.`) + ` Por ele paga <b>${R(totParcelas)}</b> em parcelas, da compra até o fim, um custo de <b>${PC(simples)}</b> (<b>${PM(simples)}</b>).` +
+      (k > 0 && nSort ? ` Com ${k} cota(s) sorteada(s) por mês num grupo de ${milhar(Npart)}, cada cota tem ${P(k / Npart * 100, 2)} de chance por mês; os meses do sorteio são uma estimativa.` : '');
+    // linha do tempo
+    const marcos = [...new Set([1, H || 1, H + 1, ...cotas.map(c => c.m + c.l.o), 12, 24, 36, 48, 60, 120, T].filter(m => m >= 1 && m <= T))].sort((a, b) => a - b);
+    let t = '<thead><tr><th>Mês</th><th>Contempladas no mês</th><th>Contempladas até aqui</th><th>Dinheiro novo no mês</th><th>Parcela do mês seguinte</th></tr></thead><tbody>';
+    marcos.forEach(m => {
+      const doMes = cotas.filter(c => c.m + c.l.o === m), ate = cotas.filter(c => c.m + c.l.o <= m).length;
+      const novoMes = doMes.reduce((a, c) => a + c.l.novo * c.fm, 0);
+      const desc = ativas.map(l => { const x = doMes.filter(c => c.l === l).length; return x ? `<span class="tag" style="background:${l.f.cor}"></span>${x} × ${R(l.v)} (${l.f.nome.replace('Lance ', '').toLowerCase()})` : ''; }).filter(Boolean).join(' + ');
+      t += `<tr${H && m === H ? ' style="background:var(--azul-suave)"' : ''}><td>${m}º (${anos(m)})${H && m === H ? ' · <b>hoje</b>' : ''}</td><td style="text-align:left">${desc || '—'}</td><td>${ate} de ${n}</td><td>${novoMes ? R(novoMes) : '—'}</td><td>${R(base.parc[Math.min(T, m + 1)])}</td></tr>`;
+    });
+    $('tabTempo').innerHTML = t + '</tbody>';
+
+    // ---- quitação parcial pela Assunção ----
+    const manual = $('modoQuit').value === 'manual';
+    document.querySelectorAll('#simBanco .so-auto').forEach(el => el.style.display = manual ? 'none' : '');
+    document.querySelectorAll('#simBanco .so-manual').forEach(el => el.style.display = manual ? '' : 'none');
+    const mQ = Math.min(Math.max(1, int('mQuit')), T - 1), descQ = Math.min(40, Math.max(0, num($('desc').value))) / 100;
+    // cada cota no mês da quitação: o que paga com desconto, o que deixaria de pagar e o ganho
+    const infoQ = [...cotas].sort((a, b) => a.l.i - b.l.i || a.j - b.j).map(c => {
+      const mq = mQ - c.l.o, pode = c.m <= mq && mq < c.l.prazo;
+      const saldoQ = pode ? Math.max(0, c.saldoDepois - c.pDepois * (mq - c.m)) * F(mq) : 0, valorQ = saldoQ * (1 - descQ);
+      let deixa = 0; if (pode) for (let t = mq + 1; t <= c.l.prazo; t++) deixa += c.parcela(t);
+      return { c, mq, pode, saldoQ, valorQ, deixa, ganho: deixa - valorQ, parcMes: pode ? c.parcela(mq + 1) : 0, meses: pode ? c.l.prazo - mq : 0 };
+    });
+    if (primeiraVez) { infoQ.filter(x => x.pode).slice(0, 5).forEach(x => selQuit.add(x.c.key)); primeiraVez = false; }
+    [...selQuit].forEach(k => { const x = infoQ.find(y => y.c.key === k); if (!x || !x.pode) selQuit.delete(k); });
+    if (manual) {
+      let tq = '<thead><tr><th>Quitar</th><th>Cota</th><th>Contemplada</th><th>Saldo no mês</th><th>Paga com desconto</th><th>Deixa de pagar</th><th>Ganho</th><th>Parcela a menos</th></tr></thead><tbody>';
+      infoQ.forEach(x => {
+        const l = x.c.l, mk = selQuit.has(x.c.key);
+        tq += `<tr class="${mk ? 'marcada' : ''} ${x.pode ? '' : 'bloq'}"><td><input type="checkbox" data-quit="${x.c.key}" ${mk ? 'checked' : ''} ${x.pode ? '' : 'disabled'} aria-label="Quitar cota ${x.c.j + 1} de ${R(l.v)}"></td>` +
+          `<td style="text-align:left"><span class="tag" style="background:${l.f.cor}"></span>${R(l.v)} · ${l.f.nome.replace('Lance ', '').toLowerCase()} nº ${x.c.j + 1}</td>` +
+          (x.pode ? `<td>mês ${x.c.m}</td><td>${R(x.saldoQ)}</td><td>${R(x.valorQ)}</td><td>${R(x.deixa)}<br><small style="color:var(--apagado)">${x.meses} parcelas</small></td><td><b style="color:var(--bom)">${R(x.ganho)}</b></td><td>${R(x.parcMes)}/mês</td>`
+            : `<td colspan="6" style="text-align:left">ainda não contemplada nesse mês: sai no mês ${x.c.m} da compra</td>`) + '</tr>';
+      });
+      const sel = infoQ.filter(x => selQuit.has(x.c.key));
+      tq += `<tr class="total"><td></td><td style="text-align:left">${sel.length} marcada(s)</td><td></td><td>${R(sel.reduce((a, x) => a + x.saldoQ, 0))}</td><td>${R(sel.reduce((a, x) => a + x.valorQ, 0))}</td><td>${R(sel.reduce((a, x) => a + x.deixa, 0))}</td><td><b style="color:var(--bom)">${R(sel.reduce((a, x) => a + x.ganho, 0))}</b></td><td>${R(sel.reduce((a, x) => a + x.parcMes, 0))}/mês</td></tr>`;
+      $('tabQuit').innerHTML = tq + '</tbody>';
+    }
+    const quit = { keys: manual ? selQuit : null, q: manual ? selQuit.size : Math.min(n, int('qQuit')), m: mQ, desc: descQ, ordem: $('ordemQuit').value };
+    const qf = fluxoOperacao(quit);
+    const totParcQ = qf.parc.reduce((a, b) => a + b, 0), totPagoQ = totParcQ + qf.quitTotal;
+    const mSeg = Math.min(T, quit.m + 1), parcAntesQ = base.parc[mSeg], parcDepoisQ = qf.parc[mSeg];
+    const custoQ = custoAA(totPagoQ, totNovo);
+    $('kpisQuit').innerHTML =
+      kpi('Cotas quitadas', `${qf.quitadas} de ${n}`, !manual && qf.faltou ? `${qf.faltou} ainda não contempladas no mês ${quit.m}` : `no mês ${quit.m} (${anos(quit.m)})`) +
+      kpi('Valor para quitar', R(qf.quitTotal), `desconto de ${R(qf.quitDesc)}`, 'ruim') +
+      kpi('Parcela sem quitar', R(parcAntesQ), `mês ${mSeg}, todas as ${n} cotas`) +
+      kpi('Parcela com a quitação', R(parcDepoisQ), `mês ${mSeg}, ${n - qf.quitadas} cotas restantes`, 'bom') +
+      kpi('Total pago com a quitação', R(totPagoQ), `sem quitar: ${R(totPago)}`) +
+      kpi('Ganho com a quitação', R(totPago - totPagoQ), 'o que deixa de pagar − o que paga para quitar', 'bom') +
+      kpi('Custo ao ano', PC(custoQ), `sem quitar: ${PC(simples)}`, 'azul') +
+      kpi('Custo ao mês', PM(custoQ), `sem quitar: ${PM(simples)}`, 'azul');
+    const restMin = Math.min(...ativas.map(l => l.prazo + l.o - quit.m));
+    const faltouQ = manual ? 0 : qf.faltou;
+    $('fraseQuit').className = 'frase' + (restMin < 60 || faltouQ ? ' alerta' : '');
+    $('fraseQuit').innerHTML = (qf.quitadas ? `Quitando <b>${qf.quitadas}</b> cotas no mês ${quit.m} com ${P(quit.desc * 100, 0)} de desconto, você paga <b>${R(qf.quitTotal)}</b> e deixa de pagar <b>${R(qf.quitTotal + (totPago - totPagoQ))}</b> em parcelas: ganha <b>${R(totPago - totPagoQ)}</b>. No mês ${mSeg}, a parcela fica <b>${R(parcDepoisQ)}</b> em vez de <b>${R(parcAntesQ)}</b>.` : (manual ? 'Marque na lista as cotas que o cliente quer quitar.' : 'Nenhuma cota contemplada até esse mês para quitar.')) +
+      (restMin < 60 ? ` Atenção: em algum grupo faltam ${restMin} meses nessa data, e a Assunção pede pelo menos 60 meses restantes.` : '') +
+      (faltouQ ? ` ${faltouQ} cota(s) ainda não estariam contempladas nesse mês e não entram na quitação.` : '');
+  }
+  document.querySelectorAll('#simBanco .bloco > .campos input, #simBanco .bloco > .campos select').forEach(el => el.addEventListener('input', calcular));
+  $('tabQuit').addEventListener('change', e => { const k = e.target.dataset.quit; if (!k) return; e.target.checked ? selQuit.add(k) : selQuit.delete(k); calcular(); });
+  $('quitTodas').addEventListener('click', () => { document.querySelectorAll('#bctabQuit [data-quit]:not(:disabled)').forEach(el => selQuit.add(el.dataset.quit)); calcular(); });
+  $('quitNenhuma').addEventListener('click', () => { selQuit.clear(); calcular(); });
+  // ---- relatório para baixar (arquivo HTML que abre em qualquer navegador e pode ser impresso em PDF) ----
+  const esc = t => String(t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  function montarRelatorio() {
+    const cliente = $('cliente').value.trim(), hoje = new Date().toLocaleDateString('pt-BR');
+    const visivel = id => $(id) && $(id).offsetParent !== null;
+    const bloco = (titulo, html) => html ? `<section><h2>${titulo}</h2>${html}</section>` : '';
+    const tabela = id => `<table>${$(id).innerHTML}</table>`;
+    const regras = [['Segmento', $('seg').selectedOptions[0].text], ['Taxa de administração', $('taxa').value + '%'], ['Parcela até contemplar', $('plano').selectedOptions[0].text],
+      ['INCC ao ano', (num($('incc').value) ? $('incc').value + '%' : 'sem reajuste')], ['Participantes por grupo', $('participantes').value], ['Cotas sorteadas por mês', $('sorteiosMes').value]];
+    const lin = linhas.filter(l => l.q > 0 && l.v > 0).map(l => {
+      const lance = l.forma === 'livre' ? `${l.bolso} parcelas do bolso` : l.forma === 'lim' ? `${l.emb} do crédito + ${l.bolso} do bolso` : l.forma === 'fixo' ? `${l.emb} parcelas do crédito` : 'sem lance';
+      return `<tr><td>${l.q} × ${R2(l.v)}</td><td>${FORMAS[l.forma].nome}</td><td>${l.pz} m</td><td>${l.rodou} m</td><td>${l.pagas}</td><td>mês ${l.m}${l.q > 1 ? `, depois 1 a cada ${l.cada} m` : ''}</td><td>${lance}</td></tr>`;
+    }).join('');
+    // na quitação manual, só as cotas marcadas, sem as caixinhas
+    let quitHtml = '';
+    if ($('modoQuit').value === 'manual') {
+      const tmp = document.createElement('table'); tmp.innerHTML = $('tabQuit').innerHTML;
+      tmp.querySelectorAll('tbody tr').forEach(tr => { if (!tr.classList.contains('marcada') && !tr.classList.contains('total')) tr.remove(); });
+      tmp.querySelectorAll('tr').forEach(tr => tr.firstElementChild && tr.firstElementChild.remove());
+      quitHtml = tmp.querySelectorAll('tbody tr.marcada').length ? `<h3>Cotas escolhidas para quitar</h3><table>${tmp.innerHTML}</table>` : '';
+    }
+    const corpo =
+      bloco('Regras gerais', `<div class="kpis">${regras.map(([a, b]) => `<div class="kpi"><span>${a}</span><b>${esc(b)}</b></div>`).join('')}</div>`) +
+      bloco('Cotas do cliente', `<table><thead><tr><th>Cotas</th><th>Forma</th><th>Prazo original</th><th>Grupo já tinha rodado</th><th>Parcelas pagas</th><th>Contemplação</th><th>Lance</th></tr></thead><tbody>${lin}</tbody></table><div class="kpis">${$('kpisBanco').innerHTML}</div><h3>Posição das cotas em cada grupo</h3>${$('mapas').innerHTML}`) +
+      (visivel('blocoHoje') ? bloco('Situação de hoje', `<div class="kpis">${$('kpisHoje').innerHTML}</div><p class="frase">${$('fraseHoje').innerHTML}</p>`) : '') +
+      bloco('Custo da operação', `<div class="kpis">${$('kpisRes').innerHTML}</div>${tabela('tabGrupos')}<p class="frase">${$('fraseRes').innerHTML}</p><h3>Contemplações mês a mês</h3>${tabela('tabTempo')}`) +
+      bloco('Quitação pela Assunção de Dívida', `<p>Mês da quitação: <b>${esc($('mQuit').value)}</b> · desconto: <b>${esc($('desc').value)}%</b></p>${quitHtml}<div class="kpis">${$('kpisQuit').innerHTML}</div><p class="frase">${$('fraseQuit').innerHTML}</p>`);
+    const css = REL_CSS;
+    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Banco de Cotas${cliente ? ' — ' + esc(cliente) : ''}</title>
+<style>${css}
+body{margin:0;padding:24px 16px 40px} .rel{max-width:1000px;margin:0 auto} section{background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:16px;margin-top:14px;break-inside:avoid-page}
+h2{font-size:18px;margin:0 0 4px} h3{font-family:var(--fonte-titulo);font-size:14px;margin:14px 0 4px} table{margin-top:10px} th,td{white-space:normal}
+.topo{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap} .imprimir{font:inherit;font-weight:700;border:1px solid var(--linha);background:var(--papel);color:var(--tinta);border-radius:8px;padding:8px 12px;cursor:pointer}
+@media print{.imprimir{display:none} body{padding:0;background:#fff} section{border-color:#ccc}}</style></head><body><div class="rel">
+<div class="topo"><div><div class="selo">Simulação de Banco de Cotas</div><h1>${cliente ? esc(cliente) : 'Banco de Cotas'}</h1><p class="sub">Gerado em ${hoje}. Valores estimados: a contemplação depende das assembleias e o desconto da Assunção depende da análise da administradora.</p></div><button class="imprimir" onclick="print()">Imprimir / salvar em PDF</button></div>
+${corpo}
+</div></body></html>`;
+  }
+  async function baixarRelatorio(btn) {
+    const cliente = $('cliente').value.trim();
+    const nome = `banco-de-cotas${cliente ? '-' + cliente.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase() : ''}-${new Date().toISOString().slice(0, 10)}.html`;
+    const html = montarRelatorio(), aviso = $('avisoRel');
+    aviso.textContent = '';
+    try {
+      const dl = window.claude && typeof claude.use === 'function' ? await claude.use('downloads') : null;
+      if (dl) { await dl.save({ filename: nome, data: html }); aviso.textContent = 'Relatório pronto. Abra o arquivo e use "Imprimir / salvar em PDF" se quiser em PDF.'; return; }
+    } catch (e) {
+      if (e && e.code === 'declined') { aviso.textContent = 'Download cancelado.'; return; }
+      if (e && e.code === 'rate_limited') { aviso.textContent = 'Já existe um download aguardando confirmação.'; return; }
+    }
+    // fora do Claude (no CRM, por exemplo): download direto pelo navegador
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+    const a = document.createElement('a'); a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    aviso.textContent = 'Relatório baixado. Abra o arquivo e use "Imprimir / salvar em PDF" se quiser em PDF.';
+  }
+  $('baixarRel').addEventListener('click', () => baixarRelatorio());
+  desenharLinhas();
+  calcular();
+  }
+  function montar() {
+    const ref = document.getElementById('simAssuncao') || document.getElementById('simComparativo');
+    if (!ref || document.getElementById('simBanco')) return;
+    const css = document.createElement('style'); css.id = 'bcEstilos'; css.textContent = CSS; document.head.appendChild(css);
+    const sub = document.createElement('div'); sub.id = 'simBanco'; sub.className = 'subpage'; sub.innerHTML = HTML;
+    ref.parentNode.insertBefore(sub, ref.nextSibling);
+    const pill = Array.from(document.querySelectorAll('#simulador .tab-pill')).find(b => /simAssuncao/.test(b.getAttribute('onclick') || ''))
+      || document.querySelector('#simulador .tab-pill[onclick*="simComparativo"]');
+    if (pill) {
+      const b = document.createElement('button'); b.className = 'tab-pill'; b.type = 'button'; b.textContent = '🏦 Banco de Cotas';
+      b.setAttribute('onclick', "switchSimuladorSub('simBanco', this)");
+      pill.after(b);
+    }
+    iniciar();
+  }
+  // depois da Assunção de Dívida, para a pílula ficar ao lado dela
+  const esperar = () => setTimeout(montar, 0);
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', esperar); else esperar();
 })();
 </script>
 <script id="mapaTudoScript">
