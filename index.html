@@ -3883,10 +3883,30 @@ function canCurrentUserViewAllAgenda(){
   return currentUser.canViewAllAgenda === true || isManagerRole(currentUser.cargo);
 }
 
+// Lead que virou cliente: etapa "Cliente fechado" ou com venda lançada para ele
+function leadEhClienteFechado(lead){
+  if (!lead) return false;
+  if ((lead.stage || '') === 'Cliente fechado') return true;
+  return (db.sales || []).some(v => v && v.leadId === lead.id && !v.cancelada);
+}
+// O lead é de alguém que está abaixo de mim (ou sou o dono do CRM)?
+function leadDeQuemEstaAbaixo(lead){
+  if (!currentUser) return false;
+  if (hierDonoVeTudo()) return true;
+  const abaixo = getSubordinateUserIds(currentUser.id).filter(id => id !== currentUser.id);
+  if (lead.createdBy && abaixo.includes(lead.createdBy)) return true;
+  const resp = lead.responsavel ? hierUsuarioPorNome(lead.responsavel) : null;
+  return !!(resp && abaixo.includes(resp.id));
+}
+
 function canUserAccessLead(lead){
   if(!currentUser) return false;
-  // Lead é particular: só de quem cadastrou ou de quem é o responsável. Líder não enxerga.
-  if (MODO_HIERARQUIA) return hierDonoVeTudo() || lead.createdBy === currentUser.id || lead.responsavel === currentUser.nome || hierOrfao(lead.createdBy, lead.responsavel);
+  // Lead é particular: só de quem cadastrou ou de quem é o responsável.
+  // Quem está acima (líder, gestor e também o dono) só enxerga os leads de quem está abaixo que viraram CLIENTE (venda fechada).
+  if (MODO_HIERARQUIA) {
+    if (lead.createdBy === currentUser.id || lead.responsavel === currentUser.nome || hierOrfao(lead.createdBy, lead.responsavel)) return true;
+    return leadEhClienteFechado(lead) && leadDeQuemEstaAbaixo(lead);
+  }
   if(canCurrentUserViewAllLeads()) return true;
   const subIds = getSubordinateUserIds(currentUser.id);
   const subNames = getSubordinateUserNames(currentUser.id);
@@ -3913,7 +3933,7 @@ function canUserAccessSale(sale){
 
 function canUserAccessMeeting(meeting){
   if(!currentUser) return false;
-  if (MODO_HIERARQUIA) return hierDonoVeTudo() || meeting.responsavel === currentUser.nome || hierOrfao(null, meeting.responsavel); // agenda é particular
+  if (MODO_HIERARQUIA) return meeting.responsavel === currentUser.nome || hierOrfao(null, meeting.responsavel); // agenda é particular: ninguém acima enxerga, nem o dono
   if(canCurrentUserViewAllAgenda() || canCurrentUserViewGeneralDashboard()) return true;
   const subNames = getSubordinateUserNames(currentUser.id);
   return subNames.includes(meeting.responsavel) || meeting.responsavel === currentUser.nome;
@@ -3921,7 +3941,7 @@ function canUserAccessMeeting(meeting){
 
 function canUserAccessFollow(follow){
   if(!currentUser) return false;
-  if (MODO_HIERARQUIA) return hierDonoVeTudo() || follow.responsavel === currentUser.nome || hierOrfao(null, follow.responsavel);
+  if (MODO_HIERARQUIA) return follow.responsavel === currentUser.nome || hierOrfao(null, follow.responsavel);   // follow-up é particular
   if(canCurrentUserViewGeneralDashboard()) return true;
   const subNames = getSubordinateUserNames(currentUser.id);
   return subNames.includes(follow.responsavel) || follow.responsavel === currentUser.nome;
@@ -3932,8 +3952,8 @@ function canUserAccessFollow(follow){
 // - Cada pessoa tem um ou mais VÍNCULOS: em cada vínculo, uma loja, o CARGO dela naquela loja e o
 //   líder dela naquela loja. Assim a mesma pessoa pode ser Sócio Integral em uma loja e Líder em treinamento em outra,
 //   ter equipes em lojas diferentes e responder a líderes diferentes.
-// - Quem está acima enxerga só as VENDAS ACEITAS de quem está abaixo, e só as da loja em que
-//   está acima (nunca leads nem agenda); ninguém enxerga quem está ao lado.
+// - Quem está acima (inclusive o dono) enxerga só as VENDAS ACEITAS de quem está abaixo, e só as da loja em que
+//   está acima, e os leads que viraram cliente (nunca os outros leads, agenda, follow-ups nem gastos); ninguém enxerga quem está ao lado.
 // - Com HIER_ACEITE ligado, a venda de um liderado fica "aguardando aceite" do líder direto daquela
 //   loja e só entra nos números depois de aceita. Hoje está DESLIGADO: toda venda entra direto.
 function hierNivel(cargo){
