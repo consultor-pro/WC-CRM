@@ -498,11 +498,11 @@ body.tour-active { overflow: hidden; }
 }
 .info-card-preview { width: 100%; border-radius: 8px; margin-top: 10px; background: #f8fafc; border: 1px solid var(--line); overflow: hidden; }
 /* --- Mural: cartões de tamanho padrão (clique abre a publicação completa) --- */
-.info-card.info-card-compacto { height: 300px; overflow: hidden; cursor: pointer; justify-content: flex-start; gap: 6px; transition: box-shadow .15s, transform .15s; }
+.info-card.info-card-compacto { height: 185px; overflow: hidden; cursor: pointer; justify-content: flex-start; gap: 6px; transition: box-shadow .15s, transform .15s; }
 .info-card.info-card-compacto:hover { box-shadow: 0 6px 18px rgba(15,23,42,.10); transform: translateY(-1px); }
 .info-card-compacto .info-titulo { margin: 0; font-size: 15px; color: #1e293b; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; padding-right: 30px; }
-.info-card-compacto .info-resumo { margin: 4px 0 0; font-size: 13px; color: #475569; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
-.info-card-compacto .info-thumb { margin-top: 8px; height: 120px; border-radius: 8px; overflow: hidden; background: #f1f5f9; border: 1px solid var(--line); position: relative; flex-shrink: 0; }
+.info-card-compacto .info-resumo { margin: 4px 0 0; font-size: 13px; color: #475569; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; white-space: pre-line; }
+.info-card-compacto .info-thumb { margin-top: 6px; height: 64px; border-radius: 8px; overflow: hidden; background: #f1f5f9; border: 1px solid var(--line); position: relative; flex-shrink: 0; }
 .info-card-compacto .info-thumb img, .info-card-compacto .info-thumb video { width: 100%; height: 100%; max-height: none; object-fit: cover; display: block; pointer-events: none; }
 .info-card-compacto .info-thumb .info-play { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 34px; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,.5); }
 .info-card-compacto .info-thumb.doc { display: flex; align-items: center; gap: 10px; padding: 0 14px; height: 64px; }
@@ -510,6 +510,30 @@ body.tour-active { overflow: hidden; }
 .info-card-compacto .info-vermais { color: var(--red); font-weight: 800; }
 .info-alca { position: absolute; top: 10px; right: 10px; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #94a3b8; background: #f8fafc; border: 1px solid var(--line); cursor: grab; touch-action: none; user-select: none; z-index: 2; }
 .info-alca:hover { color: #475569; background: #eef2f7; }
+.info-pintar { position: absolute; top: 10px; right: 46px; width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 15px; background: #f8fafc; border: 1px solid var(--line); cursor: pointer; padding: 0; }
+.info-pintar:hover { background: #eef2f7; }
+.info-card-compacto.info-gestor .info-titulo { padding-right: 70px; }
+.info-card-compacto:has(.info-thumb) .info-resumo { display: none; }
+.info-card-compacto .info-titulo, .info-card-compacto > small { flex-shrink: 0; }
+/* cores claras para distinguir os quadros */
+.info-card.info-cor-amarelo { background: #fefce8; border-color: #fde68a; }
+.info-card.info-cor-verde { background: #f0fdf4; border-color: #bbf7d0; }
+.info-card.info-cor-azul { background: #eff6ff; border-color: #bfdbfe; }
+.info-card.info-cor-rosa { background: #fdf2f8; border-color: #fbcfe8; }
+.info-card.info-cor-roxo { background: #f5f3ff; border-color: #ddd6fe; }
+.info-card.info-cor-laranja { background: #fff7ed; border-color: #fed7aa; }
+.info-card.info-cor-cinza { background: #f1f5f9; border-color: #cbd5e1; }
+[data-theme="dark"] .info-card.info-cor-amarelo { background: #2e2a14; border-color: #5c5222; }
+[data-theme="dark"] .info-card.info-cor-verde { background: #14291d; border-color: #24513a; }
+[data-theme="dark"] .info-card.info-cor-azul { background: #152238; border-color: #27406b; }
+[data-theme="dark"] .info-card.info-cor-rosa { background: #2d1726; border-color: #5a2b4a; }
+[data-theme="dark"] .info-card.info-cor-roxo { background: #221b38; border-color: #43356e; }
+[data-theme="dark"] .info-card.info-cor-laranja { background: #2e1f12; border-color: #5f3f20; }
+[data-theme="dark"] .info-card.info-cor-cinza { background: #1f2630; border-color: #3a4655; }
+.info-paleta { position: fixed; z-index: 10000; display: flex; gap: 6px; flex-wrap: wrap; max-width: 230px; padding: 10px; background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: 12px; box-shadow: 0 12px 30px rgba(15,23,42,.22); }
+.info-paleta button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(15,23,42,.15); cursor: pointer; padding: 0; font-size: 13px; }
+.info-paleta button.sel { outline: 3px solid #2563eb; outline-offset: 1px; }
+.info-paleta small { flex-basis: 100%; font-size: 11.5px; font-weight: 700; color: var(--muted, #64748b); }
 .info-card-placeholder { opacity: .35; outline: 2px dashed var(--red); outline-offset: -2px; }
 .info-card-fantasma { position: fixed; z-index: 9999; pointer-events: none; box-shadow: 0 18px 40px rgba(15,23,42,.30); transform: rotate(1.5deg); opacity: .95; cursor: grabbing; }
 body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user-select: none !important; }
@@ -1021,13 +1045,14 @@ table:not(.excel-table) td .user-avatar { width: 22px !important; height: 22px !
   #semaforoTabela tbody td.sm-sec .sm-cel { max-width: 100%; display: flex; }
   #semaforoTabela tbody td[colspan] { grid-column: 1 / -1; grid-row: auto; white-space: normal; }
 }
-.gastos-mover { display: inline-flex; flex-direction: column; flex: none; }
-.gastos-mover button { border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; font-size: 9px; line-height: 1; width: 22px; height: 14px; padding: 0; cursor: pointer; }
-.gastos-mover button:first-child { border-radius: 4px 4px 0 0; border-bottom: 0; }
-.gastos-mover button:last-child { border-radius: 0 0 4px 4px; }
-.gastos-mover button:hover:not(:disabled) { background: #e2e8f0; color: #0f172a; }
-.gastos-mover button:disabled { opacity: .35; cursor: default; }
-[data-theme="dark"] .gastos-mover button { background: #1f2a37; border-color: #334155; color: #aab4c0; }
+.gastos-alca { flex: none; width: 22px; height: 26px; display: inline-flex; align-items: center; justify-content: center; font-size: 16px; color: #94a3b8; border-radius: 6px; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
+.gastos-alca:hover { color: #475569; background: #eef2f7; }
+tr.gastos-arrastando td { background: #fef2f2 !important; opacity: .55; }
+tr.gastos-arrastando td.col-fixed { outline: 2px dashed var(--red, #C8102E); outline-offset: -2px; }
+.gastos-fantasma { position: fixed; z-index: 9999; pointer-events: none; padding: 6px 12px; border-radius: 8px; background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); box-shadow: 0 12px 30px rgba(15,23,42,.28); font-size: 13px; font-weight: 800; white-space: nowrap; transform: rotate(1.5deg); }
+body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; user-select: none !important; }
+[data-theme="dark"] .gastos-alca:hover { background: #1f2a37; color: #e6edf3; }
+[data-theme="dark"] tr.gastos-arrastando td { background: #3a1d22 !important; }
 </style>
 </head>
 <body>
@@ -8292,6 +8317,27 @@ function hierOrganizaInformacoes(){
   if (!currentUser) return false;
   return isManagerRole(currentUser.cargo) || hierLideraAlgo(currentUser) || hierDonoVeTudo() || !hierTemLider(currentUser.id);
 }
+// Cores claras para distinguir os quadros do mural (quem organiza as Informações escolhe)
+const INFO_CORES = { amarelo: ['#fef08a', 'Amarelo'], verde: ['#bbf7d0', 'Verde'], azul: ['#bfdbfe', 'Azul'], rosa: ['#fbcfe8', 'Rosa'], roxo: ['#ddd6fe', 'Roxo'], laranja: ['#fed7aa', 'Laranja'], cinza: ['#e2e8f0', 'Cinza'] };
+function abrirPaletaInfo(ev, id){
+  ev.stopPropagation(); ev.preventDefault();
+  const velha = document.getElementById('infoPaleta'); if (velha) { const mesma = velha.dataset.id === id; velha.remove(); if (mesma) return; }
+  const post = (infoPosts || []).find(p => p.id === id); if (!post) return;
+  const pal = document.createElement('div'); pal.id = 'infoPaleta'; pal.className = 'info-paleta'; pal.dataset.id = id;
+  pal.innerHTML = '<small>Cor do quadro</small>' + Object.entries(INFO_CORES).map(([k, [cor, nome]]) => `<button type="button" data-cor="${k}" class="${post.cor === k ? 'sel' : ''}" style="background:${cor}" title="${nome}" aria-label="${nome}"></button>`).join('')
+    + `<button type="button" data-cor="" class="${!post.cor ? 'sel' : ''}" style="background:#fff" title="Sem cor" aria-label="Sem cor">✕</button>`;
+  document.body.appendChild(pal);
+  const r = ev.currentTarget.getBoundingClientRect();
+  pal.style.top = Math.min(r.bottom + 6, window.innerHeight - pal.offsetHeight - 8) + 'px';
+  pal.style.left = Math.max(8, Math.min(r.right - pal.offsetWidth, window.innerWidth - pal.offsetWidth - 8)) + 'px';
+  pal.addEventListener('click', e => {
+    e.stopPropagation();
+    const b = e.target.closest('button[data-cor]'); if (!b) return;
+    if (b.dataset.cor) post.cor = b.dataset.cor; else delete post.cor;
+    pal.remove(); save(); renderInformacoes();
+  });
+  setTimeout(() => document.addEventListener('pointerdown', function fora(e){ if (!pal.contains(e.target)) { pal.remove(); document.removeEventListener('pointerdown', fora); } }), 0);
+}
 function renderInformacoes(){
   const container = document.getElementById('infoPostsContainer');
   if(!container) return;
@@ -8301,8 +8347,8 @@ function renderInformacoes(){
     const temArquivo = !!(post.fileUrl || fileSrc(post));
     const temMais = (post.desc || '').length > 160 || temArquivo || post.linkUrl;
     return `
-      <div class="info-card info-card-compacto" data-id="${post.id}" onclick="abrirPublicacaoInfo('${post.id}')" title="Clique para ver a publicação completa">
-        ${isGestor ? `<div class="info-alca" title="Arraste para mudar a ordem" onpointerdown="iniciarArrasteInfo(event)" onclick="event.stopPropagation()">⠿</div>` : ''}
+      <div class="info-card info-card-compacto${isGestor ? ' info-gestor' : ''}${INFO_CORES[post.cor] ? ' info-cor-' + post.cor : ''}" data-id="${post.id}" onclick="abrirPublicacaoInfo('${post.id}')" title="Clique para ver a publicação completa">
+        ${isGestor ? `<button type="button" class="info-pintar" title="Colorir este quadro" aria-label="Colorir este quadro" onclick="abrirPaletaInfo(event, '${post.id}')">🎨</button><div class="info-alca" title="Arraste para mudar a ordem" onpointerdown="iniciarArrasteInfo(event)" onclick="event.stopPropagation()">⠿</div>` : ''}
         <h3 class="info-titulo">${esc(post.title)}</h3>
         <small class="muted">${esc(post.date || '')}</small>
         ${post.desc ? `<p class="info-resumo">${esc(post.desc)}</p>` : ''}
@@ -14947,13 +14993,10 @@ function renderGastos() {
           </div>
         </td>`;
       }
-      rows += `<tr${contaNoTotal ? '' : ' style="opacity:.7"'}>
+      rows += `<tr data-gcat="${idx}"${contaNoTotal ? '' : ' style="opacity:.7"'}>
         <td class="col-fixed" style="padding:2px 6px">
           <div style="display:flex;align-items:center;gap:3px">
-            <span class="gastos-mover">
-              <button type="button" title="Subir categoria" aria-label="Subir ${esc(cat.nome)}" ${idx === 0 ? 'disabled' : ''} onclick="moverCategoriaGasto('${tipo}', ${idx}, -1)">▲</button>
-              <button type="button" title="Descer categoria" aria-label="Descer ${esc(cat.nome)}" ${idx === categorias.length - 1 ? 'disabled' : ''} onclick="moverCategoriaGasto('${tipo}', ${idx}, 1)">▼</button>
-            </span>
+            <span class="gastos-alca" title="Arraste para mudar a ordem" onpointerdown="iniciarArrasteGasto(event, '${tipo}')">⠿</span>
             <input type="text" value="${esc(cat.nome)}" style="width:150px;padding:3px 6px;font-size:12px;font-weight:700;border:1px solid #cbd5e1;border-radius:4px"
               onchange="renomearCategoriaGasto('${tipo}', ${idx}, this.value)">
           </div>
@@ -15645,21 +15688,63 @@ function adicionarCategoriaGasto(tipo) {
   renderGastos();
 }
 
-// Sobe (dir = -1) ou desce (dir = 1) a categoria na lista do ano aberto.
-function moverCategoriaGasto(tipo, idx, dir) {
-  const ano = anoAtualGastos();
-  const lista = db.gastos[ano] && db.gastos[ano][tipo];
-  const alvo = idx + dir;
-  if (!lista || !lista[idx] || alvo < 0 || alvo >= lista.length) return;
-  registrarHistoricoGastos();
-  [lista[idx], lista[alvo]] = [lista[alvo], lista[idx]];
-  if (typeof gastosSel !== 'undefined') gastosSel = null;
-  save();
-  renderGastos();
-  // deixa o foco na mesma seta, na nova posição, para dar para apertar várias vezes seguidas
-  const tab = document.getElementById(tipo === 'receitas' ? 'gastosTabelaReceitas' : 'gastosTabelaDespesas');
-  const bt = tab && tab.querySelector(`button[onclick="moverCategoriaGasto('${tipo}', ${alvo}, ${dir})"]`);
-  if (bt && !bt.disabled) bt.focus();
+// Arrastar a categoria pela alça ⠿ (mouse e toque) para mudar a ordem, igual na aba Informações.
+function iniciarArrasteGasto(ev, tipo){
+  if (ev.button !== undefined && ev.button !== 0) return;
+  ev.preventDefault(); ev.stopPropagation();
+  const linha = ev.target.closest('tr[data-gcat]'); const corpo = linha && linha.parentElement;
+  if (!linha || !corpo) return;
+  const linhas = () => [...corpo.querySelectorAll('tr[data-gcat]')];
+  const ordemInicial = linhas().map(tr => tr.dataset.gcat).join(',');
+  const nome = (linha.querySelector('td.col-fixed input[type=text]') || {}).value || '';
+  const fantasma = document.createElement('div'); fantasma.className = 'gastos-fantasma'; fantasma.textContent = '⠿  ' + nome;
+  document.body.appendChild(fantasma);
+  const posicionar = e => { fantasma.style.left = (e.clientX + 12) + 'px'; fantasma.style.top = (e.clientY - 16) + 'px'; };
+  posicionar(ev);
+  linha.classList.add('gastos-arrastando'); document.body.classList.add('arrastando-gasto');
+  let ultimoY = ev.clientY, rolagem = null;
+  function mover(e){
+    ultimoY = e.clientY; posicionar(e);
+    const alvo = document.elementFromPoint(e.clientX, e.clientY);
+    let sobre = alvo && alvo.closest ? alvo.closest('tr[data-gcat]') : null;
+    if (!sobre || sobre.parentElement !== corpo) {
+      // fora da tabela (ou na faixa de totais): encaixa no começo ou no fim pela altura
+      const ls = linhas(); if (!ls.length) return;
+      const r0 = ls[0].getBoundingClientRect(), r1 = ls[ls.length - 1].getBoundingClientRect();
+      if (e.clientY < r0.top) sobre = ls[0]; else if (e.clientY > r1.bottom) sobre = ls[ls.length - 1]; else return;
+    }
+    if (sobre === linha) return;
+    const ls = linhas();
+    if (ls.indexOf(sobre) > ls.indexOf(linha)) sobre.after(linha); else sobre.before(linha);
+  }
+  function rolar(){
+    const margem = 70, h = window.innerHeight;
+    if (ultimoY < margem) window.scrollBy(0, -14); else if (ultimoY > h - margem) window.scrollBy(0, 14);
+    const main = document.querySelector('.main');
+    if (main && main.scrollHeight > main.clientHeight) { if (ultimoY < margem) main.scrollTop -= 14; else if (ultimoY > h - margem) main.scrollTop += 14; }
+    rolagem = requestAnimationFrame(rolar);
+  }
+  rolagem = requestAnimationFrame(rolar);
+  function soltar(){
+    document.removeEventListener('pointermove', mover);
+    document.removeEventListener('pointerup', soltar);
+    document.removeEventListener('pointercancel', soltar);
+    cancelAnimationFrame(rolagem);
+    fantasma.remove(); linha.classList.remove('gastos-arrastando'); document.body.classList.remove('arrastando-gasto');
+    const nova = linhas().map(tr => Number(tr.dataset.gcat));
+    if (nova.join(',') === ordemInicial) return;
+    const ano = anoAtualGastos(); const lista = db.gastos[ano] && db.gastos[ano][tipo];
+    if (!lista) return;
+    registrarHistoricoGastos();
+    const reordenada = nova.map(i => lista[i]).filter(Boolean);
+    if (reordenada.length !== lista.length) { renderGastos(); return; }
+    lista.splice(0, lista.length, ...reordenada);
+    if (typeof gastosSel !== 'undefined') gastosSel = null;
+    save(); renderGastos();
+  }
+  document.addEventListener('pointermove', mover);
+  document.addEventListener('pointerup', soltar);
+  document.addEventListener('pointercancel', soltar);
 }
 
 function removerCategoriaGasto(tipo, idx) {
@@ -20955,9 +21040,9 @@ const ASSIST_BASE = [
 { id: 'apresentacoes', t: 'Como uso a aba Apresentações?', k: 'apresentar pdf, apresentar para o cliente, apresentacoes, slides, apresentar pdf, tela cheia, montar apresentacao',
   r: 'Em **Apresentações** você:\n- monta **Slides** (com fotos, gráficos e desenhos) e apresenta em tela cheia;\n- apresenta **PDFs** página a página;\n- escreve **Notas** à mão.\nNa hora de apresentar, o **✏️** liga as canetas para riscar o slide ou o PDF.\nTudo fica guardado **só neste aparelho**. Use **Cópia de segurança** para levar a outro aparelho ou se proteger se o navegador for limpo.', aba: 'apresentacoes' },
 { id: 'informacoes', t: 'Como publico um comunicado para a equipe?', k: 'informacoes, mural, comunicado, publicar aviso, arquivos para equipe, nova publicacao',
-  r: '1. Vá em **Informações & Arquivos**.\n2. Toque em **+ Nova Publicação**.\n3. Escreva título, texto, link (se tiver) e anexe o arquivo.\n4. Toque em **Publicar no Mural**.\nQuem organiza o mural pode **arrastar** as publicações pela alça ⠿ para mudar a ordem.', aba: 'informacoes' },
+  r: '1. Vá em **Informações & Arquivos**.\n2. Toque em **+ Nova Publicação**.\n3. Escreva título, texto, link (se tiver) e anexe o arquivo.\n4. Toque em **Publicar no Mural**.\nQuem organiza o mural pode **arrastar** as publicações pela alça ⠿ para mudar a ordem e colorir cada quadro com uma cor clara no **🎨** (para distinguir os avisos).', aba: 'informacoes' },
 { id: 'gastos', t: 'Como controlo meus gastos pessoais?', k: 'gastos, despesas, receitas, financas pessoais, controle financeiro, saldo',
-  r: 'Na aba **Gastos** ficam as suas receitas e despesas mês a mês, como numa planilha: edite qualquer valor direto na tabela e crie categorias (+ Categoria). As setinhas **▲ ▼** ao lado do nome sobem e descem a categoria na lista. **🔗 Importar Comissões** traz as comissões recebidas; há também o comparativo entre anos e a exportação para Excel.', aba: 'gastos' },
+  r: 'Na aba **Gastos** ficam as suas receitas e despesas mês a mês, como numa planilha: edite qualquer valor direto na tabela e crie categorias (+ Categoria). Para mudar a ordem, segure os **6 pontinhos ⠿** ao lado do nome e arraste a categoria para cima ou para baixo. **🔗 Importar Comissões** traz as comissões recebidas; há também o comparativo entre anos e a exportação para Excel.', aba: 'gastos' },
 { id: 'consultores_vendas', t: 'Para que serve Consultores & Vendas?', k: 'consultores e vendas, consultor externo, lancar venda de outro, vendedor sem acesso, cadastrar consultor',
   r: 'Para lançar vendas de consultores que **não usam o CRM**:\n1. **+ Cadastrar Consultor** (nome e contato).\n2. **+ Lançar Venda** (cliente, segmento, modalidade, grupo, cota, crédito e data).\nCada venda entra no Semáforo, no Dashboard e na Comissão. Dá também para **importar vendas** de planilha.', aba: 'consultoresVendas' },
 
