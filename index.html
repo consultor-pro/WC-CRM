@@ -516,20 +516,24 @@ body.tour-active { overflow: hidden; }
 .info-card-compacto:has(.info-thumb) .info-resumo { display: none; }
 .info-card-compacto .info-titulo, .info-card-compacto > small { flex-shrink: 0; }
 /* cores claras para distinguir os quadros */
-.info-card.info-cor-amarelo { background: #fefce8; border-color: #fde68a; }
-.info-card.info-cor-verde { background: #f0fdf4; border-color: #bbf7d0; }
-.info-card.info-cor-azul { background: #eff6ff; border-color: #bfdbfe; }
-.info-card.info-cor-rosa { background: #fdf2f8; border-color: #fbcfe8; }
-.info-card.info-cor-roxo { background: #f5f3ff; border-color: #ddd6fe; }
-.info-card.info-cor-laranja { background: #fff7ed; border-color: #fed7aa; }
-.info-card.info-cor-cinza { background: #f1f5f9; border-color: #cbd5e1; }
-[data-theme="dark"] .info-card.info-cor-amarelo { background: #2e2a14; border-color: #5c5222; }
-[data-theme="dark"] .info-card.info-cor-verde { background: #14291d; border-color: #24513a; }
-[data-theme="dark"] .info-card.info-cor-azul { background: #152238; border-color: #27406b; }
-[data-theme="dark"] .info-card.info-cor-rosa { background: #2d1726; border-color: #5a2b4a; }
-[data-theme="dark"] .info-card.info-cor-roxo { background: #221b38; border-color: #43356e; }
-[data-theme="dark"] .info-card.info-cor-laranja { background: #2e1f12; border-color: #5f3f20; }
-[data-theme="dark"] .info-card.info-cor-cinza { background: #1f2630; border-color: #3a4655; }
+.info-card.info-cor-amarelo { background: #fdf3b0; border-color: #facc15; }
+.info-card.info-cor-verde { background: #d3f5df; border-color: #4ade80; }
+.info-card.info-cor-azul { background: #d6e6fd; border-color: #60a5fa; }
+.info-card.info-cor-rosa { background: #fadbea; border-color: #f472b6; }
+.info-card.info-cor-roxo { background: #e4defd; border-color: #a78bfa; }
+.info-card.info-cor-laranja { background: #fde2c4; border-color: #fb923c; }
+.info-card.info-cor-cinza { background: #e2e8f0; border-color: #94a3b8; }
+[data-theme="dark"] .info-card.info-cor-amarelo { background: #3d3614; border-color: #7a6a1c; }
+[data-theme="dark"] .info-card.info-cor-verde { background: #16351f; border-color: #2f7a4a; }
+[data-theme="dark"] .info-card.info-cor-azul { background: #172b4a; border-color: #3461a8; }
+[data-theme="dark"] .info-card.info-cor-rosa { background: #3a1a30; border-color: #8a3a6e; }
+[data-theme="dark"] .info-card.info-cor-roxo { background: #2a2148; border-color: #5b4aa3; }
+[data-theme="dark"] .info-card.info-cor-laranja { background: #3d2614; border-color: #8a5424; }
+[data-theme="dark"] .info-card.info-cor-cinza { background: #26303c; border-color: #4f5f73; }
+[data-theme="dark"] .info-card-compacto .info-titulo { color: #e6edf3; }
+[data-theme="dark"] .info-card-compacto .info-resumo { color: #c3ccd6; }
+[data-theme="dark"] .info-card-compacto .muted, [data-theme="dark"] .info-card-compacto .info-rodape { color: #9aa7b5; }
+[data-theme="dark"] .info-alca, [data-theme="dark"] .info-pintar { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.16); color: #c3ccd6; }
 .info-paleta { position: fixed; z-index: 10000; display: flex; gap: 6px; flex-wrap: wrap; max-width: 230px; padding: 10px; background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: 12px; box-shadow: 0 12px 30px rgba(15,23,42,.22); }
 .info-paleta button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid rgba(15,23,42,.15); cursor: pointer; padding: 0; font-size: 13px; }
 .info-paleta button.sel { outline: 3px solid #2563eb; outline-offset: 1px; }
@@ -8318,7 +8322,7 @@ function hierOrganizaInformacoes(){
   return isManagerRole(currentUser.cargo) || hierLideraAlgo(currentUser) || hierDonoVeTudo() || !hierTemLider(currentUser.id);
 }
 // Cores claras para distinguir os quadros do mural (quem organiza as Informações escolhe)
-const INFO_CORES = { amarelo: ['#fef08a', 'Amarelo'], verde: ['#bbf7d0', 'Verde'], azul: ['#bfdbfe', 'Azul'], rosa: ['#fbcfe8', 'Rosa'], roxo: ['#ddd6fe', 'Roxo'], laranja: ['#fed7aa', 'Laranja'], cinza: ['#e2e8f0', 'Cinza'] };
+const INFO_CORES = { amarelo: ['#fdf3b0', 'Amarelo'], verde: ['#d3f5df', 'Verde'], azul: ['#d6e6fd', 'Azul'], rosa: ['#fadbea', 'Rosa'], roxo: ['#e4defd', 'Roxo'], laranja: ['#fde2c4', 'Laranja'], cinza: ['#e2e8f0', 'Cinza'] };
 function abrirPaletaInfo(ev, id){
   ev.stopPropagation(); ev.preventDefault();
   const velha = document.getElementById('infoPaleta'); if (velha) { const mesma = velha.dataset.id === id; velha.remove(); if (mesma) return; }
