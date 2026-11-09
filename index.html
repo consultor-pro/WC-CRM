@@ -1021,6 +1021,13 @@ table:not(.excel-table) td .user-avatar { width: 22px !important; height: 22px !
   #semaforoTabela tbody td.sm-sec .sm-cel { max-width: 100%; display: flex; }
   #semaforoTabela tbody td[colspan] { grid-column: 1 / -1; grid-row: auto; white-space: normal; }
 }
+.gastos-mover { display: inline-flex; flex-direction: column; flex: none; }
+.gastos-mover button { border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; font-size: 9px; line-height: 1; width: 22px; height: 14px; padding: 0; cursor: pointer; }
+.gastos-mover button:first-child { border-radius: 4px 4px 0 0; border-bottom: 0; }
+.gastos-mover button:last-child { border-radius: 0 0 4px 4px; }
+.gastos-mover button:hover:not(:disabled) { background: #e2e8f0; color: #0f172a; }
+.gastos-mover button:disabled { opacity: .35; cursor: default; }
+[data-theme="dark"] .gastos-mover button { background: #1f2a37; border-color: #334155; color: #aab4c0; }
 </style>
 </head>
 <body>
@@ -14942,8 +14949,14 @@ function renderGastos() {
       }
       rows += `<tr${contaNoTotal ? '' : ' style="opacity:.7"'}>
         <td class="col-fixed" style="padding:2px 6px">
-          <input type="text" value="${esc(cat.nome)}" style="width:180px;padding:3px 6px;font-size:12px;font-weight:700;border:1px solid #cbd5e1;border-radius:4px"
-            onchange="renomearCategoriaGasto('${tipo}', ${idx}, this.value)">
+          <div style="display:flex;align-items:center;gap:3px">
+            <span class="gastos-mover">
+              <button type="button" title="Subir categoria" aria-label="Subir ${esc(cat.nome)}" ${idx === 0 ? 'disabled' : ''} onclick="moverCategoriaGasto('${tipo}', ${idx}, -1)">▲</button>
+              <button type="button" title="Descer categoria" aria-label="Descer ${esc(cat.nome)}" ${idx === categorias.length - 1 ? 'disabled' : ''} onclick="moverCategoriaGasto('${tipo}', ${idx}, 1)">▼</button>
+            </span>
+            <input type="text" value="${esc(cat.nome)}" style="width:150px;padding:3px 6px;font-size:12px;font-weight:700;border:1px solid #cbd5e1;border-radius:4px"
+              onchange="renomearCategoriaGasto('${tipo}', ${idx}, this.value)">
+          </div>
         </td>
         ${cells}
         <td style="font-weight:800;text-align:right;font-size:12px;padding:2px 6px">${fmtGasto(totalCat)}</td>
@@ -15630,6 +15643,23 @@ function adicionarCategoriaGasto(tipo) {
   db.gastos[ano][tipo].push({ nome: nome.trim(), valores: new Array(12).fill(0), pagos: new Array(12).fill(false) });
   save();
   renderGastos();
+}
+
+// Sobe (dir = -1) ou desce (dir = 1) a categoria na lista do ano aberto.
+function moverCategoriaGasto(tipo, idx, dir) {
+  const ano = anoAtualGastos();
+  const lista = db.gastos[ano] && db.gastos[ano][tipo];
+  const alvo = idx + dir;
+  if (!lista || !lista[idx] || alvo < 0 || alvo >= lista.length) return;
+  registrarHistoricoGastos();
+  [lista[idx], lista[alvo]] = [lista[alvo], lista[idx]];
+  if (typeof gastosSel !== 'undefined') gastosSel = null;
+  save();
+  renderGastos();
+  // deixa o foco na mesma seta, na nova posição, para dar para apertar várias vezes seguidas
+  const tab = document.getElementById(tipo === 'receitas' ? 'gastosTabelaReceitas' : 'gastosTabelaDespesas');
+  const bt = tab && tab.querySelector(`button[onclick="moverCategoriaGasto('${tipo}', ${alvo}, ${dir})"]`);
+  if (bt && !bt.disabled) bt.focus();
 }
 
 function removerCategoriaGasto(tipo, idx) {
@@ -20927,7 +20957,7 @@ const ASSIST_BASE = [
 { id: 'informacoes', t: 'Como publico um comunicado para a equipe?', k: 'informacoes, mural, comunicado, publicar aviso, arquivos para equipe, nova publicacao',
   r: '1. Vá em **Informações & Arquivos**.\n2. Toque em **+ Nova Publicação**.\n3. Escreva título, texto, link (se tiver) e anexe o arquivo.\n4. Toque em **Publicar no Mural**.\nQuem organiza o mural pode **arrastar** as publicações pela alça ⠿ para mudar a ordem.', aba: 'informacoes' },
 { id: 'gastos', t: 'Como controlo meus gastos pessoais?', k: 'gastos, despesas, receitas, financas pessoais, controle financeiro, saldo',
-  r: 'Na aba **Gastos** ficam as suas receitas e despesas mês a mês, como numa planilha: edite qualquer valor direto na tabela e crie categorias (+ Categoria). **🔗 Importar Comissões** traz as comissões recebidas; há também o comparativo entre anos e a exportação para Excel.', aba: 'gastos' },
+  r: 'Na aba **Gastos** ficam as suas receitas e despesas mês a mês, como numa planilha: edite qualquer valor direto na tabela e crie categorias (+ Categoria). As setinhas **▲ ▼** ao lado do nome sobem e descem a categoria na lista. **🔗 Importar Comissões** traz as comissões recebidas; há também o comparativo entre anos e a exportação para Excel.', aba: 'gastos' },
 { id: 'consultores_vendas', t: 'Para que serve Consultores & Vendas?', k: 'consultores e vendas, consultor externo, lancar venda de outro, vendedor sem acesso, cadastrar consultor',
   r: 'Para lançar vendas de consultores que **não usam o CRM**:\n1. **+ Cadastrar Consultor** (nome e contato).\n2. **+ Lançar Venda** (cliente, segmento, modalidade, grupo, cota, crédito e data).\nCada venda entra no Semáforo, no Dashboard e na Comissão. Dá também para **importar vendas** de planilha.', aba: 'consultoresVendas' },
 
