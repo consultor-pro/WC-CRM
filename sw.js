@@ -2,9 +2,9 @@
 // Guarda uma cópia do app no dispositivo para ele abrir mesmo sem internet.
 //
 // IMPORTANTE: toda vez que você atualizar o index.html e subir uma nova
-// versão, mude o número abaixo (ex: 'elo-crm-v4'). Isso força o navegador
+// versão, mude o número abaixo (ex: 'elo-crm-v104'). Isso força o navegador
 // a baixar a versão nova em vez de continuar usando a cópia antiga salva.
-const CACHE_NAME = 'elo-crm-v103';
+const CACHE_NAME = 'elo-crm-v104';
 
 const ARQUIVOS_ESSENCIAIS = [
   './',
@@ -61,4 +61,29 @@ self.addEventListener('fetch', (event) => {
         })
       )
   );
+});
+
+// ===== NOTIFICAÇÕES (mesmo com o CRM fechado) =====
+self.addEventListener('push', (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = { corpo: event.data ? event.data.text() : '' }; }
+  event.waitUntil(self.registration.showNotification(d.titulo || 'CRM', {
+    body: d.corpo || '',
+    icon: './icon-192.png',
+    badge: './icon-192.png',
+    tag: d.tag || undefined,
+    data: { url: d.url || './' }
+  }));
+});
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const alvo = new URL((event.notification.data && event.notification.data.url) || './', self.registration.scope).href;
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((lista) => {
+    for (const c of lista) {
+      if (c.url.startsWith(self.registration.scope)) {
+        return c.focus().then((cf) => (cf && 'navigate' in cf ? cf.navigate(alvo) : null)).catch(() => null);
+      }
+    }
+    return self.clients.openWindow(alvo);
+  }));
 });

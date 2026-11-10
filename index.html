@@ -1077,6 +1077,15 @@ tr.gastos-arrastando td.col-fixed { outline: 2px dashed var(--red, #C8102E); out
 body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; user-select: none !important; }
 [data-theme="dark"] .gastos-alca:hover { background: #1f2a37; color: #e6edf3; }
 [data-theme="dark"] tr.gastos-arrastando td { background: #3a1d22 !important; }
+
+#avisosCard .avisos-status { font-size: 13px; font-weight: 700; padding: 8px 12px; border-radius: 10px; background: var(--bg, #f1f5f9); margin-bottom: 10px; }
+#avisosCard .avisos-status.ok { background: rgba(22,163,74,.10); color: #15803d; }
+#avisosCard .avisos-status.erro { background: rgba(200,16,46,.08); color: #b91c1c; }
+#avisosCard .avisos-prefs { display: grid; gap: 6px; font-size: 13.5px; }
+#avisosCard .avisos-prefs label { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+#avisosCard .avisos-prefs input { width: 18px; height: 18px; margin: 0; }
+[data-theme="dark"] #avisosCard .avisos-status.ok { color: #5fd39a; }
+[data-theme="dark"] #avisosCard .avisos-status.erro { color: #ff8a8a; }
 </style>
 </head>
 <body>
@@ -2410,6 +2419,26 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <div class="field"><label>Subtítulo</label><input id="cfgCrmSub"></div>
       <button class="btn primary" onclick="saveCrmBranding()">Salvar Identidade</button>
     </div>
+  </div>
+
+  <div class="card" style="margin-top:20px" id="avisosCard">
+    <h2>🔔 Notificações no celular</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:10px">
+      Receba um aviso no celular toda manhã com os aniversariantes do dia e na hora em que uma venda for lançada,
+      mesmo com o CRM fechado. Ative em cada aparelho que você usa (celular, computador).
+    </p>
+    <div id="avisosStatus" class="avisos-status">Verificando este aparelho…</div>
+    <div class="avisos-prefs">
+      <label><input type="checkbox" id="avisoNiver" checked> 🎂 Aniversariantes do dia (às 8h)</label>
+      <label><input type="checkbox" id="avisoVendas" checked> 🎉 Vendas novas</label>
+      <label><input type="checkbox" id="avisoEsconder"> 🙈 Esconder nomes e valores na tela bloqueada</label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn primary" id="avisosAtivar" onclick="avisosAtivar()">🔔 Ativar neste aparelho</button>
+      <button class="btn" id="avisosTestar" onclick="avisosTestar()">Enviar teste</button>
+      <button class="btn" id="avisosDesativar" onclick="avisosDesativar()">Desativar neste aparelho</button>
+    </div>
+    <small class="muted" id="avisosDica" style="display:block;margin-top:8px"></small>
   </div>
 
   <div class="card" style="margin-top:20px">
@@ -20830,7 +20859,7 @@ const ASSIST_BASE = [
   r: 'Use a **busca do topo** (a lupa 🔍), em qualquer tela. Ela procura leads, vendas (cliente, grupo e cota) e pessoas pelo nome ou telefone. No computador, o atalho é **Ctrl+K**.' },
 { id: 'tema', t: 'Como deixar o CRM no modo escuro?', k: 'tema escuro, modo noturno, dark, claro, mudar cor da tela',
   r: 'Toque no botão da **lua** (🌙), no topo ou no menu lateral, para alternar entre o tema claro e o escuro.' },
-{ id: 'notif', t: 'O que são as notificações (sininho)?', k: 'notificacoes, sino, avisos, alertas, central de notificacoes, limpar avisos',
+{ id: 'notif', t: 'O que são as notificações (sininho)?', k: 'sino, avisos, alertas, central de notificacoes, limpar avisos',
   r: 'O **🔔** do topo mostra avisos importantes, como aniversários e novidades da equipe. Dentro dele, **Limpar Histórico** apaga os avisos antigos.' },
 { id: 'instalar', t: 'Como instalar o CRM no celular como aplicativo?', k: 'instalar app, aplicativo, tela inicial, pwa, atalho no celular, baixar o app',
   r: 'O CRM funciona como aplicativo:\n- **Android (Chrome)**: menu ⋮ › **Instalar app** (ou "Adicionar à tela inicial").\n- **iPhone (Safari)**: botão Compartilhar › **Adicionar à Tela de Início**.\nDepois é só abrir pelo ícone, como um app.' },
@@ -20844,6 +20873,8 @@ const ASSIST_BASE = [
   r: '1. Peça ao seu **líder** (ou à administração) um **código de acesso novo**. Ele gera em Equipe › **Meta e senha** › Gerar código de acesso.\n2. Na tela de entrada, toque em **Primeiro acesso ou senha nova**.\n3. Digite seu e-mail, o código e a senha nova.\nSeus dados continuam todos lá.' },
 { id: 'on_gerar_codigo', so: 'lider', t: 'Como gero um código de acesso para alguém da equipe?', k: 'gerar codigo, codigo para membro, liberar acesso, membro esqueceu senha, reenviar acesso, codigo venceu',
   r: '1. Vá em **Equipe & Hierarquia**.\n2. Na linha da pessoa, toque em **Meta e senha**.\n3. Toque em **Gerar código de acesso**.\n4. Envie o código pelo botão do WhatsApp que aparece.\nA pessoa usa o código em "Primeiro acesso ou senha nova". O código vale 7 dias.', aba: 'usuarios' },
+{ id: 'notificacoes_celular', t: 'Como recebo notificações no celular (aniversários e vendas)?', k: 'notificacao no celular, notificacoes, push, aviso no celular, avisar aniversario, aviso de venda, venda nova, app fechado, alerta, sino no celular, iphone notificacao',
+  r: 'Em **Configurações** › **🔔 Notificações no celular**, toque em **Ativar neste aparelho** e escolha **Permitir**. Depois toque em **Enviar teste**: o aviso chega em até 1 minuto.\n- **🎂 Aniversariantes**: todo dia às 8h, com os clientes e as pessoas da equipe que fazem aniversário.\n- **🎉 Vendas novas**: na hora em que uma venda é lançada.\n- **🙈 Esconder nomes**: a tela bloqueada mostra só "Você tem 1 aniversariante hoje".\nFunciona mesmo com o CRM fechado. Ative em cada aparelho. No **iPhone**, instale o CRM antes (Compartilhar › Adicionar à Tela de Início) e ative abrindo pelo ícone.', aba: 'configuracoes' },
 { id: 'trocar_senha', t: 'Como troco a minha senha?', k: 'mudar senha, trocar senha, nova senha, alterar senha',
   r: '1. Vá em **Configurações**.\n2. No bloco de senha, digite a **nova senha** e confirme.\n3. Toque em **Atualizar Senha**.', aba: 'configuracoes' },
 { id: 'local_esqueci', so: 'local', t: 'Esqueci minha senha (CRM deste aparelho)', k: 'esqueci a senha, codigo de recuperacao, recuperar senha, nao consigo entrar',
@@ -24933,6 +24964,154 @@ ${corpo}
   // depois da Assunção de Dívida, para a pílula ficar ao lado dela
   const esperar = () => setTimeout(montar, 0);
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', esperar); else esperar();
+})();
+</script>
+<script id="avisosCelularScript">
+// ===== NOTIFICAÇÕES NO CELULAR (Web Push) =====
+// O aparelho se inscreve no serviço de notificações do próprio navegador (Google, Apple, Mozilla) e a
+// inscrição fica guardada na nuvem. A nuvem manda os avisos (aniversariantes às 8h e vendas novas)
+// mesmo com o CRM fechado — o service worker (sw.js) mostra a notificação.
+(function(){
+  const VAPID_PUBLICA = 'BJv7nhvcMOux7DFSq-duQ-gWXHQafHoW3_IFn_XH2r2BY8P3y7dgi9Ej4EVFjhpSOcJcuZg5kiseHH02CvUDHKU';
+  const CHAVE_PREFS = 'crm_avisos_prefs_' + (typeof EQUIPE_ID !== 'undefined' ? EQUIPE_ID : '');
+  const MSG = {
+    sem_login: 'Entre na nuvem primeiro (Configurações › Nuvem segura) e tente de novo.',
+    sem_nuvem: 'Este CRM não está ligado à nuvem, então não consegue mandar notificações.',
+    sem_rede: 'Sem internet agora. Tente de novo quando a conexão voltar.',
+    nao_instalado: 'A parte da nuvem das notificações ainda não foi instalada. Fale com quem administra o CRM.',
+    sem_aparelho: 'Ative as notificações neste aparelho antes de enviar o teste.',
+    falha: 'Não deu certo agora. Tente de novo em instantes.'
+  };
+
+  async function chamar(nome, corpo){
+    if (typeof supabaseClient === 'undefined' || !supabaseClient) return { erro: 'sem_nuvem' };
+    if (!(await eloNuvemSessao())) return { erro: 'sem_login' };
+    try {
+      const { data, error } = await supabaseClient.rpc(nome, corpo);
+      if (error) return { erro: error.code === 'PGRST202' || /could not find the function/i.test(error.message || '') ? 'nao_instalado' : 'falha', msg: error.message };
+      return data || {};
+    } catch (e) { return { erro: 'sem_rede' }; }
+  }
+  const NOME_INSCREVER = 'crm_avisos_inscrever', testarArgs = () => ['crm_avisos_testar', { p_equipe: EQUIPE_ID_NUVEM }];
+  const extra = () => ({ equipe: EQUIPE_ID_NUVEM });
+  const $ = id => document.getElementById(id);
+  const suportado = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  const ehIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const instalado = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  function prefs(){
+    try { const p = JSON.parse(localStorage.getItem(CHAVE_PREFS) || 'null'); if (p) return { niver: p.niver !== false, vendas: p.vendas !== false, esconder: !!p.esconder }; } catch (e) {}
+    return { niver: true, vendas: true, esconder: false };
+  }
+  function gravarPrefs(p){ try { localStorage.setItem(CHAVE_PREFS, JSON.stringify(p)); } catch (e) {} }
+  function aparelho(){
+    const ua = navigator.userAgent;
+    const so = /android/i.test(ua) ? 'Android' : ehIOS() ? 'iPhone/iPad' : /windows/i.test(ua) ? 'Windows' : /mac os/i.test(ua) ? 'Mac' : /linux/i.test(ua) ? 'Linux' : 'Aparelho';
+    const nav = /edg\//i.test(ua) ? 'Edge' : /chrome|crios/i.test(ua) ? 'Chrome' : /firefox|fxios/i.test(ua) ? 'Firefox' : /safari/i.test(ua) ? 'Safari' : 'navegador';
+    return so + ' · ' + nav;
+  }
+  function chaveBytes(b64){
+    const s = b64.replace(/-/g, '+').replace(/_/g, '/'); const bin = atob(s + '==='.slice((s.length + 3) % 4));
+    return Uint8Array.from(bin, c => c.charCodeAt(0));
+  }
+  async function registro(){
+    if (!suportado()) return null;
+    try { return await Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), 8000))]); } catch (e) { return null; }
+  }
+  function status(txt, tipo){ const el = $('avisosStatus'); if (!el) return; el.textContent = txt; el.className = 'avisos-status' + (tipo ? ' ' + tipo : ''); }
+  function botoes(ativo){
+    if ($('avisosAtivar')) $('avisosAtivar').style.display = ativo ? 'none' : '';
+    if ($('avisosTestar')) $('avisosTestar').style.display = ativo ? '' : 'none';
+    if ($('avisosDesativar')) $('avisosDesativar').style.display = ativo ? '' : 'none';
+  }
+  async function inscrever(sub, silencioso){
+    const j = sub.toJSON();
+    const r = await chamar(NOME_INSCREVER, { p: Object.assign({ endpoint: j.endpoint, p256dh: j.keys && j.keys.p256dh, auth: j.keys && j.keys.auth, prefs: prefs(), aparelho: aparelho() }, extra()) });
+    if (r && r.ok) return true;
+    if (!silencioso) status(MSG[(r && r.erro) || 'falha'] || MSG.falha, 'erro');
+    return false;
+  }
+
+  window.avisosAtualizarCard = async function(){
+    if (!$('avisosCard')) return;
+    const p = prefs();
+    $('avisoNiver').checked = p.niver; $('avisoVendas').checked = p.vendas; $('avisoEsconder').checked = p.esconder;
+    const dica = $('avisosDica');
+    dica.textContent = ehIOS() && !instalado()
+      ? 'No iPhone, as notificações só funcionam com o CRM instalado: toque em Compartilhar › "Adicionar à Tela de Início" e abra o CRM pelo ícone.'
+      : 'Os avisos chegam em até 1 minuto. Se não aparecer nada, confira se as notificações deste site estão liberadas nas configurações do celular.';
+    if (!suportado()) { status('Este navegador não aceita notificações. No celular, use o Chrome (Android) ou o CRM instalado na tela de início (iPhone).', 'erro'); botoes(false); $('avisosAtivar').style.display = 'none'; return; }
+    if (Notification.permission === 'denied') { status('As notificações deste site estão bloqueadas no navegador. Libere nas configurações do site e tente de novo.', 'erro'); botoes(false); return; }
+    const reg = await registro(); const sub = reg && await reg.pushManager.getSubscription().catch(() => null);
+    if (sub && Notification.permission === 'granted') { status('✓ Ativo neste aparelho (' + aparelho() + ')', 'ok'); botoes(true); }
+    else { status('Desativado neste aparelho.'); botoes(false); }
+  };
+
+  window.avisosAtivar = async function(){
+    if (!suportado()) return avisosAtualizarCard();
+    if (ehIOS() && !instalado()) { status('Primeiro instale o CRM na tela de início (Compartilhar › Adicionar à Tela de Início) e abra por lá.', 'erro'); return; }
+    status('Pedindo permissão…');
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { status('Você não liberou as notificações. Toque em Ativar de novo e escolha "Permitir".', 'erro'); return; }
+    const reg = await registro(); if (!reg) { status('O CRM ainda está carregando. Recarregue a página e tente de novo.', 'erro'); return; }
+    let sub = await reg.pushManager.getSubscription().catch(() => null);
+    try {
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chaveBytes(VAPID_PUBLICA) });
+    } catch (e) {
+      // inscrição antiga com outra chave: troca
+      try { if (sub) await sub.unsubscribe(); sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: chaveBytes(VAPID_PUBLICA) }); }
+      catch (e2) { status('O navegador não deixou ativar as notificações (' + (e2.message || e2) + ').', 'erro'); return; }
+    }
+    status('Guardando este aparelho na nuvem…');
+    if (await inscrever(sub)) { try { localStorage.setItem(CHAVE_PREFS + '_dia', new Date().toDateString()); } catch (e) {} await avisosAtualizarCard(); if (typeof showToast === 'function') showToast('Notificações ativadas neste aparelho! Toque em "Enviar teste" para conferir.'); }
+  };
+
+  window.avisosTestar = async function(){
+    const [nome, args] = testarArgs();
+    const r = await chamar(nome, args);
+    if (r && r.ok) { status('Teste enviado! A notificação chega em até 1 minuto.', 'ok'); setTimeout(avisosAtualizarCard, 70000); }
+    else status(MSG[(r && r.erro) || 'falha'] || MSG.falha, 'erro');
+  };
+
+  window.avisosDesativar = async function(){
+    const reg = await registro(); const sub = reg && await reg.pushManager.getSubscription().catch(() => null);
+    if (sub) { const j = sub.toJSON(); await chamar(NOME_INSCREVER, { p: Object.assign({ acao: 'sair', endpoint: j.endpoint }, extra()) }); await sub.unsubscribe().catch(() => {}); }
+    await avisosAtualizarCard();
+    if (typeof showToast === 'function') showToast('Notificações desativadas neste aparelho.');
+  };
+
+  function aoMudarPref(){
+    gravarPrefs({ niver: $('avisoNiver').checked, vendas: $('avisoVendas').checked, esconder: $('avisoEsconder').checked });
+    registro().then(reg => reg && reg.pushManager.getSubscription()).then(sub => { if (sub && Notification.permission === 'granted') inscrever(sub); }).catch(() => {});
+  }
+  ['avisoNiver', 'avisoVendas', 'avisoEsconder'].forEach(id => { const el = $(id); if (el) el.addEventListener('change', aoMudarPref); });
+
+  // uma vez por dia, renova a inscrição em silêncio (o navegador às vezes troca o endereço do aparelho)
+  setTimeout(async () => {
+    try {
+      if (!suportado() || Notification.permission !== 'granted') return;
+      const hoje = new Date().toDateString(); if (localStorage.getItem(CHAVE_PREFS + '_dia') === hoje) return;
+      const reg = await registro(); const sub = reg && await reg.pushManager.getSubscription(); if (!sub) return;
+      if (await inscrever(sub, true)) localStorage.setItem(CHAVE_PREFS + '_dia', hoje);
+    } catch (e) {}
+  }, 20000);
+
+  // tocar na notificação abre o CRM na tela certa (./#aniversarios, ./#comissoes)
+  function irParaHash(){
+    const id = (location.hash || '').slice(1);
+    if (!id || !/^[a-zA-Z]+$/.test(id)) return true;
+    const pag = document.getElementById(id);
+    if (!pag || !pag.classList.contains('page') || typeof show !== 'function' || typeof currentUser === 'undefined' || !currentUser) return false;
+    show(id, document.querySelector(`.nav button[onclick*="show('${id}'"]`));
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    return true;
+  }
+  window.addEventListener('hashchange', irParaHash);
+  let tentativas = 0; const t = setInterval(() => { if (irParaHash() || ++tentativas > 30) clearInterval(t); }, 1000);
+
+  // o quadro de Configurações se atualiza quando a aba abre
+  const mostrarOriginal = window.show;
+  if (typeof mostrarOriginal === 'function') window.show = function(id){ const r = mostrarOriginal.apply(this, arguments); if (id === 'configuracoes') setTimeout(avisosAtualizarCard, 50); return r; };
+  setTimeout(() => { if ($('avisosCard')) avisosAtualizarCard(); }, 1500);
 })();
 </script>
 <script id="mapaTudoScript">
