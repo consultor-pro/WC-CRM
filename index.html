@@ -1086,6 +1086,27 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 #avisosCard .avisos-prefs input { width: 18px; height: 18px; margin: 0; }
 [data-theme="dark"] #avisosCard .avisos-status.ok { color: #5fd39a; }
 [data-theme="dark"] #avisosCard .avisos-status.erro { color: #ff8a8a; }
+
+.cm-nav { gap: 6px; flex-wrap: nowrap; }
+.cm-nav .btn { padding: 6px 12px; font-size: 16px; line-height: 1; }
+.cm-nav input[type=month] { margin: 0; padding: 6px 8px; max-width: 160px; }
+.cm-barras { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; align-items: end; height: 74px; margin: 4px 0 12px; }
+.cm-barra { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; cursor: pointer; border-radius: 6px; padding: 2px 0; }
+.cm-barra:hover { background: rgba(100,116,139,.08); }
+.cm-barra i { display: block; width: 70%; max-width: 26px; min-height: 3px; border-radius: 4px 4px 0 0; background: #cbd5e1; }
+.cm-barra.tem i { background: #16a34a; }
+.cm-barra.atual i { background: #2563eb; }
+.cm-barra b { font-size: 11px; font-weight: 800; line-height: 1.2; }
+.cm-barra small { font-size: 10px; color: var(--muted, #64748b); text-transform: capitalize; }
+.cm-linha { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 4px; border-top: 1px solid var(--line, #e2e8f0); }
+.cm-linha:first-child { border-top: 0; }
+.cm-linha.clicavel { cursor: pointer; }
+.cm-linha.clicavel:hover { background: rgba(100,116,139,.06); }
+.cm-nome { font-weight: 800; font-size: 14.5px; }
+.cm-valor { font-weight: 800; color: var(--green, #16a34a); text-align: right; white-space: nowrap; }
+.cm-info { font-size: 12.5px; color: var(--muted, #64748b); }
+.cm-data { font-size: 12px; color: var(--muted, #64748b); text-align: right; white-space: nowrap; }
+.cm-vazio { padding: 14px 4px; font-size: 13px; color: var(--muted, #64748b); }
 </style>
 </head>
 <body>
@@ -1323,6 +1344,22 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     </div>
     <div class="meta-bar-track"><div class="meta-bar-fill" id="metaMensalBarra" style="width:0%"></div></div>
     <small class="muted" id="metaMensalPercentual" style="display:block;margin-top:6px">Defina uma meta mensal para acompanhar seu progresso.</small>
+  </div>
+
+  <div class="card cm-card" id="clientesMesCard" style="margin-bottom:16px">
+    <div class="between" style="flex-wrap:wrap;gap:10px;margin-bottom:10px">
+      <div>
+        <h2 style="margin:0">🏆 Clientes fechados por mês</h2>
+        <small class="muted" id="cmResumo">Quem fechou com você em cada mês.</small>
+      </div>
+      <div class="row cm-nav">
+        <button class="btn" onclick="clientesMesMudar(-1)" title="Mês anterior">‹</button>
+        <input type="month" id="cmMes" onchange="clientesMesIr(this.value)">
+        <button class="btn" onclick="clientesMesMudar(1)" title="Próximo mês">›</button>
+      </div>
+    </div>
+    <div class="cm-barras" id="cmBarras"></div>
+    <div id="cmLista"></div>
   </div>
 
 
@@ -1601,7 +1638,6 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
           <option value="last">Últimos Cadastrados</option>
           <option value="az">Ordem Alfabética (A-Z)</option>
         </select>
-        <button class="btn green" onclick="recalcularComissoes()">🔄 Recalcular Projeção</button>
       </div>
     </div>
     <div class="kpis" style="margin-top:14px">
@@ -11784,6 +11820,72 @@ function renderDashVolumeChart(salesForChart){
   </svg>`;
 }
 
+
+// ===== CLIENTES FECHADOS POR MÊS (Dashboard) =====
+// Usa as mesmas vendas que o Dashboard enxerga (respeita o filtro de consultor e a hierarquia).
+let clientesMesAtual = null;      // 'AAAA-MM'
+let clientesMesVendas = [];
+function clientesMesChave(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function clientesMesDataVenda(v){
+  const t = String(v.date || '');
+  const m = t.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+  const d = new Date(t); return isNaN(d.getTime()) ? null : d;
+}
+function clientesMesMudar(passo){
+  const [a, m] = (clientesMesAtual || clientesMesChave(new Date())).split('-').map(Number);
+  clientesMesIr(clientesMesChave(new Date(a, m - 1 + passo, 1)));
+}
+function clientesMesIr(chave){ if (!/^\d{4}-\d{2}$/.test(chave || '')) return; clientesMesAtual = chave; renderClientesMes(); }
+function renderClientesMes(vendas){
+  if (Array.isArray(vendas)) clientesMesVendas = vendas;
+  const lista = document.getElementById('cmLista'); if (!lista) return;
+  if (!clientesMesAtual) clientesMesAtual = clientesMesChave(new Date());
+  const moeda = n => (Number(n) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  const ativas = clientesMesVendas.filter(v => v && !v.cancelada).map(v => ({ v, d: clientesMesDataVenda(v) })).filter(x => x.d);
+  // agrupa por cliente dentro de cada mês
+  const porMes = {};
+  ativas.forEach(({ v, d }) => {
+    const mes = clientesMesChave(d);
+    const chave = v.leadId ? 'id:' + v.leadId : 'nome:' + String(v.lead || 'Cliente').trim().toLowerCase();
+    const grupo = (porMes[mes] = porMes[mes] || {});
+    const c = (grupo[chave] = grupo[chave] || { nome: v.lead || 'Cliente', leadId: v.leadId || null, cotas: 0, valor: 0, segmentos: new Set(), consultores: new Set(), data: d });
+    c.cotas++; c.valor += Number(v.valor) || 0;
+    if (v.segmento) c.segmentos.add(v.segmento);
+    if (v.responsavel) c.consultores.add(v.responsavel);
+    if (d > c.data) c.data = d;
+  });
+  const qtd = mes => Object.keys(porMes[mes] || {}).length;
+
+  // 12 barrinhas: o mês escolhido e os 11 anteriores
+  const [a, m] = clientesMesAtual.split('-').map(Number);
+  const meses = []; for (let k = 11; k >= 0; k--) meses.push(clientesMesChave(new Date(a, m - 1 - k, 1)));
+  const maior = Math.max(1, ...meses.map(qtd));
+  const nomeMes = (chave, longo) => { const [aa, mm] = chave.split('-').map(Number); return new Date(aa, mm - 1, 1).toLocaleDateString('pt-BR', longo ? { month: 'long', year: 'numeric' } : { month: 'short' }).replace('.', ''); };
+  document.getElementById('cmBarras').innerHTML = meses.map(mes => {
+    const n = qtd(mes);
+    return `<div class="cm-barra${n ? ' tem' : ''}${mes === clientesMesAtual ? ' atual' : ''}" onclick="clientesMesIr('${mes}')" title="${nomeMes(mes, true)}: ${n} cliente${n === 1 ? '' : 's'}">
+      <b>${n || ''}</b><i style="height:${Math.round((n / maior) * 44)}px"></i><small>${nomeMes(mes)}</small></div>`;
+  }).join('');
+  const inp = document.getElementById('cmMes'); if (inp && inp.value !== clientesMesAtual) inp.value = clientesMesAtual;
+
+  const clientes = Object.values(porMes[clientesMesAtual] || {}).sort((x, y) => y.data - x.data);
+  const totCotas = clientes.reduce((t, c) => t + c.cotas, 0), totValor = clientes.reduce((t, c) => t + c.valor, 0);
+  document.getElementById('cmResumo').textContent = clientes.length
+    ? `${nomeMes(clientesMesAtual, true)}: ${clientes.length} cliente${clientes.length === 1 ? '' : 's'} · ${totCotas} cota${totCotas === 1 ? '' : 's'} · ${moeda(totValor)}`
+    : `${nomeMes(clientesMesAtual, true)}: nenhum cliente fechado.`;
+  const eu = currentUser && currentUser.nome;
+  lista.innerHTML = clientes.length ? clientes.map(c => {
+    const lead = c.leadId && (db.leads || []).find(l => l.id === c.leadId);
+    const abre = lead && typeof openLead === 'function' && (typeof canUserAccessLead !== 'function' || canUserAccessLead(lead));
+    const outros = [...c.consultores].filter(n => n !== eu);
+    const info = [[...c.segmentos].join(', ') || 'Consórcio', c.cotas + ' cota' + (c.cotas === 1 ? '' : 's'), outros.length ? 'por ' + outros.join(', ') : ''].filter(Boolean).join(' · ');
+    return `<div class="cm-linha${abre ? ' clicavel' : ''}"${abre ? ` onclick="openLead('${esc(c.leadId)}')" title="Abrir o cadastro do cliente"` : ''}>
+      <div class="cm-nome">${esc(c.nome)}</div><div class="cm-valor">${moeda(c.valor)}</div>
+      <div class="cm-info">${esc(info)}</div><div class="cm-data">${c.data.toLocaleDateString('pt-BR')}</div></div>`;
+  }).join('') : '<div class="cm-vazio">Nenhuma venda lançada neste mês. Use ‹ › ou toque numa barrinha para ver outros meses.</div>';
+}
+
 function renderDashboard(){
   const { start, end } = getFilterDateRange();
   const canSeeGeneral = canCurrentUserViewGeneralDashboard();
@@ -11826,6 +11928,7 @@ function renderDashboard(){
   const filteredMeetings = baseMeetings.filter(m => { const d = new Date(m.date || 0); return !isNaN(d.getTime()) && d >= start && d <= end; });
   const filteredSales = baseSales.filter(s => { const d = new Date(s.date || 0); return !isNaN(d.getTime()) && d >= start && d <= end; });
   const activeSales = filteredSales.filter(s => !s.cancelada);
+  try { renderClientesMes(baseSales); } catch (e) { console.warn('clientes por mês', e); }
 
   // Cancelamentos contam no período pela DATA DO CANCELAMENTO (quando registrada em
   // "Mapa de Cotas"), não pela data original da venda -- assim o filtro Hoje/Semana/
@@ -20959,8 +21062,10 @@ const ASSIST_BASE = [
   r: 'Na planilha de **Cálculo de Comissão**, toque no **valor** da parcela e digite o certo. A parcela fica marcada com borda roxa (valor ajustado à mão).', aba: 'comissoes' },
 { id: 'comissao_imposto', t: 'Como coloco o imposto da comissão?', k: 'imposto, aliquota, liquido, desconto de imposto, valor liquido',
   r: 'Em **Cálculo de Comissão**, no cartão **Imposto sobre recebido**, digite a sua **alíquota (%)**. O CRM calcula o imposto e o **líquido recebido** de cada mês.', aba: 'comissoes' },
+{ id: 'clientes_mes', t: 'Como vejo os clientes que fechei em cada mês?', k: 'clientes por mes, clientes fechados, quem fechei, vendas do mes, fechamentos por mes, clientes do mes, historico de clientes',
+  r: 'No **Dashboard**, o quadro **🏆 Clientes fechados por mês** mostra cada cliente que fechou no mês, com o valor, as cotas e o segmento.\n- Use **‹ ›** ou escolha o mês para ver outros meses.\n- As barrinhas mostram quantos clientes você fechou em cada um dos últimos 12 meses: toque numa para abrir aquele mês.\n- Toque no cliente para abrir o cadastro dele.\n- O filtro de consultor do Dashboard também vale aqui. Vendas canceladas não aparecem.', aba: 'dashboard' },
 { id: 'comissao_recalc', t: 'Os valores da comissão parecem errados', k: 'recalcular, comissao errada, valores estranhos, atualizar projecao',
-  r: '1. Confira na venda o **crédito**, a **modalidade**, o **segmento** e a **data da venda**.\n2. Toque em **🔄 Recalcular Projeção**.\nParcelas que você ajustou à mão (borda roxa) continuam como você deixou.', aba: 'comissoes' },
+  r: '1. Confira na venda o **crédito**, a **modalidade**, o **segmento** e a **data da venda**.\n2. Corrija o que estiver errado e salve: a projeção da comissão se refaz sozinha.\nParcelas que você ajustou à mão (borda roxa) continuam como você deixou.', aba: 'comissoes' },
 { id: 'comissao_naoaparece', t: 'Uma venda não aparece na minha comissão', k: 'venda nao aparece na comissao, sumiu da comissao, nao vejo a venda',
   r: 'Em **Cálculo de Comissão** aparecem só as vendas **da sua matrícula** e as que **você mesmo vendeu**. Se a venda é de alguém em prévia na matrícula de outra pessoa, ela aparece para o dono da matrícula. Confira também os filtros do topo (pessoa e segmento).', aba: 'comissoes' },
 { id: 'incc', t: 'Como funciona o reajuste INCC e INPC?', k: 'incc, inpc, reajuste, correcao do credito, indice, valorizacao',
@@ -21254,7 +21359,7 @@ const ASSIST_BASE = [
   const SAUDACAO = /^(oi+|ola|opa|bom dia|boa tarde|boa noite|e ai|eai|hey|hello)\b/;
   const AGRADECE = /^(obrigad[oa]|valeu|vlw|brigad[oa]|show|top|perfeito|otimo|beleza|blz|ok|entendi)\b/;
   const POR_ABA = {
-    dashboard: ['dashboard', 'relatorio', 'meta', 'para_hoje'], leads: ['lead_novo', 'venda_nova', 'lead_notas', 'importar_planilha'], prospeccao: ['prospeccao', 'prospeccao_chave'],
+    dashboard: ['dashboard', 'clientes_mes', 'relatorio', 'meta', 'para_hoje'], leads: ['lead_novo', 'venda_nova', 'lead_notas', 'importar_planilha'], prospeccao: ['prospeccao', 'prospeccao_chave'],
     mapaCotas: ['mapa_cotas', 'venda_contemplada', 'venda_cancelada'], semaforo: ['semaforo', 'resultado_loja'], agenda: ['agenda_nova', 'agenda_reagendar', 'agenda_google'],
     simulador: ['simulador', 'publicidade', 'proposta'], comissoes: ['comissao_mes', 'comissao_recebi', 'venda_errada', 'matricula'], gastos: ['gastos'], indicesGrupo: ['incc'],
     calculadora: ['calculadora'], aniversarios: ['parabens', 'parabens_foto', 'aniversarios'], materialApoio: ['material'], apresentacoes: ['apresentacoes', 'sim_apresentacao'],
@@ -21262,13 +21367,13 @@ const ASSIST_BASE = [
   };
   const GERAIS = ['venda_nova', 'venda_errada', 'comissao_mes', 'desfazer', 'backup', 'lead_novo'];
   const GRUPOS = [
-    ['Começo e navegação', ['oque', 'tour', 'menu_cel', 'personalizar', 'busca', 'tema', 'notif', 'instalar', 'zoom', 'assistente']],
+    ['Começo e navegação', ['oque', 'tour', 'menu_cel', 'personalizar', 'busca', 'tema', 'notif', 'notificacoes_celular', 'instalar', 'zoom', 'assistente']],
     ['Entrar e senha', ['on_primeiro', 'on_esqueci', 'on_gerar_codigo', 'trocar_senha', 'local_esqueci', 'trocar_email', 'bloqueado', 'outro_aparelho', 'sem_internet', 'nao_aparece', 'sair']],
     ['Leads e clientes', ['lead_novo', 'lead_duplicado', 'lead_editar', 'lead_excluir', 'lead_score', 'lead_privado', 'lead_filtros', 'lead_whats', 'lead_notas', 'indicadores', 'importar_planilha', 'exportar_leads', 'nota_mao', 'transferir_lead']],
     ['Vendas e cotas', ['venda_nova', 'venda_errada', 'venda_excluir', 'venda_cancelada', 'venda_contemplada', 'cota_repetida', 'transferir_venda', 'seguro', 'modalidade', 'matricula', 'matricula_errada', 'so_minhas']],
     ['Comissões', ['comissao_como', 'comissao_recebi', 'comissao_mes', 'comissao_valor', 'comissao_imposto', 'comissao_recalc', 'comissao_naoaparece', 'incc']],
     ['Agenda', ['agenda_nova', 'agenda_reagendar', 'agenda_google', 'agenda_vista', 'para_hoje']],
-    ['Dashboard, ranking e relatório', ['dashboard', 'meta', 'producao_lojas', 'relatorio', 'semaforo', 'resultado_loja', 'mapa_cotas']],
+    ['Dashboard, ranking e relatório', ['dashboard', 'clientes_mes', 'meta', 'producao_lojas', 'relatorio', 'semaforo', 'resultado_loja', 'mapa_cotas']],
     ['Simulador e prospecção', ['simulador', 'publicidade', 'proposta', 'sim_outros', 'sim_apresentacao', 'prospeccao', 'prospeccao_chave']],
     ['Outras ferramentas', ['aniversarios', 'parabens', 'parabens_foto', 'calculadora', 'material', 'apresentacoes', 'informacoes', 'gastos', 'consultores_vendas']],
     ['Equipe, lojas e cargos', ['cargos', 'quem_ve', 'membro_novo', 'membro_editar', 'membro_varias_lojas', 'membro_desativar', 'lojas', 'adm_contas', 'adm_cadastro']],
