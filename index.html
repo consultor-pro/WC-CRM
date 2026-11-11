@@ -5799,7 +5799,7 @@ async function createOfficialGoogleMeetEvent(meetingData) {
   const end = new Date(start.getTime() + 60 * 60 * 1000);
 
   const eventPayload = {
-    summary: meetingData.obj || 'Apresentação de Consórcio',
+    summary: meetingData.obj || 'Apresentação de Empresa',
     description: `Cliente: ${meetingData.lead}\nResponsável: ${meetingData.responsavel}\nAgendado via CRM.`,
     start: { dateTime: start.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
     end: { dateTime: end.toISOString(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
@@ -5896,7 +5896,7 @@ function sendWhatsAppInvite(leadName, leadTel, meetingDateStr, pauta, meetUrl) {
   const d = new Date(meetingDateStr);
   const dateFmt = !isNaN(d.getTime()) ? d.toLocaleDateString('pt-BR') : meetingDateStr;
   const timeFmt = !isNaN(d.getTime()) ? d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : '';
-  const msg = `Olá *${leadName}*, tudo bem?\n\nConfirmando nossa reunião sobre *${pauta || 'Consultoria de Consórcio Estruturado'}*:\n\n📅 *Data:* ${dateFmt}\n⏰ *Horário:* ${timeFmt}\n📹 *Google Meet:* ${meetUrl || 'A combinar'}\n\nNos falamos em breve!`;
+  const msg = `Olá *${leadName}*, tudo bem?\n\nConfirmando nossa reunião sobre *${pauta || 'Apresentação de Empresa'}*:\n\n📅 *Data:* ${dateFmt}\n⏰ *Horário:* ${timeFmt}\n📹 *Google Meet:* ${meetUrl || 'A combinar'}\n\nNos falamos em breve!`;
   window.open(`https://api.whatsapp.com/send?phone=${cleanTel}&text=${encodeURIComponent(msg)}`, '_blank');   // wa.me estraga os emojis
 }
 
@@ -12124,7 +12124,7 @@ function openMeeting(leadNomePreSelecionado){
       <select id="mResp">${usersList.filter(u => (MODO_HIERARQUIA && !hierDonoVeTudo()) ? u.id === currentUser.id : (canSeeAllAgenda || subNames.includes(u.nome))).map(u=>`<option ${(currentUser?.nome===u.nome)?'selected':''}>${esc(u.nome)} (${esc(u.cargo)})</option>`).join('')}</select>
     </div>
     <div class="field"><label>Data e Hora</label><input type="datetime-local" id="mDate"></div>
-    <div class="field"><label>Pauta</label><input id="mObj" placeholder="Apresentação de Consórcio"></div>
+    <div class="field"><label>Pauta</label><input id="mObj" placeholder="Apresentação de Empresa"></div>
     <div class="field"><label>Cor do Evento na Agenda</label>
       <div class="row" style="align-items:center;gap:8px">
         <input type="color" id="mColor" value="${DEFAULT_EVENT_COLOR}" style="width:46px;height:34px;padding:2px;cursor:pointer">
@@ -12151,7 +12151,7 @@ async function saveMeeting(){
     const rawResp = document.getElementById('mResp')?.value || '';
     const cleanResp = rawResp.split(' (')[0] || currentUser?.nome || '';
     const dateVal = document.getElementById('mDate')?.value;
-    const objVal = document.getElementById('mObj')?.value.trim() || 'Apresentação de Consórcio';
+    const objVal = document.getElementById('mObj')?.value.trim() || 'Apresentação de Empresa';
     const colorVal = document.getElementById('mColor')?.value || DEFAULT_EVENT_COLOR;
     const shouldCreateGoogle = document.getElementById('mCreateGoogleEvent')?.checked;
 
@@ -12577,7 +12577,7 @@ function openEditMeetingModal(id){
       <select id="emResp">${!temResp && item.responsavel ? `<option value="${esc(item.responsavel)}" selected>${esc(item.responsavel)}</option>` : ''}${resps.map(u => `<option value="${esc(u.nome)}" ${u.nome === item.responsavel ? 'selected' : ''}>${esc(u.nome)} (${esc(u.cargo || '')})</option>`).join('')}</select>
     </div>
     <div class="field"><label>Data e Hora</label><input type="datetime-local" id="emDate" value="${esc(String(item.date || '').slice(0, 16))}"></div>
-    <div class="field"><label>Pauta</label><input id="emObj" value="${esc(item.obj || '')}" placeholder="Apresentação de Consórcio"></div>
+    <div class="field"><label>Pauta</label><input id="emObj" value="${esc(item.obj || '')}" placeholder="Apresentação de Empresa"></div>
     <div class="field"><label>Link do Google Meet (opcional)</label><input id="emMeet" value="${esc(item.meetUrl || '')}" placeholder="https://meet.google.com/..."></div>
     <div class="field"><label>Cor do Evento na Agenda</label>
       <input type="color" id="emColor" value="${esc(item.color || DEFAULT_EVENT_COLOR)}" style="width:46px;height:34px;padding:2px;cursor:pointer">
@@ -12595,7 +12595,7 @@ async function saveEditMeeting(id){
   const lead = document.getElementById('emLead')?.value || item.lead;
   const resp = document.getElementById('emResp')?.value || item.responsavel;
   const date = document.getElementById('emDate')?.value;
-  const obj = (document.getElementById('emObj')?.value || '').trim() || 'Apresentação de Consórcio';
+  const obj = (document.getElementById('emObj')?.value || '').trim() || 'Apresentação de Empresa';
   let meet = (document.getElementById('emMeet')?.value || '').trim();
   const color = document.getElementById('emColor')?.value || item.color || DEFAULT_EVENT_COLOR;
   if (!date) return alert('Selecione data e horário.');
