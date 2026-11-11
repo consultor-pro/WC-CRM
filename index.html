@@ -12472,7 +12472,7 @@ function openEventActionModal(id, type, opts){
       <button class="btn primary" onclick="addMeetingComment('${id}')">➕ Adicionar Comentário</button>
     </div>`}
     <div class="row" style="justify-content:space-between;margin-top:14px">
-      <button class="btn" onclick="openRescheduleModal('${id}')">🔄 Reagendar</button>
+      <div class="row"><button class="btn primary" onclick="openEditMeetingModal('${id}')">✏️ Editar</button><button class="btn" onclick="openRescheduleModal('${id}')">🔄 Reagendar</button></div>
       <div class="row">
         ${!isDone ? `<button class="btn green" onclick="closeMeetingAction('${id}')">✅ Encerrar</button>` : `<button class="btn" onclick="reopenMeetingAction('${id}')">↩️ Reabrir</button>`}
         <button class="btn danger" onclick="deleteEventAction('${id}')">🗑️ Excluir</button>
@@ -12556,6 +12556,87 @@ function openRescheduleModal(id){
     </div>
     <button class="btn primary" onclick="saveReschedule('${id}')">Confirmar</button>
   `);
+}
+
+// ===== EDITAR AGENDAMENTO =====
+// Muda lead, responsável, data e hora, pauta, cor e link do Meet de um agendamento já marcado.
+function openEditMeetingModal(id){
+  const item = db.meetings.find(x => x.id === id);
+  if (!item) return;
+  const accessible = db.leads.filter(canUserAccessLead);
+  const nomesLeads = accessible.map(l => l.nome);
+  if (item.lead && !nomesLeads.includes(item.lead)) nomesLeads.unshift(item.lead);
+  const canSeeAllAgenda = canCurrentUserViewAllAgenda();
+  const subNames = getSubordinateUserNames(currentUser?.id);
+  const resps = usersList.filter(u => u.nome === item.responsavel || ((MODO_HIERARQUIA && !hierDonoVeTudo()) ? u.id === currentUser.id : (canSeeAllAgenda || subNames.includes(u.nome))));
+  const temResp = resps.some(u => u.nome === item.responsavel);
+  openModal(`
+    <div class="between"><h2>✏️ Editar Agendamento</h2><button class="btn" onclick="openEventActionModal('${id}','meeting')">✕</button></div>
+    <div class="field"><label>Lead</label><select id="emLead">${nomesLeads.map(n => `<option value="${esc(n)}" ${n === item.lead ? 'selected' : ''}>${esc(n)}</option>`).join('')}</select></div>
+    <div class="field"><label>Responsável</label>
+      <select id="emResp">${!temResp && item.responsavel ? `<option value="${esc(item.responsavel)}" selected>${esc(item.responsavel)}</option>` : ''}${resps.map(u => `<option value="${esc(u.nome)}" ${u.nome === item.responsavel ? 'selected' : ''}>${esc(u.nome)} (${esc(u.cargo || '')})</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Data e Hora</label><input type="datetime-local" id="emDate" value="${esc(String(item.date || '').slice(0, 16))}"></div>
+    <div class="field"><label>Pauta</label><input id="emObj" value="${esc(item.obj || '')}" placeholder="Apresentação de Consórcio"></div>
+    <div class="field"><label>Link do Google Meet (opcional)</label><input id="emMeet" value="${esc(item.meetUrl || '')}" placeholder="https://meet.google.com/..."></div>
+    <div class="field"><label>Cor do Evento na Agenda</label>
+      <input type="color" id="emColor" value="${esc(item.color || DEFAULT_EVENT_COLOR)}" style="width:46px;height:34px;padding:2px;cursor:pointer">
+    </div>
+    <div class="row" style="justify-content:space-between">
+      <button class="btn" onclick="openEventActionModal('${id}','meeting')">Cancelar</button>
+      <button class="btn primary" id="btnSalvarEdicaoReuniao" onclick="saveEditMeeting('${id}')">💾 Salvar alterações</button>
+    </div>
+  `);
+}
+
+async function saveEditMeeting(id){
+  const item = db.meetings.find(x => x.id === id);
+  if (!item) return;
+  const lead = document.getElementById('emLead')?.value || item.lead;
+  const resp = document.getElementById('emResp')?.value || item.responsavel;
+  const date = document.getElementById('emDate')?.value;
+  const obj = (document.getElementById('emObj')?.value || '').trim() || 'Apresentação de Consórcio';
+  let meet = (document.getElementById('emMeet')?.value || '').trim();
+  const color = document.getElementById('emColor')?.value || item.color || DEFAULT_EVENT_COLOR;
+  if (!date) return alert('Selecione data e horário.');
+  if (meet && !/^https?:\/\//i.test(meet)) meet = 'https://' + meet;
+  const btn = document.getElementById('btnSalvarEdicaoReuniao'); if (btn) btn.disabled = true;
+
+  const mudouData = date !== String(item.date || '').slice(0, 16);
+  const mudouLead = lead !== item.lead;
+  const mudancas = [];
+  if (mudouLead) mudancas.push('cliente: ' + lead);
+  if (resp !== item.responsavel) mudancas.push('responsável: ' + resp);
+  if (mudouData) mudancas.push('data: ' + new Date(date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }));
+  if (obj !== (item.obj || '')) mudancas.push('pauta: ' + obj);
+
+  item.lead = lead; item.responsavel = resp; item.date = date; item.obj = obj; item.color = color; item.meetUrl = meet;
+  if (mudouLead) { const l = db.leads.find(x => x.nome === lead); if (l) item.leadId = l.id; else delete item.leadId; }
+  if (mudouData && item.status === 'Encerrado') item.status = 'Ativo';
+  if (mudancas.length) registrarAcaoAutomaticaLead(lead, '✏️ Agendamento editado — ' + mudancas.join(' · '));
+
+  // leva a mudança para o Google Agenda, se o evento estiver lá
+  if (item.googleEventId || item.googlePendente) {
+    const tok = await ensureGoogleToken(false);
+    let ok = false;
+    if (tok && item.googleEventId) {
+      const ini = new Date(date), fim = new Date(ini.getTime() + 60 * 60 * 1000), tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      try {
+        const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${item.googleEventId}`, {
+          method: 'PATCH', headers: { 'Authorization': `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ summary: obj, description: `Cliente: ${lead}\nResponsável: ${resp}\nAgendado via CRM.`,
+            start: { dateTime: ini.toISOString(), timeZone: tz }, end: { dateTime: fim.toISOString(), timeZone: tz } })
+        });
+        ok = r.ok;
+      } catch (e) { ok = false; }
+    }
+    if (ok) delete item.googlePendente; else if (typeof googleLigado === 'function' && googleLigado()) item.googlePendente = true;
+  }
+  save();
+  if (typeof renderAgenda === 'function') renderAgenda();
+  if (item.googlePendente && typeof processarFilaGoogle === 'function') processarFilaGoogle();
+  if (typeof showToast === 'function') showToast('Agendamento atualizado!');
+  openEventActionModal(id, 'meeting');
 }
 
 async function saveReschedule(id){
@@ -21074,6 +21155,8 @@ const ASSIST_BASE = [
 // ===================== AGENDA =====================
 { id: 'agenda_nova', t: 'Como agendo uma reunião?', k: 'agendar reuniao, marcar reuniao, novo compromisso, agendamento, marcar visita, criar evento',
   r: '1. Vá em **Agenda Comercial** e toque em **+ Agendar Reunião**.\n2. Escolha o **lead**, o responsável, a **data e hora** e a pauta.\n3. Escolha a cor do compromisso.\n4. Toque em **Confirmar Reunião**.\nTambém dá para agendar pelo mural do cliente (Notas › Agendar reunião).', aba: 'agenda' },
+{ id: 'agenda_editar', t: 'Como edito um agendamento (pauta, horário, responsável)?', k: 'editar agendamento, editar reuniao, mudar pauta, alterar pauta, trocar horario, mudar responsavel, corrigir agendamento, link do meet',
+  r: '1. Na **Agenda Comercial**, toque no compromisso.\n2. No Painel do Agendamento, toque em **✏️ Editar**.\n3. Mude o que precisar: **cliente**, **responsável**, **data e hora**, **pauta**, **link do Meet** e **cor**.\n4. Toque em **💾 Salvar alterações**.\nA mudança fica registrada no mural do cliente e, se a reunião estiver no Google Agenda, vai para lá também.', aba: 'agenda' },
 { id: 'agenda_reagendar', t: 'Como reagendo ou encerro uma reunião?', k: 'reagendar, remarcar, mudar horario, encerrar reuniao, concluir reuniao, cancelar reuniao, excluir reuniao',
   r: 'Na **Agenda**, toque no compromisso. No painel:\n- **🔄 Reagendar**: muda a data e a hora.\n- **✅ Encerrar**: marca como realizado.\n- **🗑️ Excluir**: apaga o compromisso.', aba: 'agenda' },
 { id: 'agenda_google', t: 'Como ligo a Agenda ao Google Agenda e ao Meet?', k: 'google agenda, google calendar, meet, sala do meet, sincronizar google, link da reuniao, conectar google',
@@ -21360,7 +21443,7 @@ const ASSIST_BASE = [
   const AGRADECE = /^(obrigad[oa]|valeu|vlw|brigad[oa]|show|top|perfeito|otimo|beleza|blz|ok|entendi)\b/;
   const POR_ABA = {
     dashboard: ['dashboard', 'clientes_mes', 'relatorio', 'meta', 'para_hoje'], leads: ['lead_novo', 'venda_nova', 'lead_notas', 'importar_planilha'], prospeccao: ['prospeccao', 'prospeccao_chave'],
-    mapaCotas: ['mapa_cotas', 'venda_contemplada', 'venda_cancelada'], semaforo: ['semaforo', 'resultado_loja'], agenda: ['agenda_nova', 'agenda_reagendar', 'agenda_google'],
+    mapaCotas: ['mapa_cotas', 'venda_contemplada', 'venda_cancelada'], semaforo: ['semaforo', 'resultado_loja'], agenda: ['agenda_nova', 'agenda_editar', 'agenda_reagendar', 'agenda_google'],
     simulador: ['simulador', 'publicidade', 'proposta'], comissoes: ['comissao_mes', 'comissao_recebi', 'venda_errada', 'matricula'], gastos: ['gastos'], indicesGrupo: ['incc'],
     calculadora: ['calculadora'], aniversarios: ['parabens', 'parabens_foto', 'aniversarios'], materialApoio: ['material'], apresentacoes: ['apresentacoes', 'sim_apresentacao'],
     informacoes: ['informacoes'], usuarios: ['membro_novo', 'membro_editar', 'on_gerar_codigo', 'lojas'], consultoresVendas: ['consultores_vendas'], configuracoes: ['backup', 'recuperar', 'trocar_senha', 'personalizar'], contas: ['adm_contas']
@@ -21372,7 +21455,7 @@ const ASSIST_BASE = [
     ['Leads e clientes', ['lead_novo', 'lead_duplicado', 'lead_editar', 'lead_excluir', 'lead_score', 'lead_privado', 'lead_filtros', 'lead_whats', 'lead_notas', 'indicadores', 'importar_planilha', 'exportar_leads', 'nota_mao', 'transferir_lead']],
     ['Vendas e cotas', ['venda_nova', 'venda_errada', 'venda_excluir', 'venda_cancelada', 'venda_contemplada', 'cota_repetida', 'transferir_venda', 'seguro', 'modalidade', 'matricula', 'matricula_errada', 'so_minhas']],
     ['Comissões', ['comissao_como', 'comissao_recebi', 'comissao_mes', 'comissao_valor', 'comissao_imposto', 'comissao_recalc', 'comissao_naoaparece', 'incc']],
-    ['Agenda', ['agenda_nova', 'agenda_reagendar', 'agenda_google', 'agenda_vista', 'para_hoje']],
+    ['Agenda', ['agenda_nova', 'agenda_editar', 'agenda_reagendar', 'agenda_google', 'agenda_vista', 'para_hoje']],
     ['Dashboard, ranking e relatório', ['dashboard', 'clientes_mes', 'meta', 'producao_lojas', 'relatorio', 'semaforo', 'resultado_loja', 'mapa_cotas']],
     ['Simulador e prospecção', ['simulador', 'publicidade', 'proposta', 'sim_outros', 'sim_apresentacao', 'prospeccao', 'prospeccao_chave']],
     ['Outras ferramentas', ['aniversarios', 'parabens', 'parabens_foto', 'calculadora', 'material', 'apresentacoes', 'informacoes', 'gastos', 'consultores_vendas']],
