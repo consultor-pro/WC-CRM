@@ -5896,8 +5896,8 @@ function sendWhatsAppInvite(leadName, leadTel, meetingDateStr, pauta, meetUrl) {
   const d = new Date(meetingDateStr);
   const dateFmt = !isNaN(d.getTime()) ? d.toLocaleDateString('pt-BR') : meetingDateStr;
   const timeFmt = !isNaN(d.getTime()) ? d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : '';
-  const msg = `Olá *${leadName}*, tudo bem?\n\nConfirmando nossa reunião sobre *${pauta || 'Consultoria de Consórcio Estruturado'}*:\n\n📅 *Data:* ${dateFmt}\n⏰ *Horário:* ${timeFmt}\n🔗 *Google Meet:* ${meetUrl || 'A combinar'}\n\nNos falamos em breve!`;
-  window.open(`https://wa.me/${cleanTel}?text=${encodeURIComponent(msg)}`, '_blank');
+  const msg = `Olá *${leadName}*, tudo bem?\n\nConfirmando nossa reunião sobre *${pauta || 'Consultoria de Consórcio Estruturado'}*:\n\n📅 *Data:* ${dateFmt}\n⏰ *Horário:* ${timeFmt}\n📹 *Google Meet:* ${meetUrl || 'A combinar'}\n\nNos falamos em breve!`;
+  window.open(`https://api.whatsapp.com/send?phone=${cleanTel}&text=${encodeURIComponent(msg)}`, '_blank');   // wa.me estraga os emojis
 }
 
 function applyBrand(){
@@ -11580,7 +11580,7 @@ function buildWhatsAppLink(tel, mensagem){
   const digits = String(tel || '').replace(/\D/g, '');
   if(digits.length < 10) return '';
   const comDDI = digits.length <= 11 ? `55${digits}` : digits;
-  return `https://wa.me/${comDDI}${mensagem ? '?text=' + encodeURIComponent(mensagem) : ''}`;
+  return mensagem ? `https://api.whatsapp.com/send?phone=${comDDI}&text=${encodeURIComponent(mensagem)}` : `https://wa.me/${comDDI}`;
 }
 
 // Monta o link "tel:+55..." pra abrir o discador do celular direto naquele
@@ -14221,7 +14221,7 @@ function baixarCanvasComoPDF(canvas, nomeArquivo) {
 // Usado tanto pelas peças com imagem (Proposta, Publicidade, Comparativo)
 // quanto pelas mensagens só de texto (Valor Futuro, Aplicação, Financiamento).
 function abrirWhatsAppTexto(texto) {
-  window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
+  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
 }
 
 // Tenta compartilhar a imagem diretamente pro WhatsApp (funciona em
