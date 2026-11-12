@@ -1190,6 +1190,14 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .vc-agio { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
 .vc-agio label { font-size: 13px; font-weight: 700; margin: 0; }
 .vc-agio input { width: 110px; margin: 0; }
+
+.cm-ano { font-size: 16px; min-width: 46px; text-align: center; }
+.cm-barra.atual i { background: #2563eb !important; }
+.cm-barra.atual small { color: #2563eb; font-weight: 800; }
+.cm-barra.escolhido { background: rgba(100,116,139,.12); box-shadow: inset 0 0 0 1.5px rgba(100,116,139,.45); }
+.cm-barra.tem:not(.atual) i { background: #16a34a; }
+#cmLista { max-width: 480px; }
+#cmLista .cm-linha { grid-template-columns: minmax(0, 1fr) auto; padding: 7px 4px; gap: 1px 16px; }
 </style>
 </head>
 <body>
@@ -1434,9 +1442,9 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         <small class="muted" id="cmResumo">Quem fechou com você em cada mês.</small>
       </div>
       <div class="row cm-nav">
-        <button class="btn" onclick="clientesMesMudar(-1)" title="Mês anterior">‹</button>
-        <input type="month" id="cmMes" onchange="clientesMesIr(this.value)">
-        <button class="btn" onclick="clientesMesMudar(1)" title="Próximo mês">›</button>
+        <button class="btn" onclick="clientesAnoMudar(-1)" title="Ano anterior">‹</button>
+        <b id="cmAno" class="cm-ano"></b>
+        <button class="btn" onclick="clientesAnoMudar(1)" title="Próximo ano">›</button>
       </div>
     </div>
     <div class="cm-barras" id="cmBarras"></div>
@@ -12109,6 +12117,16 @@ function clientesMesMudar(passo){
   const [a, m] = (clientesMesAtual || clientesMesChave(new Date())).split('-').map(Number);
   clientesMesIr(clientesMesChave(new Date(a, m - 1 + passo, 1)));
 }
+// troca o ano: no ano atual abre o mês atual; nos outros, o último mês com venda (ou dezembro)
+function clientesAnoMudar(passo){
+  const ano = +(clientesMesAtual || clientesMesChave(new Date())).slice(0, 4) + passo, hoje = new Date();
+  let mes = ano === hoje.getFullYear() ? hoje.getMonth() + 1 : 12;
+  if (ano !== hoje.getFullYear()) {
+    const comVenda = (clientesMesVendas || []).filter(v => v && !v.cancelada).map(v => String(v.date || '').slice(0, 7)).filter(k => k.startsWith(ano + '-')).sort();
+    if (comVenda.length) mes = +comVenda[comVenda.length - 1].slice(5, 7);
+  }
+  clientesMesIr(ano + '-' + String(mes).padStart(2, '0'));
+}
 function clientesMesIr(chave){ if (!/^\d{4}-\d{2}$/.test(chave || '')) return; clientesMesAtual = chave; renderClientesMes(); }
 function renderClientesMes(vendas){
   if (Array.isArray(vendas)) clientesMesVendas = vendas;
@@ -12132,15 +12150,16 @@ function renderClientesMes(vendas){
 
   // 12 barrinhas: o mês escolhido e os 11 anteriores
   const [a, m] = clientesMesAtual.split('-').map(Number);
-  const meses = []; for (let k = 11; k >= 0; k--) meses.push(clientesMesChave(new Date(a, m - 1 - k, 1)));
+  const meses = []; for (let k = 1; k <= 12; k++) meses.push(a + '-' + String(k).padStart(2, '0'));   // janeiro a dezembro do ano escolhido
+  const mesDeHoje = clientesMesChave(new Date());
   const maior = Math.max(1, ...meses.map(qtd));
   const nomeMes = (chave, longo) => { const [aa, mm] = chave.split('-').map(Number); return new Date(aa, mm - 1, 1).toLocaleDateString('pt-BR', longo ? { month: 'long', year: 'numeric' } : { month: 'short' }).replace('.', ''); };
   document.getElementById('cmBarras').innerHTML = meses.map(mes => {
     const n = qtd(mes);
-    return `<div class="cm-barra${n ? ' tem' : ''}${mes === clientesMesAtual ? ' atual' : ''}" onclick="clientesMesIr('${mes}')" title="${nomeMes(mes, true)}: ${n} cliente${n === 1 ? '' : 's'}">
+    return `<div class="cm-barra${n ? ' tem' : ''}${mes === mesDeHoje ? ' atual' : ''}${mes === clientesMesAtual ? ' escolhido' : ''}" onclick="clientesMesIr('${mes}')" title="${nomeMes(mes, true)}: ${n} cliente${n === 1 ? '' : 's'}">
       <b>${n || ''}</b><i style="height:${Math.round((n / maior) * 44)}px"></i><small>${nomeMes(mes)}</small></div>`;
   }).join('');
-  const inp = document.getElementById('cmMes'); if (inp && inp.value !== clientesMesAtual) inp.value = clientesMesAtual;
+  const anoEl = document.getElementById('cmAno'); if (anoEl) anoEl.textContent = a;
 
   const clientes = Object.values(porMes[clientesMesAtual] || {}).sort((x, y) => y.data - x.data);
   const totCotas = clientes.reduce((t, c) => t + c.cotas, 0), totValor = clientes.reduce((t, c) => t + c.valor, 0);
@@ -12156,7 +12175,7 @@ function renderClientesMes(vendas){
     return `<div class="cm-linha${abre ? ' clicavel' : ''}"${abre ? ` onclick="openLead('${esc(c.leadId)}')" title="Abrir o cadastro do cliente"` : ''}>
       <div class="cm-nome">${esc(c.nome)}</div><div class="cm-valor">${moeda(c.valor)}</div>
       <div class="cm-info">${esc(info)}</div><div class="cm-data">${c.data.toLocaleDateString('pt-BR')}</div></div>`;
-  }).join('') : '<div class="cm-vazio">Nenhuma venda lançada neste mês. Use ‹ › ou toque numa barrinha para ver outros meses.</div>';
+  }).join('') : '<div class="cm-vazio">Nenhuma venda lançada neste mês. Toque numa barrinha para ver outro mês, ou use ‹ › para trocar de ano.</div>';
 }
 
 let dashDetMesAtual = '';
@@ -21459,7 +21478,7 @@ const ASSIST_BASE = [
 { id: 'comissao_imposto', t: 'Como coloco o imposto da comissão?', k: 'imposto, aliquota, liquido, desconto de imposto, valor liquido',
   r: 'Em **Cálculo de Comissão**, no cartão **Imposto sobre recebido**, digite a sua **alíquota (%)**. O CRM calcula o imposto e o **líquido recebido** de cada mês.', aba: 'comissoes' },
 { id: 'clientes_mes', t: 'Como vejo os clientes que fechei em cada mês?', k: 'clientes por mes, clientes fechados, quem fechei, vendas do mes, fechamentos por mes, clientes do mes, historico de clientes',
-  r: 'No **Dashboard**, o quadro **🏆 Clientes fechados por mês** mostra cada cliente que fechou no mês, com o valor, as cotas e o segmento.\n- Use **‹ ›** ou escolha o mês para ver outros meses.\n- As barrinhas mostram quantos clientes você fechou em cada um dos últimos 12 meses: toque numa para abrir aquele mês.\n- Toque no cliente para abrir o cadastro dele.\n- O filtro de consultor do Dashboard também vale aqui. Vendas canceladas não aparecem.', aba: 'dashboard' },
+  r: 'No **Dashboard**, o quadro **🏆 Clientes fechados por mês** mostra cada cliente que fechou no mês, com o valor, as cotas e o segmento.\n- As barrinhas mostram quantos clientes você fechou em cada mês do ano (o mês atual fica em azul): toque numa para ver os clientes daquele mês.\n- Use **‹ ›** para trocar de ano.\n- Toque no cliente para abrir o cadastro dele.\n- O filtro de consultor do Dashboard também vale aqui. Vendas canceladas não aparecem.', aba: 'dashboard' },
 { id: 'comissao_recalc', t: 'Os valores da comissão parecem errados', k: 'recalcular, comissao errada, valores estranhos, atualizar projecao',
   r: '1. Confira na venda o **crédito**, a **modalidade**, o **segmento** e a **data da venda**.\n2. Corrija o que estiver errado e salve: a projeção da comissão se refaz sozinha.\nParcelas que você ajustou à mão (borda roxa) continuam como você deixou.', aba: 'comissoes' },
 { id: 'comissao_naoaparece', t: 'Uma venda não aparece na minha comissão', k: 'venda nao aparece na comissao, sumiu da comissao, nao vejo a venda',
