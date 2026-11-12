@@ -1166,6 +1166,12 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 [data-theme="dark"] .mt-ritmo.amarelo { background: #422006; color: #fcd34d; }
 [data-theme="dark"] .mt-ritmo.vermelho { background: #450a0a; color: #fca5a5; }
 @media (max-width: 560px) { .mt-meses { grid-template-columns: repeat(6, 1fr); } }
+
+.evo-nav { gap: 6px; align-items: center; flex-wrap: nowrap; }
+.evo-nav .btn { padding: 4px 11px; font-size: 16px; line-height: 1; }
+.evo-nav b { font-size: 16px; min-width: 44px; text-align: center; }
+.evo-leg { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-top: 6px; align-items: center; }
+.evo-leg i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
 </style>
 </head>
 <body>
@@ -1439,8 +1445,13 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
 
   <div class="card" style="margin-bottom:16px">
     <div class="between" style="margin-bottom:12px">
-      <h2>📈 Evolução de Vendas (Últimos 6 Meses)</h2>
-      <span class="badge b-purple" id="dashChartTotalBadge">R$ 0</span>
+      <h2>📈 Evolução de Vendas</h2>
+      <div class="row evo-nav">
+        <button class="btn" onclick="dashEvoMudarAno(-1)" title="Ano anterior">‹</button>
+        <b id="dashEvoAnoTxt"></b>
+        <button class="btn" onclick="dashEvoMudarAno(1)" title="Próximo ano">›</button>
+        <span class="badge b-purple" id="dashChartTotalBadge">R$ 0</span>
+      </div>
     </div>
     <div id="dashVolumeChart"></div>
   </div>
@@ -1482,7 +1493,8 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
   <div class="card" style="margin-bottom:16px">
     <div class="between" style="margin-bottom:12px">
       <h2>Detalhamento de Cotas Fechadas no Período</h2>
-      <span class="badge b-gold">Consórcio Estruturado</span>
+      <div class="row" style="gap:8px"><select id="dashDetMes" onchange="dashDetMesAtual = this.value; renderDashboard()" style="max-width:220px;margin:0" title="Ver um mês só"><option value="">Todos os meses do período</option></select>
+      <span class="badge b-gold" id="dashDetResumo">Consórcio Estruturado</span></div>
     </div>
     <div style="overflow-x:auto">
       <table>
@@ -12011,59 +12023,57 @@ function getFilterDateRange(){
 // desenhado como SVG puro (sem biblioteca externa, pra funcionar offline
 // no PWA). Usa as mesmas permissões/filtro de consultor do Dashboard, mas
 // sempre mostra os últimos 6 meses fixos, independente do filtro de período.
+// ===== EVOLUÇÃO DE VENDAS: o ano inteiro, de janeiro a dezembro (‹ › troca o ano) =====
+let dashEvoAno = new Date().getFullYear();
+let dashEvoUltimasVendas = [];
+function dashEvoMudarAno(passo){ dashEvoAno += passo; renderDashVolumeChart(dashEvoUltimasVendas); }
 function renderDashVolumeChart(salesForChart){
   const box = document.getElementById('dashVolumeChart');
   const badge = document.getElementById('dashChartTotalBadge');
   if(!box) return;
+  dashEvoUltimasVendas = salesForChart || [];
+  const ano = dashEvoAno, hoje = new Date();
+  const anoTxt = document.getElementById('dashEvoAnoTxt'); if (anoTxt) anoTxt.textContent = ano;
 
-  const hoje = new Date();
-  const meses = [];
-  for(let i = 5; i >= 0; i--){
-    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
-    meses.push({ year: d.getFullYear(), month: d.getMonth(), label: `${monthNames[d.getMonth()].slice(0,3)}/${String(d.getFullYear()).slice(2)}` });
-  }
+  const ativo = Array(12).fill(0), canc = Array(12).fill(0), qtd = Array(12).fill(0);
+  dashEvoUltimasVendas.forEach(s => {
+    if(!s || !s.date) return;
+    const t = String(s.date), m = t.match(/^(\d{4})-(\d{2})/); let a, mes;
+    if (m) { a = +m[1]; mes = +m[2] - 1; } else { const d = new Date(t); if (isNaN(d.getTime())) return; a = d.getFullYear(); mes = d.getMonth(); }
+    if (a !== ano) return;
+    const v = Number(s.valor || 0);
+    if (s.cancelada) canc[mes] += v; else ativo[mes] += v;
+    qtd[mes]++;
+  });
+  const totAtivo = ativo.reduce((x, y) => x + y, 0), totCanc = canc.reduce((x, y) => x + y, 0);
+  const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  if (badge) { badge.textContent = fmt(totAtivo + totCanc) + ' em ' + ano; badge.title = `Ativo: ${fmt(totAtivo)} · Cancelado: ${fmt(totCanc)}`; }
 
-  const volumes = meses.map(m => (salesForChart || []).reduce((acc, s) => {
-    if(s.cancelada || !s.date) return acc;
-    const d = new Date(s.date);
-    if(isNaN(d.getTime()) || d.getFullYear() !== m.year || d.getMonth() !== m.month) return acc;
-    return acc + Number(s.valor || 0);
-  }, 0));
-
-  const total = volumes.reduce((a,b) => a+b, 0);
-  if(badge) badge.textContent = total.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-
-  if(total === 0){
-    box.innerHTML = '<div class="empty-state"><span class="emoji">📈</span>Ainda não há vendas nos últimos 6 meses para mostrar tendência.</div>';
+  if (totAtivo + totCanc === 0) {
+    box.innerHTML = `<div class="empty-state"><span class="emoji">📈</span>Nenhuma venda lançada em ${ano}. Use ‹ › para ver outros anos.</div>`;
     return;
   }
-
-  const maxVal = Math.max(...volumes, 1);
-  const W = 900, H = 220, padBottom = 32, padTop = 22, barGap = 18;
-  const barW = (W - barGap * (meses.length + 1)) / meses.length;
-
-  const fmtCurto = v => v >= 1000 ? `${(v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1})}k` : v.toFixed(0);
-
+  const maxVal = Math.max(...ativo.map((v, i) => v + canc[i]), 1);
+  const W = 960, H = 240, padBottom = 32, padTop = 24, barGap = 12;
+  const barW = (W - barGap * 13) / 12, alt = H - padBottom - padTop;
+  const fmtCurto = v => v >= 1e6 ? `${(v / 1e6).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} mi` : v >= 1000 ? `${(v / 1000).toLocaleString('pt-BR', { maximumFractionDigits: 0 })} mil` : v.toFixed(0);
   let bars = '';
-  meses.forEach((m, i) => {
-    const v = volumes[i];
-    const barH = maxVal > 0 ? (v / maxVal) * (H - padBottom - padTop) : 0;
-    const x = barGap + i * (barW + barGap);
-    const y = H - padBottom - barH;
-    const isCurrentMonth = i === meses.length - 1;
-    bars += `
-      <rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(barH,0).toFixed(1)}" rx="6" fill="var(--red)" fill-opacity="${isCurrentMonth ? '1' : '0.4'}">
-        <title>${m.label}: ${v.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</title>
-      </rect>
-      ${v > 0 ? `<text x="${(x+barW/2).toFixed(1)}" y="${(y-7).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--dark)">${fmtCurto(v)}</text>` : ''}
-      <text x="${(x+barW/2).toFixed(1)}" y="${H-10}" text-anchor="middle" font-size="12" fill="var(--muted)">${m.label}</text>
-    `;
-  });
-
-  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:230px;display:block" preserveAspectRatio="xMidYMid meet">
-    <line x1="0" y1="${H-padBottom}" x2="${W}" y2="${H-padBottom}" stroke="var(--line)" stroke-width="1"/>
-    ${bars}
-  </svg>`;
+  for (let i = 0; i < 12; i++) {
+    const x = barGap + i * (barW + barGap), hA = ativo[i] / maxVal * alt, hC = canc[i] / maxVal * alt;
+    const yA = H - padBottom - hA, yC = yA - hC;
+    const atual = ano === hoje.getFullYear() && i === hoje.getMonth();
+    const futuro = ano > hoje.getFullYear() || (ano === hoje.getFullYear() && i > hoje.getMonth());
+    const nome = monthNames[i].slice(0, 3);
+    const tip = `${monthNames[i]} de ${ano}: ${fmt(ativo[i] + canc[i])} vendido (${qtd[i]} cota${qtd[i] === 1 ? '' : 's'})${canc[i] ? ` · ativo ${fmt(ativo[i])} · cancelado ${fmt(canc[i])}` : ''}`;
+    bars += `<g><title>${tip}</title>
+      <rect x="${x.toFixed(1)}" y="${yA.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(hA, 0).toFixed(1)}" rx="5" fill="var(--red)" fill-opacity="${atual ? '1' : '0.55'}"></rect>
+      ${hC > 0 ? `<rect x="${x.toFixed(1)}" y="${yC.toFixed(1)}" width="${barW.toFixed(1)}" height="${hC.toFixed(1)}" rx="5" fill="#94a3b8" fill-opacity="0.75"></rect>` : ''}
+      ${(ativo[i] + canc[i]) > 0 ? `<text x="${(x + barW / 2).toFixed(1)}" y="${(yC - 7).toFixed(1)}" text-anchor="middle" font-size="12" font-weight="700" fill="var(--dark)">${fmtCurto(ativo[i] + canc[i])}</text>` : ''}
+      <text x="${(x + barW / 2).toFixed(1)}" y="${H - 10}" text-anchor="middle" font-size="12" font-weight="${atual ? '800' : '400'}" fill="${futuro ? '#cbd5e1' : 'var(--muted)'}">${nome}</text></g>`;
+  }
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:250px;display:block" preserveAspectRatio="xMidYMid meet">
+    <line x1="0" y1="${H - padBottom}" x2="${W}" y2="${H - padBottom}" stroke="var(--line)" stroke-width="1"/>${bars}</svg>
+    <div class="evo-leg"><span><i style="background:var(--red)"></i>Ativas</span>${totCanc ? '<span><i style="background:#94a3b8"></i>Canceladas</span>' : ''}<span class="muted">Ativo no ano: <b>${fmt(totAtivo)}</b>${totCanc ? ` · Cancelado: <b>${fmt(totCanc)}</b>` : ''}</span></div>`;
 }
 
 
@@ -12132,6 +12142,7 @@ function renderClientesMes(vendas){
   }).join('') : '<div class="cm-vazio">Nenhuma venda lançada neste mês. Use ‹ › ou toque numa barrinha para ver outros meses.</div>';
 }
 
+let dashDetMesAtual = '';
 function renderDashboard(){
   const { start, end } = getFilterDateRange();
   const canSeeGeneral = canCurrentUserViewGeneralDashboard();
@@ -12263,7 +12274,20 @@ function renderDashboard(){
       </tr>`;
   }
 
-  document.getElementById('salesDetailTable').innerHTML = filteredSales.slice(0, limiteLinhas()).map(s => `
+  // filtro de mês do Detalhamento
+  const detMesesLista = [...new Set(filteredSales.map(s => String(s.date || '').slice(0, 7)).filter(k => /^\d{4}-\d{2}$/.test(k)))].sort().reverse();
+  if (dashDetMesAtual && !detMesesLista.includes(dashDetMesAtual)) dashDetMesAtual = '';
+  const detSel = document.getElementById('dashDetMes');
+  if (detSel) {
+    const nomeYm = k => monthNames[+k.slice(5, 7) - 1] + ' de ' + k.slice(0, 4);
+    const opts = '<option value="">Todos os meses do período</option>' + detMesesLista.map(k => `<option value="${k}">${nomeYm(k)}</option>`).join('');
+    if (detSel.innerHTML !== opts) detSel.innerHTML = opts;
+    detSel.value = dashDetMesAtual;
+  }
+  const detVendas = (dashDetMesAtual && !window.__semLimiteTabelas) ? filteredSales.filter(s => String(s.date || '').startsWith(dashDetMesAtual)) : filteredSales;
+  const detRes = document.getElementById('dashDetResumo');
+  if (detRes) { const atv = detVendas.filter(s => !s.cancelada); detRes.textContent = `${detVendas.length} cota${detVendas.length === 1 ? '' : 's'} · ${atv.reduce((t, s) => t + Number(s.valor || 0), 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })} ativo`; }
+  document.getElementById('salesDetailTable').innerHTML = detVendas.slice(0, limiteLinhas()).map(s => `
     <tr>
       <td>${s.date ? new Date(s.date).toLocaleDateString('pt-BR') : '-'}</td>
       <td><b style="cursor:pointer;text-decoration:underline dotted" title="Abrir cadastro do cliente" onclick="abrirCadastroClientePorLead('${s.leadId||''}')">${esc(s.lead)}</b></td>
@@ -12273,7 +12297,7 @@ function renderDashboard(){
       <td style="cursor:pointer;text-decoration:underline dotted" title="Editar esta cota" onclick="abrirEdicaoCotaPorVenda('${s.id}')">Grp ${esc(s.grupo)} | Cota ${esc(s.cota)} ${s.contemplada?'[⭐]':''}</td>
       <td style="color:${s.cancelada?'var(--muted)':'var(--green)'};font-weight:bold">${Number(s.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
       <td>${s.cancelada?'<span class="badge b-cancelada">Cancelada</span>':'<span class="badge b-green">Ativa</span>'}</td>
-    </tr>`).join('') + (filteredSales.length > limiteLinhas() ? hierNotaLimite(filteredSales.length, 8, 'Escolha um período menor ou um consultor para ver as outras vendas.') : '') || '<tr><td colspan="8"><div class="empty-state"><span class="emoji">🏆</span>Nenhuma cota registrada no período.</div></td></tr>';
+    </tr>`).join('') + (detVendas.length > limiteLinhas() ? hierNotaLimite(detVendas.length, 8, 'Escolha um período menor ou um consultor para ver as outras vendas.') : '') || '<tr><td colspan="8"><div class="empty-state"><span class="emoji">🏆</span>Nenhuma cota registrada no período.</div></td></tr>';
 
   const funilLeadsBase = filteredLeads.length ? filteredLeads : baseLeads;
   const stageCounts = stages.map(s => funilLeadsBase.filter(l => (l.stage||'Prospecção') === s).length);
@@ -21167,7 +21191,7 @@ function proRender(){
       ${bloco('Cotas fechadas por segmento', p.segmentos)}
       ${bloco('Ranking de consultores', p.ranking)}
       ${bloco('Desempenho por membro da equipe', p.equipe)}
-      ${bloco('Evolução das vendas', p.evolucao, 'últimos 6 meses até hoje')}
+      ${bloco('Evolução das vendas', p.evolucao, 'de janeiro a dezembro')}
       ${bloco('Cotas fechadas no período', p.detalhe)}
     </section>`;
   }
