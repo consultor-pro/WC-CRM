@@ -1198,6 +1198,20 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .cm-barra.tem:not(.atual) i { background: #16a34a; }
 #cmLista { max-width: 480px; }
 #cmLista .cm-linha { grid-template-columns: minmax(0, 1fr) auto; padding: 7px 4px; gap: 1px 16px; }
+
+.sp-cred { position: relative; }
+.sp-cred > label { overflow: visible !important; text-overflow: clip !important; white-space: nowrap; direction: ltr !important; }
+.sp-pela { font-size: 11px; font-weight: 700; color: #2563eb; text-decoration: none; margin-left: 6px; text-transform: none; letter-spacing: 0; white-space: nowrap; }
+.sp-pela:hover { text-decoration: underline; }
+.sp-pp { position: absolute; z-index: 30; top: 100%; left: 0; margin-top: 4px; width: 250px; background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: 10px; padding: 10px; box-shadow: 0 10px 24px -10px rgba(15,23,42,.35); }
+.sp-pp label { font-size: 12px; font-weight: 700; margin-bottom: 4px; display: block; text-transform: none; }
+.sp-pp-linha { display: flex; gap: 6px; }
+.sp-pp-linha input { flex: 1; min-width: 0; margin: 0; }
+.sp-pp-linha .btn { padding: 6px 12px; }
+.sp-pp small { display: block; margin-top: 6px; font-size: 11.5px; line-height: 1.35; }
+.sp-simular-linha { display: none; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line, #e2e8f0); }
+#simulador.sim-aguardando .sp-simular-linha { display: flex; }
+#simulador.sim-aguardando #simCotas, #simulador.sim-aguardando #simFuturo, #simulador.sim-aguardando #simVenda, #simulador.sim-aguardando #exportSimCard, #simulador.sim-aguardando #exportSimStatus { display: none !important; }
 </style>
 </head>
 <body>
@@ -1905,9 +1919,15 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
           <option value="bens">🟠 Bens Móveis (19% - 100x)</option>
         </select>
       </div>
-      <div class="field">
-        <label>Valor do crédito</label>
+      <div class="field sp-cred">
+        <label>Crédito <a href="javascript:void(0)" class="sp-pela" onclick="simPelaParcela()" title="O cliente diz quanto quer pagar por mês e o CRM acha o crédito">pela parcela</a></label>
         <input type="text" id="simCredito" value="R$ 100.000,00" inputmode="decimal" oninput="maskMoneySim(this); calcularSimulacao()">
+        <div class="sp-pp" id="simPelaParcBox" style="display:none">
+          <label for="simParcDesejada">Quanto quer pagar por mês?</label>
+          <div class="sp-pp-linha"><input type="text" id="simParcDesejada" inputmode="decimal" placeholder="R$ 1.000,00" oninput="maskMoneySim(this)" onkeydown="if(event.key==='Enter'){event.preventDefault();simAcharCredito();}">
+            <button type="button" class="btn primary" onclick="simAcharCredito()">Achar</button></div>
+          <small class="muted" id="simPelaParcRes">Usa a modalidade, o plano de parcela e o seguro escolhidos.</small>
+        </div>
       </div>
       <div class="field sp-parcela">
         <label>Parcela <i class="sp-info" title="Plano da parcela usado nos cards da simulação, na Proposta e na Publicidade. A Proposta em PDF também mostra os 4 cenários de lance completos.">ⓘ</i></label>
@@ -1958,6 +1978,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         </div>
       </div>
     </div>
+    <div class="sp-simular-linha"><small class="muted" id="simAguardeTxt">👆 Escolha a modalidade e digite o crédito (ou toque em <b>pela parcela</b>): a simulação aparece aqui embaixo.</small></div>
   </div>
 
   <!-- ENVIAR SIMULAÇÃO PARA O CLIENTE (Proposta completa / Peça de Publicidade) — recolhível -->
@@ -13985,6 +14006,7 @@ function calcularSimulacao() {
     pctPlano: pctCardsSelecionado, pctPlanoTxt, reajustesAteContemplar, mesesReajuste, pagoAteContemplarReaj, pagoAposContemplarReaj,
     totalPagoContrato: pagoAteContemplarReaj + lanceBolsoReaj + pagoAposContemplarReaj, parcelaPosContemplacaoReaj, parcelaUltimoMes, parcelaNaContemplacao,
     estrategiaSim, estrategiaTxt, creditoLiberadoReaj, lanceBolsoReaj, lanceEmbutidoReaj,
+    parcelaPrimeira: parcelaPlanoMes(1),
     estrategiaVenda: estrVenda, estrategiaVendaTxt: vendaTxt, vendaLanceBolsoReaj: vendaBolsoReaj, vendaLanceEmbReaj: vendaEmbReaj, vendaCreditoLiberado
   };
 }
@@ -21569,6 +21591,8 @@ const ASSIST_BASE = [
   r: 'As cópias automáticas **não usam a nuvem (Supabase)**: ficam só na memória deste aparelho.\nPara apagar, vá em **Configurações** › **🛟 Cópias automáticas**: cada cópia tem o botão **🗑️ Apagar**, e embaixo da lista há **🗑️ Apagar todas as cópias**. Os dados atuais do CRM não mudam. Depois de apagar, o CRM só volta a guardar uma cópia no dia seguinte.', aba: 'configuracoes' },
 { id: 'assuncao_divida', t: 'Como funciona o simulador de Assunção de Dívida?', k: 'assuncao de divida, assunção, quitar com desconto, quitação com desconto, desconto de 40%, cedente, cessionario, assumir saldo devedor, repasse de cota, cliente a, cliente b',
   r: 'No **Simulador** › **🤝 Assunção de Dívida**:\n- **Cliente A** (quem quita): usou o crédito e quita o saldo devedor com desconto (até 40%). O simulador mostra quanto ele já pagou, o valor para quitar e o **total pago comparado ao crédito usado**.\n- **Cliente B** (quem assume): **recebe na hora o valor da quitação** e assume o saldo devedor e as parcelas no prazo que falta.\n- **Aprovação do B**: idade, renda e imóvel de garantia, com o checklist (60 meses ou mais de prazo, terminar antes dos 75 anos, parcela até 30% da renda, imóvel valendo o dobro do saldo, sem FGTS).\n- Também mostra a tabela do **melhor momento para quitar**.\nOs valores são ilustrativos: desconto e taxa reais dependem da análise da Ademicon.', aba: 'simulador' },
+{ id: 'sim_pela_parcela', t: 'Como acho o crédito pela parcela que o cliente quer pagar?', k: 'credito pela parcela, quanto consigo pagando, parcela de 1000, parcela desejada, achar credito, simular pela parcela, quanto de credito',
+  r: '1. No **SIMULADOR**, escolha a modalidade, o plano de parcela e o seguro.\n2. Ao lado de **Crédito**, toque em **pela parcela**.\n3. Digite quanto o cliente quer pagar por mês (ex.: R$ 1.000) e toque em **Achar**.\nO CRM coloca o maior crédito cuja primeira parcela cabe nesse valor, e a simulação aparece logo abaixo.\n\nAo abrir o Simulador, a simulação fica escondida até você escolher a modalidade ou digitar o crédito (ou a parcela).', aba: 'simulador' },
 { id: 'banco_cotas', t: 'Como funciona o Banco de Cotas?', k: 'banco de cotas, varias cotas, várias cotas, cotas menores, espalhar posicoes, posições no grupo, contemplacao planejada, contemplação planejada, custo ao ano, custo ao mes, dinheiro novo, quitar cotas, incc, grupo antigo, 240 meses, ja pagou, relatorio do banco de cotas',
   r: 'No **Simulador** › **🏦 Banco de Cotas**:\n- Cada linha é um grupo: quantidade e valor das cotas, **prazo original**, quantos meses o grupo **já tinha rodado** quando o cliente comprou e quantas **parcelas ele já pagou**. Prazo do cliente = prazo original − meses rodados.\n- Escolha a forma (lance livre, limitado, fixo ou sorteio), o mês da 1ª contemplação e **de quanto em quanto tempo sai a próxima**. Os lances são em quantidade de parcelas.\n- O resultado mostra o **dinheiro novo** (crédito − lances do bolso), o total pago (dinheiro novo + taxa) e o **custo ao ano e ao mês**. Com INCC, mostra também os valores reajustados.\n- **Situação de hoje**: quanto já pagou, reajustes, parcela de hoje, saldo e o custo daqui para frente.\n- **Quitação**: marque cota por cota e veja o valor com desconto, o que deixa de pagar e o ganho.\n- **⬇ Baixar relatório** gera um arquivo que abre no navegador e pode ser impresso em PDF.', aba: 'simulador' },
 { id: 'lances_parcelas', t: 'Como funcionam os lances em parcelas no imóvel?', k: 'lance em parcelas, quantidade de parcelas, lance fixo, lance limitado, lance livre, 44 parcelas, 88 parcelas, 99 parcelas, embutido, lance do bolso, porcentagem do lance, saldo devedor dividido',
@@ -25671,6 +25695,59 @@ function simAlternarLances(forcar){
   }
   let n = 0; const t = setInterval(() => { encurtar(); if (++n > 20) clearInterval(t); }, 500);
   document.addEventListener('DOMContentLoaded', encurtar);
+})();
+</script>
+<script id="simParcelaSimularScript">
+// ===== achar o crédito pela parcela =====
+// A primeira parcela é proporcional ao crédito (saldo, taxa e seguro crescem juntos):
+// calcula a parcela de R$ 100.000 no plano escolhido e faz a regra de três.
+function simPelaParcela(){
+  const box = document.getElementById('simPelaParcBox'); if (!box) return;
+  const abrir = box.style.display === 'none';
+  box.style.display = abrir ? '' : 'none';
+  if (abrir) setTimeout(() => document.getElementById('simParcDesejada')?.focus(), 30);
+}
+function simAcharCredito(){
+  const alvo = parseSimNumber(document.getElementById('simParcDesejada')?.value || '');
+  const res = document.getElementById('simPelaParcRes'), inp = document.getElementById('simCredito');
+  if (!alvo || alvo <= 0) { if (res) res.textContent = 'Digite quanto o cliente quer pagar por mês.'; return; }
+  const fmt = v => 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const antes = inp.value;
+  inp.value = fmt(100000); calcularSimulacao();
+  const base = (typeof ultimaSimulacao !== 'undefined' && ultimaSimulacao) ? ultimaSimulacao.parcelaPrimeira : 0;
+  if (!base) { inp.value = antes; calcularSimulacao(); if (res) res.textContent = 'Não deu para calcular agora.'; return; }
+  let credito = Math.floor(alvo / base * 100000 / 100) * 100;              // arredonda para baixo (de R$ 100 em R$ 100), para não passar da parcela
+  inp.value = fmt(credito); calcularSimulacao();
+  const parc = ultimaSimulacao.parcelaPrimeira, plano = ultimaSimulacao.pctPlanoTxt || '';
+  if (res) res.innerHTML = `Crédito de <b>${fmt(credito)}</b>, com primeira parcela de <b>${fmt(parc)}</b>${plano ? ` (${plano})` : ''}.`;
+  simMostrarResultado();
+  if (typeof showToast === 'function') showToast('Crédito ajustado pela parcela.');
+}
+document.addEventListener('click', e => {
+  const box = document.getElementById('simPelaParcBox');
+  if (box && box.style.display !== 'none' && !e.target.closest('.sp-cred')) box.style.display = 'none';
+});
+
+// ===== a simulação só aparece depois que a pessoa define os números =====
+// Ao abrir o SIMULADOR, os resultados ficam escondidos até a pessoa mexer na modalidade, no crédito ou na parcela.
+function simMostrarResultado(){
+  const sec = document.getElementById('simulador'); if (!sec) return;
+  if (!sec.classList.contains('sim-aguardando')) return;
+  sec.classList.remove('sim-aguardando');
+  try { calcularSimulacao(); } catch (e) {}
+}
+// a simulação aparece assim que a pessoa mexe na modalidade, no crédito ou no plano de parcela
+['simModalidade', 'simCredito', 'pubParcelaPct'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) { el.addEventListener('input', simMostrarResultado); el.addEventListener('change', simMostrarResultado); }
+});
+(function(){
+  const sec = document.getElementById('simulador'); if (sec) sec.classList.add('sim-aguardando');
+  const original = window.show;
+  if (typeof original === 'function') window.show = function(id){
+    if (id === 'simulador') { const el = document.getElementById('simulador'); if (el && !el.classList.contains('active')) el.classList.add('sim-aguardando'); }
+    return original.apply(this, arguments);
+  };
 })();
 </script>
 <script id="mapaTudoScript">
