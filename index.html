@@ -1215,6 +1215,9 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 
 .ag-origem { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #eef2ff; color: #3730a3; margin-left: 8px; vertical-align: 2px; white-space: nowrap; }
 [data-theme="dark"] .ag-origem { background: #1e1b4b; color: #c7d2fe; }
+
+.fu-meet { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; margin: 2px 0 10px; cursor: pointer; }
+.fu-meet input { width: 17px; height: 17px; margin: 0; }
 </style>
 </head>
 <body>
@@ -11419,6 +11422,8 @@ function muralFollowHtml(l, opts){
           </select>
         </div>
       </div>
+      <label class="fu-meet"><input type="checkbox" id="newCommentMeet" onchange="document.getElementById('newCommentMeetLinkWrap').style.display = this.checked ? '' : 'none'"> 📹 Vai ser reunião por vídeo: mandar o link do Google Meet pelo WhatsApp</label>
+      <div class="field" id="newCommentMeetLinkWrap" style="display:none"><label>Link do Meet <small class="muted">(deixe em branco para o CRM criar no Google Agenda)</small></label><input id="newCommentMeetLink" placeholder="https://meet.google.com/..."></div>
       <button class="btn primary" onclick="addLeadComment('${l.id}')">${respondendo ? 'Publicar resposta' : 'Publicar'}</button>
     </div>`;
 }
@@ -11628,7 +11633,11 @@ function addLeadComment(leadId){
 
     // 2) a atividade na Agenda (em aberto fica colorida; encerrada fica apagada).
     //    "Só anotação" não cria nada na agenda.
-    if (!semAgenda) criarFollowParaComentario(l, novo, dataAgenda, status);
+    const querMeet = !semAgenda && document.getElementById('newCommentMeet')?.checked;
+    const linkMeet = (document.getElementById('newCommentMeetLink')?.value || '').trim();
+    const janelaWhats = querMeet ? window.open('', '_blank') : null;   // abre já (no clique), senão o navegador bloqueia
+    const followNovo = !semAgenda ? criarFollowParaComentario(l, novo, dataAgenda, status) : null;
+    if (querMeet && followNovo) setTimeout(() => followEnviarMeet(followNovo.id, janelaWhats, linkMeet), 0);
 
     // 3) se é resposta, o follow-up respondido é encerrado automaticamente
     let encerrouAnterior = false;
@@ -12735,6 +12744,8 @@ function openFollowActionModal(item, opts){
         ${leadObj && comentario ? `<button class="btn blue" onclick="reabrirMural('${leadObj.id}', {replyTo:'${comentario.id}'})">↩️ Responder e marcar retorno</button>` : ''}
         ${!isDone ? `<button class="btn green" onclick="closeMeetingAction('${item.id}')">✅ Encerrar</button>` : `<button class="btn" onclick="reopenMeetingAction('${item.id}')">↩️ Reabrir</button>`}
         ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none">📲 WhatsApp</a>` : ''}
+        ${!isDone && leadObj ? `<button class="btn" onclick="followEnviarMeet('${item.id}', window.open('', '_blank'))" title="${item.meetUrl ? 'Manda o convite com o link do Meet pelo WhatsApp' : 'Cria o link do Google Meet e manda o convite pelo WhatsApp'}">📹 ${item.meetUrl ? 'Enviar link do Meet' : 'Criar Meet e enviar'}</button>` : ''}
+        ${item.meetUrl ? `<button class="btn blue" onclick="window.open('${esc(item.meetUrl)}','_blank')">🎥 Entrar no Meet</button>` : ''}
         <button class="btn" onclick="openRescheduleModal('${item.id}')">🔄 Mudar data</button>
         <button class="btn danger" onclick="deleteEventAction('${item.id}')">🗑️ Excluir</button>
       </div>
@@ -21525,6 +21536,8 @@ const ASSIST_BASE = [
   r: '1. Vá em **Agenda Comercial** e toque em **+ Agendar Reunião**.\n2. Escolha o **lead**, o responsável, a **data e hora** e a pauta.\n3. Escolha a cor do compromisso.\n4. Toque em **Confirmar Reunião**.\nTambém dá para agendar pelo mural do cliente (Notas › Agendar reunião).', aba: 'agenda' },
 { id: 'vendas_loja', t: 'Como passo minhas vendas para uma loja?', k: 'passar vendas para loja, vendas sem loja, mudar loja da venda, transferir vendas loja, colocar venda na loja, loja da venda',
   r: '1. Em **Cálculo de Comissão** (ou em **Consultores & Vendas**), toque em **🏬 Passar vendas para uma loja**.\n2. Escolha a **loja de destino**.\n3. Marque as vendas: **Marcar todas**, **Só as sem loja** ou uma por uma (dá para buscar pelo cliente, grupo ou cota).\n4. Toque em **🏬 Passar para a loja** e confirme.\nA loja define em qual equipe a venda conta. Se a loja ainda não existe, crie antes em Usuários › + Nova loja.', aba: 'comissoes' },
+{ id: 'follow_meet', t: 'Como mando o link do Google Meet ao responder um follow-up?', k: 'meet no follow, link do meet follow, responder follow meet, enviar meet whatsapp, retorno por video, reuniao por video follow',
+  r: '- **Ao responder** (ou criar) um follow-up no mural, marque **📹 Vai ser reunião por vídeo**. Se já tiver o link, cole; se deixar em branco, o CRM cria a sala no Google Agenda. Ao publicar, o WhatsApp abre com o convite (data, horário e link).\n- **No painel do follow-up**, toque em **📹 Criar Meet e enviar** (ou **Enviar link do Meet**, se o link já existir).\nSem o Google Agenda conectado, o CRM pede para você colar o link.', aba: 'agenda' },
 { id: 'agenda_editar', t: 'Como edito um agendamento (pauta, horário, responsável)?', k: 'editar agendamento, editar reuniao, mudar pauta, alterar pauta, trocar horario, mudar responsavel, corrigir agendamento, link do meet',
   r: '1. Na **Agenda Comercial**, toque no compromisso.\n2. No Painel do Agendamento, toque em **✏️ Editar**.\n3. Mude o que precisar: **cliente**, **responsável**, **data e hora**, **pauta**, **link do Meet** e **cor**.\n4. Toque em **💾 Salvar alterações**.\nA mudança fica registrada no mural do cliente e, se a reunião estiver no Google Agenda, vai para lá também.', aba: 'agenda' },
 { id: 'agenda_reagendar', t: 'Como reagendo ou encerro uma reunião?', k: 'reagendar, remarcar, mudar horario, encerrar reuniao, concluir reuniao, cancelar reuniao, excluir reuniao',
@@ -25811,6 +25824,52 @@ function matTrazerArquivo(inp){
     showToast(`Material de Apoio atualizado: ${novos} novo(s), ${iguais} atualizado(s).`);
   };
   r.readAsText(f);
+}
+</script>
+<script id="followMeetScript">
+// ===== FOLLOW-UP COM GOOGLE MEET =====
+// Garante um link do Meet para o follow-up (o que a pessoa colou, o que já existe, ou cria no Google Agenda)
+// e abre o WhatsApp com o convite. A janela é aberta no clique (senão o navegador bloqueia) e recebe o endereço depois.
+async function followGarantirMeet(f, linkColado){
+  if (linkColado) { f.meetUrl = /^https?:\/\//i.test(linkColado) ? linkColado : 'https://' + linkColado; return f.meetUrl; }
+  if (f.meetUrl) return f.meetUrl;
+  const tok = typeof ensureGoogleToken === 'function' ? await ensureGoogleToken(false) : null;
+  if (!tok) return '';
+  try {
+    if (f.googleEventId) {
+      // o retorno já está no Google Agenda: só acrescenta a sala do Meet no mesmo evento
+      const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events/${f.googleEventId}?conferenceDataVersion=1`, {
+        method: 'PATCH', headers: { 'Authorization': `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ summary: 'Reunião: ' + f.lead, conferenceData: { createRequest: { requestId: 'crm_fu_' + Date.now(), conferenceSolutionKey: { type: 'hangoutsMeet' } } } })
+      });
+      if (r.ok) { const ev = await r.json(); f.meetUrl = ev.hangoutLink || (ev.conferenceData && ev.conferenceData.entryPoints ? ev.conferenceData.entryPoints[0].uri : '') || ''; }
+    } else {
+      const res = await createOfficialGoogleMeetEvent({ lead: f.lead, responsavel: f.responsavel, date: f.date, obj: 'Reunião: ' + f.lead });
+      if (res && res.eventId) { f.googleEventId = res.eventId; f.meetUrl = res.meetUrl || ''; delete f.googlePendente; }
+    }
+  } catch (e) { console.warn('meet do follow', e); }
+  return f.meetUrl || '';
+}
+async function followEnviarMeet(followId, janela, linkColado){
+  const f = (db.meetings || []).find(m => m.id === followId);
+  const fechar = () => { try { if (janela && !janela.closed) janela.close(); } catch (e) {} };
+  if (!f) return fechar();
+  const lead = (f.leadId && (db.leads || []).find(l => l.id === f.leadId)) || (db.leads || []).find(l => l.nome === f.lead);
+  if (!lead || !String(lead.tel || '').replace(/\D/g, '')) { fechar(); return alert('Este cliente não tem telefone no cadastro.'); }
+  if (janela && !janela.closed) { try { janela.document.write('<p style="font:16px sans-serif;padding:24px">Preparando o convite do Meet…</p>'); } catch (e) {} }
+  let url = await followGarantirMeet(f, linkColado);
+  if (!url) {
+    const colado = prompt('Não deu para criar o link do Meet (o Google Agenda não está conectado neste aparelho).\n\nCole aqui o link da reunião, ou deixe em branco para mandar "a combinar":', '');
+    if (colado === null) return fechar();
+    if (colado.trim()) url = await followGarantirMeet(f, colado.trim());
+  }
+  save();
+  const original = window.open;
+  window.open = (u) => { if (janela && !janela.closed) { janela.location.href = u; return janela; } return original.call(window, u, '_blank'); };
+  try { sendWhatsAppInvite(f.lead, lead.tel, f.date, 'Reunião por vídeo', url); } finally { window.open = original; }
+  if (typeof registrarAcaoAutomaticaLead === 'function') registrarAcaoAutomaticaLead(lead.nome, `📹 Link do Meet enviado pelo WhatsApp para ${fmtDataHoraCurta(f.date)}${url ? ' — ' + url : ''}`);
+  save();
+  if (typeof showToast === 'function') showToast(url ? 'Convite com o link do Meet aberto no WhatsApp.' : 'Convite aberto no WhatsApp (link do Meet a combinar).');
 }
 </script>
 <script id="mapaTudoScript">
