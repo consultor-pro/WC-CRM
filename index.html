@@ -1130,6 +1130,42 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .vl-linha .vl-loja.sem { background: #fef3c7; color: #92400e; }
 [data-theme="dark"] .vl-linha .vl-loja { background: #1f2937; }
 [data-theme="dark"] .vl-linha .vl-loja.sem { background: #3b2f12; color: #fcd34d; }
+
+#metaMensalCard .mt-bt-def { font-size: 12.5px; padding: 5px 12px; }
+#metaMensalCard .mt-nota { display: block; font-size: 12px; margin-bottom: 10px; }
+.mt-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+.mt-bloco { background: rgba(255,255,255,.65); border: 1px solid #e0e7ff; border-radius: 12px; padding: 12px 14px; }
+.mt-tit { font-size: 13px; font-weight: 800; }
+.mt-val { font-size: 19px; font-weight: 900; color: var(--purple); margin-top: 4px; }
+.mt-val small { font-size: 13px; font-weight: 700; color: var(--muted, #64748b); }
+.mt-val .mt-auto { font-style: normal; font-size: 11px; }
+.mt-pct { float: right; font-size: 15px; }
+.mt-linha { display: block; margin-top: 6px; font-size: 12.5px; }
+.mt-ritmo { font-size: 11.5px; font-weight: 800; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.mt-ritmo.verde { background: #dcfce7; color: #15803d; }
+.mt-ritmo.amarelo { background: #fef3c7; color: #92400e; }
+.mt-ritmo.vermelho { background: #fee2e2; color: #b91c1c; }
+.meta-bar-fill.batida { background: linear-gradient(90deg, #16a34a, #22c55e); }
+.mt-hist { margin-top: 12px; }
+.mt-hist-tit { font-size: 12.5px; font-weight: 800; margin-bottom: 6px; }
+.mt-meses { display: grid; grid-template-columns: repeat(12, 1fr); gap: 4px; }
+.mt-mes { text-align: center; border-radius: 8px; padding: 4px 0; background: #f1f5f9; cursor: default; }
+.mt-mes b { display: block; font-size: 14px; line-height: 1.2; }
+.mt-mes small { font-size: 10px; color: var(--muted, #64748b); text-transform: capitalize; }
+.mt-mes.ok { background: #dcfce7; color: #15803d; }
+.mt-mes.nao { background: #fee2e2; color: #b91c1c; }
+.mt-mes.andamento { background: #e0e7ff; color: #3730a3; }
+.mt-equipe { margin-top: 16px; padding-top: 12px; border-top: 1px dashed #c7d2fe; }
+.mt-eq-tit { font-size: 14px; font-weight: 800; margin-bottom: 8px; }
+[data-theme="dark"] .mt-bloco { background: rgba(15,23,42,.5); border-color: #334155; }
+[data-theme="dark"] .mt-mes { background: #1f2937; }
+[data-theme="dark"] .mt-mes.ok { background: #14532d; color: #86efac; }
+[data-theme="dark"] .mt-mes.nao { background: #450a0a; color: #fca5a5; }
+[data-theme="dark"] .mt-mes.andamento { background: #1e1b4b; color: #c7d2fe; }
+[data-theme="dark"] .mt-ritmo.verde { background: #14532d; color: #86efac; }
+[data-theme="dark"] .mt-ritmo.amarelo { background: #422006; color: #fcd34d; }
+[data-theme="dark"] .mt-ritmo.vermelho { background: #450a0a; color: #fca5a5; }
+@media (max-width: 560px) { .mt-meses { grid-template-columns: repeat(6, 1fr); } }
 </style>
 </head>
 <body>
@@ -1356,17 +1392,15 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
   </div>
 
   <div class="meta-card" id="metaMensalCard">
-    <div class="between" style="flex-wrap:wrap;gap:10px">
+    <div class="between" style="flex-wrap:wrap;gap:8px;margin-bottom:6px">
       <div>
-        <small class="muted" style="text-transform:uppercase;font-weight:700;letter-spacing:.3px">🎯 Meta Mensal de Vendas</small>
-        <div style="font-size:20px;font-weight:900;color:var(--purple)" id="metaMensalTexto">R$ 0 / R$ 0</div>
+        <small class="muted" style="text-transform:uppercase;font-weight:700;letter-spacing:.3px">🎯 Minhas metas</small>
+        <div class="mt-sub" id="metaMensalTexto" style="display:none"></div>
       </div>
-      <div>
-        <input type="text" id="metaMensalInput" placeholder="R$ 0,00" oninput="maskMoneySim(this)" style="width:170px;margin:0;padding:8px" onchange="salvarMetaMensal(this.value)">
-      </div>
+      <button class="btn mt-bt-def" type="button" onclick="metasAbrirEdicao()">✏️ Definir metas</button>
     </div>
-    <div class="meta-bar-track"><div class="meta-bar-fill" id="metaMensalBarra" style="width:0%"></div></div>
-    <small class="muted" id="metaMensalPercentual" style="display:block;margin-top:6px">Defina uma meta mensal para acompanhar seu progresso.</small>
+    <small class="muted mt-nota">Contam as vendas do mês e do ano atuais, inclusive as canceladas (foram vendidas). O filtro de período acima não muda as metas.</small>
+    <div id="metasPainel"></div>
   </div>
 
   <div class="card cm-card" id="clientesMesCard" style="margin-bottom:16px">
@@ -2925,46 +2959,138 @@ document.addEventListener('keydown', function(e){
 });
 
 // --- Meta mensal de vendas + confete ao bater a meta ---
+// ===== METAS (mês e ano) =====
+// Ficam no cadastro da pessoa (sincronizam com a nuvem e valem em qualquer aparelho).
+// u.metas = { mes, ano, equipeMes, equipeAno, hist: { 'AAAA-MM': meta daquele mês } }
 function getMetaMensalKey(){
   return `crm_meta_mensal_${EQUIPE_ID}_${currentUser ? currentUser.nome : 'geral'}`;
 }
-function salvarMetaMensal(valStr){
-  const valor = parseSimNumber(valStr);
-  localStorage.setItem(getMetaMensalKey(), String(valor));
-  showToast('Meta mensal salva!', 'success');
-  renderDashboard();
+function metasEu(){ return currentUser ? ((usersList || []).find(u => u.id === currentUser.id) || currentUser) : null; }
+function metasDe(u){
+  u = u || metasEu(); const m = Object.assign({ mes: 0, ano: 0, equipeMes: 0, equipeAno: 0, hist: {} }, (u && u.metas) || {});
+  if (u && Number(u.metaMensal)) m.mes = Number(u.metaMensal);   // o líder também pode mudar em Equipe › Meta e senha
+  if (!m.mes) { try { m.mes = parseFloat(localStorage.getItem(getMetaMensalKey())) || 0; } catch (e) {} }   // meta antiga, guardada só neste aparelho
+  return m;
 }
-function renderMetaMensal(totalVolumeAtual){
-  const input = document.getElementById('metaMensalInput');
-  const texto = document.getElementById('metaMensalTexto');
-  const barra = document.getElementById('metaMensalBarra');
-  const percTxt = document.getElementById('metaMensalPercentual');
-  if(!input || !texto || !barra || !percTxt) return;
+function metasGravar(nova){
+  const u = metasEu(); if (!u) return;
+  const ym = new Date().toISOString().slice(0, 7);
+  const m = Object.assign(metasDe(u), nova);
+  m.hist = Object.assign({}, m.hist || {}); if (m.mes) m.hist[ym] = m.mes;
+  if (m.equipeMes) { m.histEquipe = Object.assign({}, m.histEquipe || {}); m.histEquipe[ym] = m.equipeMes; }
+  u.metas = m; u.metaMensal = m.mes || 0;
+  if (currentUser && currentUser !== u) { currentUser.metas = m; currentUser.metaMensal = u.metaMensal; try { localStorage.setItem(`crm_active_user_${EQUIPE_ID}`, JSON.stringify(currentUser)); } catch (e) {} }
+  save();
+}
+function salvarMetaMensal(valStr){ metasGravar({ mes: parseSimNumber(valStr) }); showToast('Meta mensal salva!', 'success'); }
 
-  const meta = parseFloat(localStorage.getItem(getMetaMensalKey())) || 0;
-  if(document.activeElement !== input){
-    input.value = meta ? 'R$ ' + meta.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '';
+function metasMinhasVendas(){
+  if (!currentUser) return [];
+  return (db.sales || []).filter(s => s && (s.responsavel === currentUser.nome || (typeof hierVendedorId === 'function' && hierVendedorId(s) === currentUser.id)));
+}
+function metasVendasEquipe(){ return (db.sales || []).filter(s => s && canUserAccessSale(s)); }
+function metasTenhoEquipe(){ try { return typeof hierTenhoEquipe === 'function' ? hierTenhoEquipe() : (getSubordinateUserIds(currentUser.id) || []).length > 1; } catch (e) { return false; } }
+function metasSomaPorMes(vendas){
+  const m = {};
+  vendas.forEach(v => { const d = String(v.date || '').slice(0, 7); if (/^\d{4}-\d{2}$/.test(d)) m[d] = (m[d] || 0) + (Number(v.valor) || 0); });
+  return m;
+}
+// dias úteis (seg a sex) entre duas datas, contando as duas pontas
+function metasDiasUteis(de, ate){ let n = 0; const d = new Date(de); d.setHours(12, 0, 0, 0); const f = new Date(ate); f.setHours(12, 0, 0, 0); while (d <= f) { const w = d.getDay(); if (w && w !== 6) n++; d.setDate(d.getDate() + 1); } return n; }
+function metasRitmo(feito, meta, ini, fim){
+  const hoje = new Date();
+  const total = Math.max(1, metasDiasUteis(ini, fim));
+  const passados = metasDiasUteis(ini, new Date(hoje.getTime() - 86400000));       // até ontem
+  const restam = Math.max(0, metasDiasUteis(hoje, fim));
+  const esperado = meta * passados / total, falta = Math.max(0, meta - feito);
+  let cor = 'verde', txt = 'no ritmo';
+  if (feito >= meta) { cor = 'verde'; txt = 'meta batida'; }
+  else if (feito < esperado * 0.8) { cor = 'vermelho'; txt = 'atrasado'; }
+  else if (feito < esperado) { cor = 'amarelo'; txt = 'um pouco atrás'; }
+  return { falta, restam, porDia: restam ? falta / restam : falta, cor, txt };
+}
+function metasBloco(titulo, feito, meta, ini, fim, extra){
+  const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+  if (!meta) return `<div class="mt-bloco"><div class="mt-tit">${titulo}</div><div class="mt-val">${fmt(feito)} <small>/ defina a meta</small></div>
+    <div class="meta-bar-track"><div class="meta-bar-fill" style="width:0%"></div></div><small class="muted">Toque em ✏️ Definir metas.</small></div>`;
+  const pct = feito / meta * 100, r = metasRitmo(feito, meta, ini, fim);
+  const bola = { verde: '🟢', amarelo: '🟡', vermelho: '🔴' }[r.cor];
+  const linha = feito >= meta ? `🎉 Meta batida! Passou ${fmt(feito - meta)} da meta.`
+    : `Faltam <b>${fmt(r.falta)}</b> · ${r.restam} dia${r.restam === 1 ? '' : 's'} út${r.restam === 1 ? 'il' : 'eis'}${r.restam ? ` · precisa de <b>${fmt(r.porDia)}</b> por dia útil` : ''}`;
+  return `<div class="mt-bloco"><div class="between"><div class="mt-tit">${titulo}</div><span class="mt-ritmo ${r.cor}">${bola} ${r.txt}</span></div>
+    <div class="mt-val">${fmt(feito)} <small>/ ${fmt(meta)}${extra || ''}</small> <span class="mt-pct">${Math.floor(pct)}%</span></div>
+    <div class="meta-bar-track"><div class="meta-bar-fill ${pct >= 100 ? 'batida' : ''}" style="width:${Math.min(100, pct).toFixed(1)}%"></div></div>
+    <small class="muted mt-linha">${linha}</small></div>`;
+}
+function metasHistorico(porMes, hist, metaAtual){
+  const hoje = new Date(), meses = [];
+  for (let i = 11; i >= 0; i--) { const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1); meses.push(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0')); }
+  const chaves = Object.keys(hist || {}).sort();
+  const metaDoMes = ym => { let v = 0; chaves.forEach(k => { if (k <= ym) v = hist[k]; }); return v || (chaves.length ? hist[chaves[0]] : metaAtual) || metaAtual; };
+  const atual = meses[11], primeiro = Object.keys(porMes).filter(k => porMes[k] > 0).sort()[0] || atual;   // antes da primeira venda: não conta
+  const itens = meses.map(ym => {
+    const feito = porMes[ym] || 0, meta = metaDoMes(ym), nome = new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1, 1).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+    const st = (!meta || ym < primeiro) ? 'sem' : feito >= meta ? 'ok' : ym === atual ? 'andamento' : 'nao';
+    const ic = { ok: '✓', nao: '✗', andamento: '…', sem: '–' }[st];
+    const tip = `${nome}/${ym.slice(2, 4)}: ${Number(feito).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}${meta ? ' de ' + Number(meta).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) + ' (' + Math.floor(feito / meta * 100) + '%)' : ''}`;
+    return `<div class="mt-mes ${st}" title="${tip}"><b>${ic}</b><small>${nome}</small></div>`;
+  }).join('');
+  const fechados = meses.slice(0, 11).filter(ym => ym >= primeiro);
+  const batidas = fechados.filter(ym => { const m = metaDoMes(ym); return m && (porMes[ym] || 0) >= m; }).length;
+  return `<div class="mt-hist"><div class="mt-hist-tit">Últimos 12 meses <small class="muted">· ${fechados.length ? `bateu a meta em ${batidas} de ${fechados.length} ${fechados.length === 1 ? 'mês fechado' : 'meses fechados'}` : 'o primeiro mês ainda está em andamento'}</small></div><div class="mt-meses">${itens}</div></div>`;
+}
+
+function metasRender(){
+  const box = document.getElementById('metasPainel'); if (!box || !currentUser) return;
+  const m = metasDe(), hoje = new Date(), ano = hoje.getFullYear(), mes = hoje.getMonth();
+  const ymAtual = ano + '-' + String(mes + 1).padStart(2, '0');
+  const iniMes = new Date(ano, mes, 1), fimMes = new Date(ano, mes + 1, 0), iniAno = new Date(ano, 0, 1), fimAno = new Date(ano, 11, 31);
+  const nomeMes = iniMes.toLocaleDateString('pt-BR', { month: 'long' }).replace(/^./, c => c.toUpperCase());
+  const meu = metasSomaPorMes(metasMinhasVendas());
+  const somaAno = pm => Object.keys(pm).filter(k => k.startsWith(ano + '-')).reduce((t, k) => t + pm[k], 0);
+  const metaAno = m.ano || (m.mes ? m.mes * 12 : 0);
+  let h = `<div class="mt-grade">${metasBloco('Meta de ' + nomeMes, meu[ymAtual] || 0, m.mes, iniMes, fimMes)}${metasBloco('Meta de ' + ano, somaAno(meu), metaAno, iniAno, fimAno, m.ano ? '' : ' <i class="mt-auto">(12 × mês)</i>')}</div>`;
+  h += metasHistorico(meu, m.hist, m.mes);
+  if (metasTenhoEquipe()) {
+    const eq = metasSomaPorMes(metasVendasEquipe());
+    const eqAno = m.equipeAno || (m.equipeMes ? m.equipeMes * 12 : 0);
+    h += `<div class="mt-equipe"><div class="mt-eq-tit">👥 Minha equipe <small class="muted">(você + quem está abaixo de você)</small></div>
+      <div class="mt-grade">${metasBloco('Equipe em ' + nomeMes, eq[ymAtual] || 0, m.equipeMes, iniMes, fimMes)}${metasBloco('Equipe em ' + ano, somaAno(eq), eqAno, iniAno, fimAno, m.equipeAno ? '' : ' <i class="mt-auto">(12 × mês)</i>')}</div>
+      ${m.equipeMes ? metasHistorico(eq, m.histEquipe || {}, m.equipeMes) : ''}</div>`;
   }
-
-  const fmt = v => Number(v || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  texto.textContent = fmt(totalVolumeAtual) + ' / ' + (meta ? fmt(meta) : 'defina sua meta →');
-
-  if(!meta){
-    barra.style.width = '0%';
-    percTxt.textContent = 'Defina uma meta mensal para acompanhar seu progresso.';
-    return;
+  box.innerHTML = h;
+  // texto curto usado no relatório
+  const fmt = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const t = document.getElementById('metaMensalTexto'); if (t) t.textContent = fmt(meu[ymAtual] || 0) + ' / ' + (m.mes ? fmt(m.mes) : 'sem meta');
+  // confete uma vez por mês ao bater a meta do mês
+  if (m.mes && (meu[ymAtual] || 0) >= m.mes) {
+    const k = `crm_meta_confete_${EQUIPE_ID}_${ymAtual}_${currentUser.nome}`;
+    try { if (!localStorage.getItem(k)) { localStorage.setItem(k, '1'); launchConfetti(); showToast('🎉 Meta mensal batida! Parabéns!', 'success'); } } catch (e) {}
   }
+}
+// o Dashboard chama com o total do filtro: a meta agora ignora esse total e usa sempre o mês e o ano atuais
+function renderMetaMensal(){ try { metasRender(); } catch (e) { console.warn('metas', e); } }
 
-  const pct = Math.min(100, (totalVolumeAtual / meta) * 100);
-  barra.style.width = pct.toFixed(1) + '%';
-  percTxt.textContent = pct.toFixed(0) + '% da meta atingido';
-
-  const bateuMesKey = `crm_meta_confete_${EQUIPE_ID}_${new Date().toISOString().slice(0,7)}_${currentUser ? currentUser.nome : 'geral'}`;
-  if(pct >= 100 && !localStorage.getItem(bateuMesKey)){
-    localStorage.setItem(bateuMesKey, '1');
-    launchConfetti();
-    showToast('🎉 Meta mensal batida! Parabéns!', 'success');
-  }
+function metasAbrirEdicao(){
+  const m = metasDe(), lider = metasTenhoEquipe();
+  const din = v => v ? 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+  const campo = (id, rot, v, dica) => `<div class="field"><label>${rot}</label><input type="text" id="${id}" value="${din(v)}" placeholder="R$ 0,00" oninput="maskMoneySim(this)">${dica ? `<small class="muted">${dica}</small>` : ''}</div>`;
+  openModal(`
+    <div class="between"><h2 style="margin:0">🎯 Definir metas</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <p class="muted" style="font-size:13px;margin:6px 0 12px">Valem para o mês e o ano atuais. Contam todas as vendas lançadas, inclusive as canceladas.</p>
+    <h3 style="margin:0 0 6px;font-size:15px">Minhas metas</h3>
+    ${campo('mtMes', 'Meta do mês', m.mes)}
+    ${campo('mtAno', 'Meta do ano', m.ano, 'Deixe em branco para usar 12 × a meta do mês.')}
+    ${lider ? `<h3 style="margin:14px 0 6px;font-size:15px">👥 Metas da minha equipe</h3>
+    ${campo('mtEqMes', 'Meta da equipe no mês', m.equipeMes, 'Soma das vendas suas e de quem está abaixo de você.')}
+    ${campo('mtEqAno', 'Meta da equipe no ano', m.equipeAno, 'Deixe em branco para usar 12 × a meta da equipe no mês.')}` : ''}
+    <button class="btn primary" onclick="metasSalvarEdicao()">💾 Salvar metas</button>`);
+}
+function metasSalvarEdicao(){
+  const v = id => { const el = document.getElementById(id); return el ? parseSimNumber(el.value || '') || 0 : undefined; };
+  const nova = { mes: v('mtMes'), ano: v('mtAno') };
+  if (document.getElementById('mtEqMes')) { nova.equipeMes = v('mtEqMes'); nova.equipeAno = v('mtEqAno'); }
+  metasGravar(nova); closeModal(); showToast('Metas salvas!', 'success');
 }
 function launchConfetti(){
   const cores = ['#d71920', '#16a34a', '#2563eb', '#7c3aed', '#d97706'];
@@ -21311,7 +21437,7 @@ const ASSIST_BASE = [
 { id: 'dashboard', t: 'O que tem no Dashboard?', k: 'dashboard, tela inicial, inicio, indicadores, painel principal, resumo',
   r: 'O **Dashboard** mostra: a lista **Para hoje**, total de leads, agendamentos, **cotas fechadas** e **volume vendido** no período, a **meta mensal**, o **funil de vendas**, as cotas por segmento, a evolução dos últimos 6 meses e o desempenho da equipe. Use o filtro de período (Este mês, Hoje, Personalizado ou Todo o histórico) e o de consultor. Na lista **Para hoje**, **✓ Marcar tudo como feito** limpa a lista até amanhã e **🔕 Desligar** tira um grupo de vez.', aba: 'dashboard' },
 { id: 'meta', t: 'Como defino a minha meta mensal?', k: 'meta, meta mensal, objetivo do mes, definir meta, meta de vendas',
-  r: 'No **Dashboard**, no cartão **🎯 Meta mensal de vendas**, digite o valor da meta. A barra mostra quanto você já atingiu no mês. Quem lidera também define a meta de cada pessoa em **Equipe** › **Meta e senha**.', aba: 'dashboard' },
+  r: 'No **Dashboard**, o quadro **🎯 Minhas metas** mostra a **meta do mês** e a **meta do ano**. Toque em **✏️ Definir metas** para colocar os valores (a do ano pode ficar em branco: aí vale 12 × a do mês).\n- Contam as vendas do mês e do ano atuais, inclusive as canceladas. O filtro de período não muda as metas.\n- O **ritmo** mostra quanto falta, quantos dias úteis restam e quanto precisa vender por dia útil: 🟢 no ritmo, 🟡 um pouco atrás, 🔴 atrasado.\n- **Últimos 12 meses**: ✓ bateu, ✗ não bateu.\n- Quem lidera vê também as metas da **equipe** (você + quem está abaixo), que você mesmo define. O líder também pode mudar a meta do mês de cada pessoa em **Equipe** › **Meta e senha**.', aba: 'dashboard' },
 { id: 'filtro_cargo', so: 'lider', t: 'Como vejo qual equipe vendeu mais e o melhor de cada cargo?', k: 'filtro por cargo, cargo, melhor de cada cargo, qual equipe vendeu mais, ranking de equipes, equipe que mais vendeu, melhor lider, melhor consultor',
   r: 'No **Dashboard**, no **Filtro de Progresso Comercial**, escolha o **cargo** (ex.: Líder em treinamento). Os números passam a ser só de quem tem aquele cargo. Logo abaixo, o quadro **🏅 Resultado por cargo** mostra **o melhor de cada cargo** e **as equipes que mais venderam** (a equipe soma o líder e todos abaixo dele). Com um cargo de liderança escolhido, ele compara as equipes de cada pessoa daquele cargo. Use o filtro de período ao lado (mês, hoje, personalizado ou todo o histórico).', aba: 'dashboard' },
 { id: 'producao_lojas', so: 'lider', t: 'O que é o quadro "Produção das lojas"?', k: 'producao das lojas, ranking das lojas, qual loja vende mais, quadro das lojas, retencao, unidade, ver todas, print do quadro, filtro de data, varias lojas',
