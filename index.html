@@ -25741,6 +25741,12 @@ function simMostrarResultado(){
   const el = document.getElementById(id);
   if (el) { el.addEventListener('input', simMostrarResultado); el.addEventListener('change', simMostrarResultado); }
 });
+// Enter em qualquer campo do plano (crédito, contemplação, reajuste...) também mostra a simulação, mesmo sem mudar o número
+(function(){
+  const box = document.getElementById('consorcioParams'); if (!box) return;
+  box.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input, select') && !e.target.closest('#simPelaParcBox')) { e.preventDefault(); simMostrarResultado(); e.target.blur && e.target.blur(); } });
+  box.addEventListener('change', e => { if (e.target.matches('select, input') && !e.target.closest('#simPelaParcBox')) simMostrarResultado(); });
+})();
 (function(){
   const sec = document.getElementById('simulador'); if (sec) sec.classList.add('sim-aguardando');
   const original = window.show;
