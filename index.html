@@ -1212,6 +1212,9 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .sp-simular-linha { display: none; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line, #e2e8f0); }
 #simulador.sim-aguardando .sp-simular-linha { display: flex; }
 #simulador.sim-aguardando #simCotas, #simulador.sim-aguardando #simFuturo, #simulador.sim-aguardando #simVenda, #simulador.sim-aguardando #exportSimCard, #simulador.sim-aguardando #exportSimStatus { display: none !important; }
+
+.ag-origem { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: #eef2ff; color: #3730a3; margin-left: 8px; vertical-align: 2px; white-space: nowrap; }
+[data-theme="dark"] .ag-origem { background: #1e1b4b; color: #c7d2fe; }
 </style>
 </head>
 <body>
@@ -12700,7 +12703,12 @@ function agendaClienteHtml(item, leadObj){
   if (!leadObj || !canUserAccessLead(leadObj)) return `👤 ${esc(item.lead)}`;
   const tel = fmtTelBR(leadObj.tel);
   const digitos = String(leadObj.tel || '').replace(/\D/g, '');
+  // origem do lead (de onde veio): indicação mostra quem indicou
+  const origem = leadObj.origem || 'Indicação';
+  const origemTxt = origem === 'Indicação' ? (leadObj.indicador ? 'Indicação de ' + leadObj.indicador : 'Indicação') : origem;
+  const origemIc = origem === 'Indicação' ? '🤝' : '🏷️';
   return `👤 <span class="ag-cliente" title="Abrir o cadastro do cliente" onclick="abrirCadastroDaAgenda('${leadObj.id}')">${esc(item.lead)}</span>` +
+    `<span class="ag-origem" title="Origem do lead">${origemIc} ${esc(origemTxt)}</span>` +
     (tel ? `<span class="ag-tel">📞 <a href="tel:${digitos}" title="Ligar">${esc(tel)}</a>${linkWhatsAppTel(leadObj.tel)}</span>`
          : '<span class="ag-tel sem">sem telefone no cadastro</span>') +
     (item && item.id ? `<span class="ag-nota" onclick="aprNotaDaAgenda('${leadObj.id}','${item.id}')" title="Escrever à mão para este cliente (ou abrir as notas dele)">✍️ Nota</span>` : '');
