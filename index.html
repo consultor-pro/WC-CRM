@@ -1172,6 +1172,20 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .evo-nav b { font-size: 16px; min-width: 44px; text-align: center; }
 .evo-leg { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; margin-top: 6px; align-items: center; }
 .evo-leg i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+#simLancesParcWrap .sp-bt-lances { font-size: 12.5px; padding: 6px 12px; margin: 2px 0 6px; }
+#simLancesParcWrap.sp-lances-fechado > label, #simLancesParcWrap.sp-lances-fechado .sp-lances-linha, #simLancesParcWrap.sp-lances-fechado #simLanceParcInfo { display: none !important; }
+#simLancesParcWrap.sp-lances-fechado .sp-bt-lances { margin: 0; }
+.vf-resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.vf-resumo > div { background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: 10px; padding: 10px 12px; }
+.vf-resumo span { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted, #64748b); text-transform: uppercase; letter-spacing: .3px; }
+.vf-resumo b { display: block; font-size: 17px; margin: 2px 0; }
+.vf-resumo small { font-size: 11.5px; color: var(--muted, #64748b); }
+.vf-det { margin-top: 10px; font-size: 13.5px; }
+.vf-det > summary { cursor: pointer; font-weight: 700; color: var(--muted, #64748b); list-style: none; user-select: none; }
+.vf-det > summary::-webkit-details-marker { display: none; }
+.vf-det[open] > summary { margin-bottom: 8px; }
+.vf-det-corpo { padding: 10px 12px; border: 1px solid var(--line, #e2e8f0); border-radius: 8px; background: rgba(127,127,127,.04); line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -1912,8 +1926,9 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <div class="field sp-check">
         <label class="sp-chk"><input type="checkbox" id="simSeguro" onchange="calcularSimulacao()"><span title="Seguro de vida: R$ 46,45 por 100 mil">Seguro de vida</span></label>
       </div>
-      <div class="field sp-lances" id="simLancesParcWrap">
+      <div class="field sp-lances sp-lances-fechado" id="simLancesParcWrap">
         <label>Lances em parcelas <i class="sp-info" title="Na Ademicon o lance é contado em quantidade de parcelas. 1 parcela de lance = saldo devedor (crédito + taxa) ÷ prazo original do grupo. Ex.: 100 mil + 24,2% = 124.200 ÷ 220 = 564,54 por parcela; 44 parcelas = 24.840 (20% do saldo devedor). Fixo: parcelas tiradas do próprio crédito. Limitado: parte do crédito + parte do bolso. Livre: do bolso.">ⓘ</i></label>
+        <button type="button" class="btn sp-bt-lances" id="simBtLances" onclick="simAlternarLances()">✏️ Editar lances</button>
         <div class="sp-lances-linha">
           <span>Fixo</span><input type="number" id="simLanceFixoParc" value="44" min="0" inputmode="numeric" oninput="calcularSimulacao()" title="Parcelas do lance fixo (embutidas, saem do crédito)">
           <span>Limitado</span><input type="number" id="simLanceLimEmbParc" value="44" min="0" inputmode="numeric" oninput="calcularSimulacao()" title="Parcelas embutidas do lance limitado (saem do crédito)"><span>+</span><input type="number" id="simLanceLimBolsoParc" value="44" min="0" inputmode="numeric" oninput="calcularSimulacao()" title="Parcelas do bolso do lance limitado">
@@ -13868,20 +13883,26 @@ function calcularSimulacao() {
   ultimaSimulacaoCards = cardsSimulacao;
   renderCardsSimulacao(cardsSimulacao);
 
-  const totalPagoAteContemplar = pagoAteContemplarReaj + lanceBolsoReaj;      // plano escolhido + reajustes de fevereiro + lance do bolso
-  const valorVenda = creditoLiberadoReaj * agio;
+  // Venda da Carta: estratégia própria (só sorteio, segundo fixo ou lance fixo — lance limitado e livre não entram aqui)
+  const estrVenda = (typeof window.simEstrategiaVenda === 'function' && window.simEstrategiaVenda()) || 'sorteio';
+  let [vendaTxt, vendaEmbHoje, vendaBolsoHoje] = EST_SIM[estrVenda] || EST_SIM.sorteio;
+  if (VEIC) { const vv = VEIC.L[estrVenda] || VEIC.L.sorteio; vendaTxt = vv.txt; vendaEmbHoje = vv.emb; vendaBolsoHoje = vv.bolso; }
+  const vendaEmbReaj = vendaEmbHoje * fatorReaj[mesC], vendaBolsoReaj = vendaBolsoHoje * fatorReaj[mesC];
+  const vendaCreditoLiberado = creditoReajustado - vendaEmbReaj;
+  const totalPagoAteContemplar = pagoAteContemplarReaj + vendaBolsoReaj;      // plano escolhido + reajustes de fevereiro + lance do bolso
+  const valorVenda = vendaCreditoLiberado * agio;
   const lucroVenda = valorVenda - totalPagoAteContemplar;
   
   const resVenda = document.getElementById('resultadoVendaCarta');
   if (resVenda) {
     resVenda.innerHTML = `
       Tempo de Contemplação: <b>${mesesPagos} meses</b> (até ${nomeMesSim(mesC)})<br>
-      Estratégia: <b>${estrategiaTxt}</b><br>
+      Estratégia: <b>${vendaTxt}</b><br>
       Parcelas pagas até contemplar (${pctPlanoTxt}, com reajustes): <b>${formatBR(pagoAteContemplarReaj)}</b><br>
-      ${lanceBolsoReaj > 0.01 ? `Lance do bolso: <b>${formatBR(lanceBolsoReaj)}</b><br>` : ''}Total Pago: <b>${formatBR(totalPagoAteContemplar)}</b><br>
+      ${vendaBolsoReaj > 0.01 ? `Lance do bolso: <b>${formatBR(vendaBolsoReaj)}</b><br>` : ''}Total Pago: <b>${formatBR(totalPagoAteContemplar)}</b><br>
       Reajustes de ${indiceReajuste} até contemplar: <b>${reajustesAteContemplar}</b>${reajustesAteContemplar ? ` (todo fevereiro, ${(reajusteAnual * 100).toFixed(2).replace('.', ',')}% ao ano)` : ''}<br>
       Crédito Atualizado (${indiceReajuste}): <b>${formatBR(creditoReajustado)}</b><br>
-      ${lanceEmbutidoReaj > 0.01 ? `Lance embutido (sai do crédito): <b>- ${formatBR(lanceEmbutidoReaj)}</b><br>Crédito liberado: <b>${formatBR(creditoLiberadoReaj)}</b><br>` : ''}
+      ${vendaEmbReaj > 0.01 ? `Lance embutido (sai do crédito): <b>- ${formatBR(vendaEmbReaj)}</b><br>Crédito liberado: <b>${formatBR(vendaCreditoLiberado)}</b><br>` : ''}
       Valor Oferecido na Venda (${(agio*100).toFixed(2)}%): <b>${formatBR(valorVenda)}</b><br><br>
       <div style="font-size:16px; padding:10px; background:#dcfce7; color:#166534; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid #15803d;">
         LUCRO LÍQUIDO REALIZADO: ${formatBR(lucroVenda)}
@@ -13897,28 +13918,34 @@ function calcularSimulacao() {
 
   const resFuturo = document.getElementById('resultadoValorFuturo');
   if (resFuturo) {
+    const pctTxt = v => (v * 100).toFixed(2).replace('.', ',') + '%';
+    const totalContrato = pagoAteContemplarReaj + lanceBolsoReaj + pagoAposContemplarReaj;
     resFuturo.innerHTML = `
-      Crédito contratado hoje: <b>${formatBR(credito)}</b><br>
-      Crédito na contemplação (${indiceReajuste} até o ${mesesPagos}º mês): <b>${formatBR(creditoReajustado)}</b><br>
-      ${lanceEmbutidoReaj > 0.01 ? `Lance embutido (sai do crédito): <b>- ${formatBR(lanceEmbutidoReaj)}</b> · Crédito liberado que rende: <b>${formatBR(creditoLiberadoReaj)}</b><br>` : ''}
-      Selic: <b>${(selicAnual * 100).toFixed(2).replace('.', ',')}% ao ano</b> (${(taxaSelicMes * 100).toFixed(2).replace('.', ',')}% ao mês)<br>
-      Tempo Rendendo na Selic: <b>${mesesRendendo} meses</b><br>
-      Montante Final Acumulado: <b>${formatBR(valorFinalFundo)}</b><br>
-      <small class="muted">Depois da contemplação o crédito não é mais corrigido pelo ${indiceReajuste}: ele só rende na Selic. O ${indiceReajuste} continua reajustando apenas a parcela, todo fevereiro. O rendimento é lucro do cliente: ele não paga nada sobre isso.</small><br><br>
-      <div style="padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:12px;background:rgba(127,127,127,.04)">
-        <b>Se o cliente pagar até o fim do contrato (${prazo} meses, até ${nomeMesSim(prazo)}):</b><br>
-        Estratégia: <b>${estrategiaTxt}</b><br>
-        Pago até a contemplação (${pctPlanoTxt}): <b>${formatBR(pagoAteContemplarReaj)}</b><br>
-        ${lanceBolsoReaj > 0.01 ? `Lance do bolso: <b>${formatBR(lanceBolsoReaj)}</b><br>` : ''}
-        Parcela depois de contemplar: <b>${quitadoEstr ? 'cota quitada' : formatBR(parcelaPosContemplacaoReaj)}</b>${!quitadoEstr && estrategiaSim === 'sorteio' && paraTrasHoje > 0.01 ? ' <small class="muted">(volta à parcela cheia + o que ficou para trás, diluído)</small>' : (!quitadoEstr && parcelaMinimaEstr ? ` <small class="muted">(parcela mínima: o lance reduz o prazo para ${prazoAposEstr} meses depois de contemplar)</small>` : (!quitadoEstr && estrategiaSim !== 'sorteio' ? ' <small class="muted">(saldo depois do lance, diluído no prazo restante)</small>' : ''))}<br>
-        Parcela no último mês (com os reajustes): <b>${formatBR(parcelaUltimoMes)}</b><br>
-        Pago depois da contemplação: <b>${formatBR(pagoAposContemplarReaj)}</b><br>
-        Total pago no contrato: <b>${formatBR(pagoAteContemplarReaj + lanceBolsoReaj + pagoAposContemplarReaj)}</b><br>
-        <small class="muted">${mesesReajuste.length} reajustes de ${indiceReajuste} no contrato (todo fevereiro), estimados em ${(reajusteAnual * 100).toFixed(2).replace('.', ',')}% ao ano.</small>
+      <div class="vf-resumo">
+        <div><span>Crédito na contemplação</span><b>${formatBR(lanceEmbutidoReaj > 0.01 ? creditoLiberadoReaj : creditoReajustado)}</b><small>no ${mesesPagos}º mês (${nomeMesSim(mesC)})${lanceEmbutidoReaj > 0.01 ? ', já sem o lance embutido' : ''}</small></div>
+        <div><span>Rende na Selic</span><b>${pctTxt(selicAnual)} ao ano</b><small>por ${mesesRendendo} meses, até o fim do contrato</small></div>
+        <div><span>Montante no fim</span><b>${formatBR(valorFinalFundo)}</b><small>em ${nomeMesSim(prazo)}</small></div>
+        <div><span>Total pago no contrato</span><b>${formatBR(totalContrato)}</b><small>${estrategiaSim === 'sorteio' ? 'só sorteio' : estrategiaTxt.split(' (')[0].toLowerCase()}${lanceBolsoReaj > 0.01 ? ', com o lance do bolso' : ''}</small></div>
       </div>
       <div style="font-size:16px; padding:10px; background:#f0fdf4; color:#166534; border-radius:6px; font-weight:bold; text-align:center; border: 1px solid #bbf7d0;">
         RENDIMENTO GERADO (FUNDO): + ${formatBR(rendimentoPuro)}
       </div>
+      <details class="vf-det"><summary>▸ Ver detalhes do cálculo</summary>
+        <div class="vf-det-corpo">
+          <b>Crédito</b><br>
+          Contratado hoje: <b>${formatBR(credito)}</b><br>
+          Na contemplação: <b>${formatBR(creditoReajustado)}</b> <small class="muted">(${reajustesAteContemplar ? `${reajustesAteContemplar} reajuste${reajustesAteContemplar === 1 ? '' : 's'} de ${indiceReajuste} até o ${mesesPagos}º mês` : `sem reajuste de ${indiceReajuste} até o ${mesesPagos}º mês`})</small><br>
+          ${lanceEmbutidoReaj > 0.01 ? `Lance embutido (sai do crédito): <b>- ${formatBR(lanceEmbutidoReaj)}</b> · Crédito que rende: <b>${formatBR(creditoLiberadoReaj)}</b><br>` : ''}
+          Selic: <b>${pctTxt(selicAnual)} ao ano</b> (${pctTxt(taxaSelicMes)} ao mês) por <b>${mesesRendendo} meses</b><br><br>
+          <b>Pagamentos (${prazo} meses, até ${nomeMesSim(prazo)})</b><br>
+          Estratégia: <b>${estrategiaTxt}</b><br>
+          Até a contemplação (${pctPlanoTxt}): <b>${formatBR(pagoAteContemplarReaj)}</b><br>
+          ${lanceBolsoReaj > 0.01 ? `Lance do bolso: <b>${formatBR(lanceBolsoReaj)}</b><br>` : ''}
+          Parcela depois de contemplar: <b>${quitadoEstr ? 'cota quitada' : formatBR(parcelaPosContemplacaoReaj)}</b> · no último mês: <b>${formatBR(parcelaUltimoMes)}</b><br>
+          Depois da contemplação: <b>${formatBR(pagoAposContemplarReaj)}</b> · Total: <b>${formatBR(totalContrato)}</b><br><br>
+          <small class="muted"><b>Sobre o ${indiceReajuste}:</b> o crédito é corrigido só até a contemplação (${reajustesAteContemplar} reajuste${reajustesAteContemplar === 1 ? '' : 's'}); depois disso ele só rende na Selic. Já a <b>parcela</b> continua sendo reajustada todo fevereiro até o fim do contrato: são ${mesesReajuste.length} fevereiros em ${prazo} meses, estimados em ${pctTxt(reajusteAnual)} ao ano. O rendimento é lucro do cliente: ele não paga nada sobre isso.</small>
+        </div>
+      </details>
     `;
   }
 
@@ -13936,7 +13963,8 @@ function calcularSimulacao() {
     mesesRendendo, valorFinalFundo, rendimentoPuro, selicAnual, taxaSelicMes, reajusteAnual,
     pctPlano: pctCardsSelecionado, pctPlanoTxt, reajustesAteContemplar, mesesReajuste, pagoAteContemplarReaj, pagoAposContemplarReaj,
     totalPagoContrato: pagoAteContemplarReaj + lanceBolsoReaj + pagoAposContemplarReaj, parcelaPosContemplacaoReaj, parcelaUltimoMes, parcelaNaContemplacao,
-    estrategiaSim, estrategiaTxt, creditoLiberadoReaj, lanceBolsoReaj, lanceEmbutidoReaj
+    estrategiaSim, estrategiaTxt, creditoLiberadoReaj, lanceBolsoReaj, lanceEmbutidoReaj,
+    estrategiaVenda: estrVenda, estrategiaVendaTxt: vendaTxt, vendaLanceBolsoReaj: vendaBolsoReaj, vendaLanceEmbReaj: vendaEmbReaj, vendaCreditoLiberado
   };
 }
 
@@ -14378,9 +14406,9 @@ function montarHtmlVendaCarta() {
     cor: '#d97706',
     linhas: [
       { label: 'Tempo até a contemplação', valor: `${sim.mesContemplacao} meses` },
-      { label: 'Estratégia', valor: sim.estrategiaTxt || 'Só sorteio' },
-      { label: `Total pago até lá (${sim.pctPlanoTxt || 'plano escolhido'}, com reajustes${sim.lanceBolsoReaj > 0.01 ? ' e lance do bolso' : ''})`, valor: fmtBRExport(sim.totalPagoAteContemplar) },
-      { label: `Crédito liberado (${sim.indiceReajuste}${sim.lanceEmbutidoReaj > 0.01 ? ', sem o lance embutido' : ''})`, valor: fmtBRExport(sim.creditoLiberadoReaj != null ? sim.creditoLiberadoReaj : sim.creditoReajustado) },
+      { label: 'Estratégia', valor: sim.estrategiaVendaTxt || 'Só sorteio' },
+      { label: `Total pago até lá (${sim.pctPlanoTxt || 'plano escolhido'}, com reajustes${sim.vendaLanceBolsoReaj > 0.01 ? ' e lance do bolso' : ''})`, valor: fmtBRExport(sim.totalPagoAteContemplar) },
+      { label: `Crédito liberado (${sim.indiceReajuste}${sim.vendaLanceEmbReaj > 0.01 ? ', sem o lance embutido' : ''})`, valor: fmtBRExport(sim.vendaCreditoLiberado != null ? sim.vendaCreditoLiberado : sim.creditoReajustado) },
       { label: `Valor oferecido na venda (ágio de ${(sim.agio * 100).toFixed(2)}%)`, valor: fmtBRExport(sim.valorVenda) }
     ],
     destaqueLabel: 'Lucro Líquido Realizado',
@@ -24457,14 +24485,25 @@ const ASSIST_BASE = [
     servico: { segundo: 'Lance segundo fixo (serviço): 25% do saldo devedor — 13% embutido + 12% do bolso.', fixo: 'Lance fixo (serviço): 40% do saldo devedor — 20% embutido + 20% do bolso.' },
     bens: { fixo: 'Lance fixo (bens móveis): 30% do saldo devedor, todo embutido (sai do crédito).', livre: 'Lance livre (bens móveis): 41% do saldo devedor, pago do bolso.' },
     imovel: { fixo: 'Lance fixo: 20% do saldo devedor, embutido (sai do crédito).' } };
+  const VENDA_OK = ['sorteio', 'segundo', 'fixo'];
+  const ehVenda = el => !!(el && el.nextElementSibling && el.nextElementSibling.id === 'resultadoVendaCarta');
+  window.simEstrategiaVenda = function () {
+    try { const v = localStorage.getItem('crm_sim_estrategia_venda'); if (VENDA_OK.includes(v)) return v; } catch (e) {}
+    const g = window.simEstrategiaAtual(); return VENDA_OK.includes(g) ? g : 'sorteio';
+  };
+  window.simEscolherEstrategiaVenda = function (v) {
+    try { localStorage.setItem('crm_sim_estrategia_venda', v); } catch (e) {}
+    desenharPills(); try { calcularSimulacao(); } catch (e) {}
+  };
   window.simEstrategiaAtual = function () { try { const v = localStorage.getItem('crm_sim_estrategia'); return ESTR.some(e => e[0] === v) ? v : 'sorteio'; } catch (e) { return 'sorteio'; } };
   function modalidadeDe(el) {
     if (el && el.closest('#simComparativo')) return (typeof comparativoModalidadeAtiva === 'undefined' || comparativoModalidadeAtiva !== 'imovel') ? 'veiculo' : 'imovel';
     return (document.getElementById('simModalidade') || {}).value || 'imovel';
   }
   function pills(el) {
-    const mod = modalidadeDe(el), temSegundo = mod === 'veiculo' || mod === 'servico'; let atual = simEstrategiaAtual(); if (atual === 'segundo' && !temSegundo) atual = 'sorteio';
-    const lista = ESTR.filter(([v]) => v !== 'segundo' || temSegundo);
+    const venda = ehVenda(el);
+    const mod = modalidadeDe(el), temSegundo = mod === 'veiculo' || mod === 'servico'; let atual = venda ? simEstrategiaVenda() : simEstrategiaAtual(); if (atual === 'segundo' && !temSegundo) atual = 'sorteio';
+    const lista = ESTR.filter(([v]) => (v !== 'segundo' || temSegundo) && (!venda || VENDA_OK.includes(v)));
     let dica = (ESTR_DICA[mod] && ESTR_DICA[mod][atual]) || ESTR_DICA[atual] || ESTR_DICA.imovel.fixo;
     if (mod === 'imovel' && atual !== 'sorteio' && !(el && el.closest('#simComparativo'))) {      // imóvel: lance em quantidade de parcelas
       const n = id => { const v = parseInt((document.getElementById(id) || {}).value, 10); return v >= 0 ? v : 0; };
@@ -24472,7 +24511,7 @@ const ASSIST_BASE = [
         limitado: `Lance limitado: ${n('simLanceLimEmbParc')} parcelas embutidas + ${n('simLanceLimBolsoParc')} do bolso.`,
         livre: `Lance livre: ${n('simLanceLivreParc')} parcelas, pagas do bolso.` })[atual] || dica;
     }
-    return `<div class="sp-estr-rot">Estratégia de contemplação</div><div class="sp-estr-bts">${lista.map(([v, t]) => `<button type="button" data-estr="${v}" class="${v === atual ? 'on' : ''}" onclick="simEscolherEstrategia('${v}')">${t}</button>`).join('')}</div><small class="sp-estr-dica">${dica}</small>`;
+    return `<div class="sp-estr-rot">Estratégia de contemplação</div><div class="sp-estr-bts">${lista.map(([v, t]) => `<button type="button" data-estr="${v}" class="${v === atual ? 'on' : ''}" onclick="${venda ? 'simEscolherEstrategiaVenda' : 'simEscolherEstrategia'}('${v}')">${t}</button>`).join('')}</div><small class="sp-estr-dica">${dica}</small>`;
   }
   function sincronizarComparativo() {
     const sel = document.getElementById('cpTipoLance'); if (!sel) return;
@@ -25588,6 +25627,17 @@ ${corpo}
   if (typeof mostrarOriginal === 'function') window.show = function(id){ const r = mostrarOriginal.apply(this, arguments); if (id === 'configuracoes') setTimeout(avisosAtualizarCard, 50); return r; };
   setTimeout(() => { if ($('avisosCard')) avisosAtualizarCard(); }, 1500);
 })();
+</script>
+<script id="simLancesToggleScript">
+// "✏️ Editar lances": a linha dos lances fica escondida até a pessoa pedir (lembra a escolha neste aparelho)
+function simAlternarLances(forcar){
+  const w = document.getElementById('simLancesParcWrap'), bt = document.getElementById('simBtLances'); if (!w || !bt) return;
+  const abrir = typeof forcar === 'boolean' ? forcar : w.classList.contains('sp-lances-fechado');
+  w.classList.toggle('sp-lances-fechado', !abrir);
+  bt.textContent = abrir ? '▴ Ocultar lances' : '✏️ Editar lances';
+  if (typeof forcar !== 'boolean') { try { localStorage.setItem('crm_sim_lances_abertos', abrir ? '1' : '0'); } catch (e) {} }
+}
+(function(){ let a = false; try { a = localStorage.getItem('crm_sim_lances_abertos') === '1'; } catch (e) {} simAlternarLances(a); })();
 </script>
 <script id="mapaTudoScript">
 // ===== MAPA DE COTAS: as 10.000 cotas numa tela só =====
