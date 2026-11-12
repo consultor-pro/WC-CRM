@@ -1107,6 +1107,29 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .cm-info { font-size: 12.5px; color: var(--muted, #64748b); }
 .cm-data { font-size: 12px; color: var(--muted, #64748b); text-align: right; white-space: nowrap; }
 .cm-vazio { padding: 14px 4px; font-size: 13px; color: var(--muted, #64748b); }
+
+/* nomes clicáveis: sem traço embaixo, ficam azuis ao passar o mouse */
+[style*="underline dotted"], .ag-cliente, .tc-link { text-decoration: none !important; }
+[style*="underline dotted"]:hover, .ag-cliente:hover, .tc-link:hover { color: #2563eb !important; text-decoration: none !important; }
+[data-theme="dark"] [style*="underline dotted"]:hover, [data-theme="dark"] .ag-cliente:hover, [data-theme="dark"] .tc-link:hover { color: #60a5fa !important; }
+/* botões de ação da agenda e do follow-up, mais compactos */
+.ag-acoes { gap: 6px !important; }
+.ag-acoes .btn { padding: 5px 10px; font-size: 12.5px; border-radius: 8px; line-height: 1.3; min-height: 0; }
+/* coluna Seguro (Comissões) */
+.seg-sel { font-size: 11px; padding: 3px; margin: 0; min-width: 0; width: 76px; }
+.seg-sel.sim { border-color: #2563eb; color: #1d4ed8; font-weight: 700; }
+
+.vl-lista { max-height: 46vh; overflow-y: auto; border: 1px solid var(--line, #e2e8f0); border-radius: 10px; margin: 10px 0; }
+.vl-linha { display: grid; grid-template-columns: 22px 1fr auto; gap: 2px 10px; align-items: center; padding: 8px 10px; border-top: 1px solid var(--line, #e2e8f0); cursor: pointer; }
+.vl-linha:first-child { border-top: 0; }
+.vl-linha:hover { background: rgba(100,116,139,.06); }
+.vl-linha input { width: 17px; height: 17px; margin: 0; }
+.vl-linha .vl-nome { font-weight: 700; font-size: 13.5px; }
+.vl-linha .vl-info { grid-column: 2; font-size: 12px; color: var(--muted, #64748b); }
+.vl-linha .vl-loja { grid-row: 1 / span 2; grid-column: 3; font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #f1f5f9; white-space: nowrap; }
+.vl-linha .vl-loja.sem { background: #fef3c7; color: #92400e; }
+[data-theme="dark"] .vl-linha .vl-loja { background: #1f2937; }
+[data-theme="dark"] .vl-linha .vl-loja.sem { background: #3b2f12; color: #fcd34d; }
 </style>
 </head>
 <body>
@@ -1634,6 +1657,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
           <option value="Compra de Carta Contemplada">Compra de Carta Contemplada</option>
           <option value="Venda de Carta Contemplada">Venda de Carta Contemplada</option>
         </select>
+        <button class="btn" onclick="abrirVendasParaLoja()" title="Colocar suas vendas em uma loja">🏬 Passar vendas para uma loja</button>
         <select id="comissaoSortOrder" onchange="renderComissoes()" style="max-width:210px">
           <option value="last">Últimos Cadastrados</option>
           <option value="az">Ordem Alfabética (A-Z)</option>
@@ -4645,6 +4669,86 @@ function hierPerguntarLojaDaVenda(saleId){
       ${lojas.map(l => `<button class="btn ${l === atual ? 'primary' : ''}" onclick="hierDefinirLojaDaVenda('${s.id}','${l}')">${esc(hierLojaNome(l))}</button>`).join('')}
     </div>`);
 }
+// ===== PASSAR VENDAS PARA UMA LOJA =====
+// Coloca as vendas da pessoa (todas, só as sem loja, ou escolhidas uma a uma) numa loja.
+function vlMinhasVendas(){
+  if (!currentUser) return [];
+  return (db.sales || []).filter(s => s && (s.responsavel === currentUser.nome || (typeof hierVendedorId === 'function' && hierVendedorId(s) === currentUser.id)))
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+}
+function vlLojasPossiveis(){
+  const todas = hierLojas();
+  if (typeof hierDonoVeTudo === 'function' && hierDonoVeTudo()) return todas;
+  const minhas = hierLojasDe(currentUser);
+  return minhas.length ? todas.filter(l => minhas.includes(l.id)) : todas;
+}
+function abrirVendasParaLoja(){
+  if (!currentUser) return;
+  const lojas = vlLojasPossiveis();
+  if (!lojas.length) return openModal(`
+    <div class="between"><h2 style="margin:0">🏬 Passar vendas para uma loja</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <p style="margin:12px 0">Ainda não existe nenhuma loja cadastrada. Crie a loja primeiro (em <b>Usuários</b> › <b>+ Nova loja</b>) e depois volte aqui.</p>`);
+  const vendas = vlMinhasVendas();
+  if (!vendas.length) return openModal(`
+    <div class="between"><h2 style="margin:0">🏬 Passar vendas para uma loja</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <p style="margin:12px 0">Você ainda não tem vendas lançadas no seu nome.</p>`);
+  const nomeLoja = s => { const id = hierLojaDaVenda(s); return hierLojaNome(id); };
+  const semLoja = vendas.filter(s => !nomeLoja(s)).length;
+  openModal(`
+    <div class="between"><h2 style="margin:0">🏬 Passar vendas para uma loja</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <p class="muted" style="font-size:13px;margin:6px 0 12px">Escolha a loja e marque as vendas que vão para ela. A loja define em qual equipe a venda conta (Produção das lojas, Semáforo, relatórios).</p>
+    <div class="field"><label>Loja de destino</label>
+      <select id="vlLoja">${lojas.map(l => `<option value="${esc(l.id)}">${esc(l.nome)}</option>`).join('')}</select></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap">
+      <button class="btn" onclick="vlMarcar('todas')">☑️ Marcar todas (${vendas.length})</button>
+      <button class="btn" onclick="vlMarcar('sem')">Só as sem loja (${semLoja})</button>
+      <button class="btn" onclick="vlMarcar('nenhuma')">Desmarcar</button>
+      <input type="text" id="vlBusca" placeholder="🔍 Buscar cliente, grupo ou cota" oninput="vlFiltrar(this.value)" style="flex:1;min-width:160px;margin:0">
+    </div>
+    <div class="vl-lista" id="vlLista">
+      ${vendas.map(s => { const lj = nomeLoja(s); return `<label class="vl-linha" data-busca="${esc(((s.lead || '') + ' ' + (s.grupo || '') + ' ' + (s.cota || '')).toLowerCase())}">
+        <input type="checkbox" value="${esc(s.id)}" data-sem="${lj ? '0' : '1'}" onchange="vlContar()">
+        <span class="vl-nome">${esc(s.lead || 'Cliente')}${s.cancelada ? ' <small style="color:#b91c1c">(cancelada)</small>' : ''}</span>
+        <span class="vl-loja${lj ? '' : ' sem'}">${lj ? esc(lj) : 'Sem loja'}</span>
+        <span class="vl-info">Grupo ${esc(s.grupo || '-')} · Cota ${esc(s.cota || '-')} · ${Number(s.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })} · ${s.date ? new Date(s.date).toLocaleDateString('pt-BR') : '-'}</span>
+      </label>`; }).join('')}
+    </div>
+    <div class="between" style="flex-wrap:wrap;gap:8px">
+      <small class="muted" id="vlContagem">Nenhuma venda marcada.</small>
+      <button class="btn primary" onclick="vlAplicar()">🏬 Passar para a loja</button>
+    </div>`);
+  if (semLoja) vlMarcar('sem');
+}
+function vlCaixas(){ return [...document.querySelectorAll('#vlLista input[type=checkbox]')]; }
+function vlMarcar(modo){
+  vlCaixas().forEach(c => { const vis = c.closest('.vl-linha').style.display !== 'none'; c.checked = modo === 'todas' ? (vis || c.checked) : modo === 'sem' ? c.dataset.sem === '1' : false; });
+  vlContar();
+}
+function vlFiltrar(t){ t = String(t || '').toLowerCase().trim(); document.querySelectorAll('#vlLista .vl-linha').forEach(l => { l.style.display = !t || l.dataset.busca.includes(t) ? '' : 'none'; }); }
+function vlContar(){
+  const n = vlCaixas().filter(c => c.checked).length, el = document.getElementById('vlContagem');
+  if (el) el.textContent = n ? `${n} venda${n === 1 ? '' : 's'} marcada${n === 1 ? '' : 's'}.` : 'Nenhuma venda marcada.';
+}
+function vlAplicar(){
+  const loja = document.getElementById('vlLoja')?.value; if (!loja) return;
+  const ids = vlCaixas().filter(c => c.checked).map(c => c.value);
+  if (!ids.length) return alert('Marque pelo menos uma venda.');
+  const nome = hierLojaNome(loja) || 'loja escolhida';
+  if (!confirm(`Passar ${ids.length} venda${ids.length === 1 ? '' : 's'} para a loja ${nome}?`)) return;
+  let n = 0;
+  ids.forEach(id => {
+    const s = (db.sales || []).find(x => x.id === id); if (!s) return;
+    if (hierLojaDaVenda(s) === loja && s.loja === loja) return;
+    s.loja = loja;
+    if (s.aprov) { s.aprov.loja = loja; const vid = hierVendedorId(s); if (vid && typeof hierCadeiaAcima === 'function') s.aprov.cadeia = hierCadeiaAcima(vid, loja); }
+    n++;
+  });
+  save();
+  if (typeof syncComissaoTabs === 'function') syncComissaoTabs();
+  closeModal(); renderAll();
+  showToast(n ? `${n} venda${n === 1 ? '' : 's'} na loja ${nome}.` : 'Essas vendas já estavam nessa loja.');
+}
+
 function hierDefinirLojaDaVenda(saleId, loja){
   const achou = hierAcharVenda(saleId); if (!achou) return closeModal();
   const s = achou.sale;
@@ -7785,15 +7889,16 @@ const startCol = 1, endCol = TOTAL_PARCELAS_COMISSAO;
   if(taxaImpostoInput && document.activeElement !== taxaImpostoInput) taxaImpostoInput.value = taxaImposto;
 
   let headerHtml = `<tr>
-    <th class="col-fixed" style="min-width:110px;left:0">Data da Venda</th>
-    <th class="col-fixed" style="min-width:220px;left:110px">Venda / Cliente</th>
-    <th style="min-width:110px">Vendedor</th>
-    <th style="min-width:100px">Segmento</th>
-    <th style="min-width:95px">Modalidade</th>
-    <th style="min-width:130px">Crédito (R$)</th>
-    <th style="min-width:115px">Total Comis.</th>`;
+    <th class="col-fixed" style="min-width:84px;width:84px;left:0">Data</th>
+    <th class="col-fixed" style="min-width:190px;left:84px">Venda / Cliente</th>
+    <th style="min-width:96px">Vendedor</th>
+    <th style="min-width:80px">Segmento</th>
+    <th style="min-width:74px">Modalidade</th>
+    <th style="min-width:70px" title="Vendida com seguro prestamista?">Seguro</th>
+    <th style="min-width:104px">Crédito (R$)</th>
+    <th style="min-width:96px">Total Comis.</th>`;
 
-  for(let m = startCol; m <= endCol; m++) headerHtml += `<th style="min-width:145px;text-align:center">Parcela ${m}</th>`;
+  for(let m = startCol; m <= endCol; m++) headerHtml += `<th style="min-width:116px;text-align:center">Parcela ${m}</th>`;
   headerHtml += `</tr>`;
 
   let rowsHtml = '';
@@ -7831,7 +7936,7 @@ const startCol = 1, endCol = TOTAL_PARCELAS_COMISSAO;
       <td class="col-fixed" style="left:0">
         <small class="muted">${s.date ? new Date(s.date).toLocaleDateString('pt-BR') : '-'}</small>
       </td>
-      <td class="col-fixed" style="left:110px">
+      <td class="col-fixed" style="left:84px">
         <b style="cursor:pointer;text-decoration:underline dotted" title="Abrir cadastro do cliente" onclick="abrirCadastroClientePorLead('${s.leadId||''}')">${esc(s.lead)}</b>${hierSeloMatricula(s)}<br>
         <small class="muted"><span style="cursor:pointer;text-decoration:underline dotted" title="Editar esta cota" onclick="abrirEdicaoCotaPorVenda('${s.id}')">Grp ${esc(s.grupo)} | Cota ${esc(s.cota)} ${s.contemplada?'[⭐]':''}</span> ${s.responsavel!==currentUser?.nome?`<span style="cursor:pointer;text-decoration:underline dotted" title="Abrir cadastro do vendedor" onclick="abrirCadastroVendedor('${esc(s.responsavel)}')">(${esc(s.responsavel)})</span>`:''}</small>
       </td>
@@ -7851,7 +7956,11 @@ const startCol = 1, endCol = TOTAL_PARCELAS_COMISSAO;
           <option value="100%" ${currentMod==='100%'?'selected':''}>100%</option>
         </select>
       </td>
-      <td><input type="text" inputmode="decimal" style="width:110px;padding:3px;font-size:11px;font-weight:700;color:${s.cancelada?'var(--muted)':'var(--green)'};text-align:right" value="R$ ${Number(s.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}" oninput="maskMoneySim(this)" onchange="updateSaleCredit('${s.id}', parseSimNumber(this.value))"></td>
+      <td><select class="seg-sel${s.seguroPrestamista ? ' sim' : ''}" title="Vendida com seguro prestamista?" onchange="updateSaleSeguro('${s.id}', this.value === 'sim')">
+          <option value="sim" ${s.seguroPrestamista ? 'selected' : ''}>🛡️ Sim</option>
+          <option value="nao" ${s.seguroPrestamista ? '' : 'selected'}>Não</option>
+        </select></td>
+      <td><input type="text" inputmode="decimal" style="width:96px;padding:3px;font-size:11px;font-weight:700;color:${s.cancelada?'var(--muted)':'var(--green)'};text-align:right" value="R$ ${Number(s.valor||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}" oninput="maskMoneySim(this)" onchange="updateSaleCredit('${s.id}', parseSimNumber(this.value))"></td>
       <td style="font-weight:700;color:var(--purple)">${saleTotalComis.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td>
       ${cellsSchedule}
     </tr>`;
@@ -7992,6 +8101,17 @@ function updateSaleCredit(saleId, newCredit){
   if (!hierPodeMexerVenda(saleId)) return;
   const s = db.sales.find(x => x.id === saleId);
   if(s){ s.valor = parseFloat(newCredit) || 0; save(); syncComissaoTabs(); }
+}
+
+// Comissões: marca se a venda tem seguro prestamista (mesma informação do cadastro da venda)
+function updateSaleSeguro(saleId, comSeguro){
+  const s = (db.sales || []).find(x => x.id === saleId);
+  if (!s || !!s.seguroPrestamista === !!comSeguro) return;
+  s.seguroPrestamista = !!comSeguro;
+  registrarAcaoAutomaticaLead(s.leadId || s.lead, (comSeguro ? '🛡️ Seguro prestamista marcado' : 'Seguro prestamista desmarcado') + ` — Grupo ${s.grupo || '-'}, Cota ${s.cota || '-'}`);
+  save();
+  if (typeof syncComissaoTabs === 'function') syncComissaoTabs();
+  if (typeof showToast === 'function') showToast(comSeguro ? 'Venda marcada com seguro.' : 'Venda marcada sem seguro.');
 }
 
 function updateSaleModalidade(saleId, newMod){
@@ -12393,7 +12513,7 @@ function openFollowActionModal(item, opts){
       <p style="margin:2px 0"><b>Data:</b> ${fmtDataHoraCurta(item.date)} · <b>Responsável:</b> ${esc(item.responsavel||'-')}</p>
       <p style="margin:2px 0"><b>Situação:</b> ${isDone ? '✔ Encerrado' : '🟣 Em aberto — precisa de atenção'}</p>
       <div style="margin-top:8px;white-space:pre-wrap;color:#1e293b;font-size:13.5px">${esc(comentario ? comentario.text : (item.obj || ''))}</div>
-      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:10px">
+      <div class="row ag-acoes" style="gap:8px;flex-wrap:wrap;margin-top:10px">
         ${leadObj && comentario ? `<button class="btn blue" onclick="reabrirMural('${leadObj.id}', {replyTo:'${comentario.id}'})">↩️ Responder e marcar retorno</button>` : ''}
         ${!isDone ? `<button class="btn green" onclick="closeMeetingAction('${item.id}')">✅ Encerrar</button>` : `<button class="btn" onclick="reopenMeetingAction('${item.id}')">↩️ Reabrir</button>`}
         ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none">📲 WhatsApp</a>` : ''}
@@ -12453,7 +12573,7 @@ function openEventActionModal(id, type, opts){
         <div style="font-size:13px;font-weight:700;margin-bottom:6px">
           ${meetUrl ? `<a href="${meetUrl}" target="_blank" style="color:var(--blue)">${meetUrl}</a>` : 'Nenhuma sala gerada'}
         </div>
-        <div class="row">
+        <div class="row ag-acoes">
           ${meetUrl ? `<button class="btn blue" onclick="window.open('${meetUrl}','_blank')">📹 Entrar</button>` : `<button class="btn purple" onclick="generateGoogleMeetForExistingMeeting('${item.id}')">✨ Gerar Meet</button>`}
           <button class="btn green" onclick="sendWhatsAppInvite('${esc(item.lead)}','${esc(leadObj?leadObj.tel:'')}','${item.date}','${esc(item.obj||'')}','${meetUrl}')">📲 WhatsApp</button>
           <a href="${gCalUrl}" target="_blank" class="btn purple" style="text-decoration:none">📅 Google Agenda</a>
@@ -12471,9 +12591,9 @@ function openEventActionModal(id, type, opts){
       <div class="field"><label>Novo Comentário</label><textarea id="newMeetingCommentText" placeholder="Ex: cliente pediu pra retornar semana que vem..." style="min-height:70px"></textarea></div>
       <button class="btn primary" onclick="addMeetingComment('${id}')">➕ Adicionar Comentário</button>
     </div>`}
-    <div class="row" style="justify-content:space-between;margin-top:14px">
-      <div class="row"><button class="btn primary" onclick="openEditMeetingModal('${id}')">✏️ Editar</button><button class="btn" onclick="openRescheduleModal('${id}')">🔄 Reagendar</button></div>
-      <div class="row">
+    <div class="row ag-acoes" style="justify-content:space-between;margin-top:14px">
+      <div class="row ag-acoes"><button class="btn primary" onclick="openEditMeetingModal('${id}')">✏️ Editar</button><button class="btn" onclick="openRescheduleModal('${id}')">🔄 Reagendar</button></div>
+      <div class="row ag-acoes">
         ${!isDone ? `<button class="btn green" onclick="closeMeetingAction('${id}')">✅ Encerrar</button>` : `<button class="btn" onclick="reopenMeetingAction('${id}')">↩️ Reabrir</button>`}
         <button class="btn danger" onclick="deleteEventAction('${id}')">🗑️ Excluir</button>
       </div>
@@ -14954,6 +15074,7 @@ function injetarAbaConsultores() {
             <button class="btn purple" onclick="abrirModalNovoConsultor()">+ Cadastrar Consultor</button>
             <button class="btn primary" onclick="abrirModalVendaConsultor()">+ Lançar Venda</button>
             <button class="btn" onclick="abrirImportarVendas()">📥 Importar Vendas</button>
+            <button class="btn" onclick="abrirVendasParaLoja()" title="Colocar suas vendas em uma loja">🏬 Passar vendas para uma loja</button>
             <button class="btn green" onclick="exportarVendasConsultorParaExcel()">📥 Exportar Excel</button>
           </div>
         </div>
@@ -21155,6 +21276,8 @@ const ASSIST_BASE = [
 // ===================== AGENDA =====================
 { id: 'agenda_nova', t: 'Como agendo uma reunião?', k: 'agendar reuniao, marcar reuniao, novo compromisso, agendamento, marcar visita, criar evento',
   r: '1. Vá em **Agenda Comercial** e toque em **+ Agendar Reunião**.\n2. Escolha o **lead**, o responsável, a **data e hora** e a pauta.\n3. Escolha a cor do compromisso.\n4. Toque em **Confirmar Reunião**.\nTambém dá para agendar pelo mural do cliente (Notas › Agendar reunião).', aba: 'agenda' },
+{ id: 'vendas_loja', t: 'Como passo minhas vendas para uma loja?', k: 'passar vendas para loja, vendas sem loja, mudar loja da venda, transferir vendas loja, colocar venda na loja, loja da venda',
+  r: '1. Em **Cálculo de Comissão** (ou em **Consultores & Vendas**), toque em **🏬 Passar vendas para uma loja**.\n2. Escolha a **loja de destino**.\n3. Marque as vendas: **Marcar todas**, **Só as sem loja** ou uma por uma (dá para buscar pelo cliente, grupo ou cota).\n4. Toque em **🏬 Passar para a loja** e confirme.\nA loja define em qual equipe a venda conta. Se a loja ainda não existe, crie antes em Usuários › + Nova loja.', aba: 'comissoes' },
 { id: 'agenda_editar', t: 'Como edito um agendamento (pauta, horário, responsável)?', k: 'editar agendamento, editar reuniao, mudar pauta, alterar pauta, trocar horario, mudar responsavel, corrigir agendamento, link do meet',
   r: '1. Na **Agenda Comercial**, toque no compromisso.\n2. No Painel do Agendamento, toque em **✏️ Editar**.\n3. Mude o que precisar: **cliente**, **responsável**, **data e hora**, **pauta**, **link do Meet** e **cor**.\n4. Toque em **💾 Salvar alterações**.\nA mudança fica registrada no mural do cliente e, se a reunião estiver no Google Agenda, vai para lá também.', aba: 'agenda' },
 { id: 'agenda_reagendar', t: 'Como reagendo ou encerro uma reunião?', k: 'reagendar, remarcar, mudar horario, encerrar reuniao, concluir reuniao, cancelar reuniao, excluir reuniao',
@@ -21444,7 +21567,7 @@ const ASSIST_BASE = [
   const POR_ABA = {
     dashboard: ['dashboard', 'clientes_mes', 'relatorio', 'meta', 'para_hoje'], leads: ['lead_novo', 'venda_nova', 'lead_notas', 'importar_planilha'], prospeccao: ['prospeccao', 'prospeccao_chave'],
     mapaCotas: ['mapa_cotas', 'venda_contemplada', 'venda_cancelada'], semaforo: ['semaforo', 'resultado_loja'], agenda: ['agenda_nova', 'agenda_editar', 'agenda_reagendar', 'agenda_google'],
-    simulador: ['simulador', 'publicidade', 'proposta'], comissoes: ['comissao_mes', 'comissao_recebi', 'venda_errada', 'matricula'], gastos: ['gastos'], indicesGrupo: ['incc'],
+    simulador: ['simulador', 'publicidade', 'proposta'], comissoes: ['comissao_mes', 'vendas_loja', 'comissao_recebi', 'venda_errada', 'matricula'], gastos: ['gastos'], indicesGrupo: ['incc'],
     calculadora: ['calculadora'], aniversarios: ['parabens', 'parabens_foto', 'aniversarios'], materialApoio: ['material'], apresentacoes: ['apresentacoes', 'sim_apresentacao'],
     informacoes: ['informacoes'], usuarios: ['membro_novo', 'membro_editar', 'on_gerar_codigo', 'lojas'], consultoresVendas: ['consultores_vendas'], configuracoes: ['backup', 'recuperar', 'trocar_senha', 'personalizar'], contas: ['adm_contas']
   };
@@ -21453,7 +21576,7 @@ const ASSIST_BASE = [
     ['Começo e navegação', ['oque', 'tour', 'menu_cel', 'personalizar', 'busca', 'tema', 'notif', 'notificacoes_celular', 'instalar', 'zoom', 'assistente']],
     ['Entrar e senha', ['on_primeiro', 'on_esqueci', 'on_gerar_codigo', 'trocar_senha', 'local_esqueci', 'trocar_email', 'bloqueado', 'outro_aparelho', 'sem_internet', 'nao_aparece', 'sair']],
     ['Leads e clientes', ['lead_novo', 'lead_duplicado', 'lead_editar', 'lead_excluir', 'lead_score', 'lead_privado', 'lead_filtros', 'lead_whats', 'lead_notas', 'indicadores', 'importar_planilha', 'exportar_leads', 'nota_mao', 'transferir_lead']],
-    ['Vendas e cotas', ['venda_nova', 'venda_errada', 'venda_excluir', 'venda_cancelada', 'venda_contemplada', 'cota_repetida', 'transferir_venda', 'seguro', 'modalidade', 'matricula', 'matricula_errada', 'so_minhas']],
+    ['Vendas e cotas', ['venda_nova', 'venda_errada', 'vendas_loja', 'venda_excluir', 'venda_cancelada', 'venda_contemplada', 'cota_repetida', 'transferir_venda', 'seguro', 'modalidade', 'matricula', 'matricula_errada', 'so_minhas']],
     ['Comissões', ['comissao_como', 'comissao_recebi', 'comissao_mes', 'comissao_valor', 'comissao_imposto', 'comissao_recalc', 'comissao_naoaparece', 'incc']],
     ['Agenda', ['agenda_nova', 'agenda_editar', 'agenda_reagendar', 'agenda_google', 'agenda_vista', 'para_hoje']],
     ['Dashboard, ranking e relatório', ['dashboard', 'clientes_mes', 'meta', 'producao_lojas', 'relatorio', 'semaforo', 'resultado_loja', 'mapa_cotas']],
@@ -24531,7 +24654,7 @@ const ASSIST_BASE = [
     const pintar = () => {
       const m = min(); tab.classList.toggle('comis-sem-detalhes', m);
       bt.setAttribute('aria-pressed', m ? 'true' : 'false');
-      bt.innerHTML = m ? '▸ Mostrar vendedor, segmento, modalidade, crédito e total' : '◂ Minimizar vendedor, segmento, modalidade, crédito e total';
+      bt.innerHTML = m ? '▸ Mostrar vendedor, segmento, modalidade, seguro, crédito e total' : '◂ Minimizar vendedor, segmento, modalidade, seguro, crédito e total';
     };
     bt.addEventListener('click', () => { try { localStorage.setItem(K_COL, min() ? '0' : '1'); } catch (e) {} pintar(); });
     const linha = cab.parentElement; linha.after(bt);
@@ -24548,7 +24671,7 @@ const ASSIST_BASE = [
     bt.after(leg);
     // minimizado: as 15 parcelas cabem na mesma tela (mês curto "10/26", valor e o "pago" empilhados)
     const css = document.createElement('style'); css.id = 'comisColEstilos';
-    css.textContent = `#comissaoExcelTable.comis-sem-detalhes tr > :nth-child(n+3):nth-child(-n+7) { display: none; }
+    css.textContent = `#comissaoExcelTable.comis-sem-detalhes tr > :nth-child(n+3):nth-child(-n+8) { display: none; }
       .comis-col-bt { font-size: 12.5px; padding: 6px 12px; margin: 4px 8px 10px 0; }
       .comis-legenda { display: inline-block; vertical-align: top; margin: 6px 0 10px; font-size: 12px; color: var(--muted, #64748b); }
       .comis-legenda > summary { cursor: pointer; list-style: none; user-select: none; }
@@ -24562,16 +24685,16 @@ const ASSIST_BASE = [
       #comissaoExcelTable.comis-sem-detalhes tr > :nth-child(1) { width: 72px; min-width: 72px !important; padding: 4px 3px !important; font-size: 10.5px; }
       #comissaoExcelTable.comis-sem-detalhes td:nth-child(1) small { font-size: 10.5px; }
       #comissaoExcelTable.comis-sem-detalhes tr > :nth-child(2) { width: 150px; min-width: 150px !important; left: 72px !important; padding: 4px 6px !important; font-size: 11.5px; }
-      #comissaoExcelTable.comis-sem-detalhes tr > :nth-child(n+8) { min-width: 0 !important; width: auto; padding: 4px 2px !important; }
-      #comissaoExcelTable.comis-sem-detalhes th:nth-child(n+8) { font-size: 0 !important; }
-      #comissaoExcelTable.comis-sem-detalhes th:nth-child(n+8)::after { content: attr(data-curto); font-size: 10.5px; }
-      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=month] { display: none; }
+      #comissaoExcelTable.comis-sem-detalhes tr > :nth-child(n+9) { min-width: 0 !important; width: auto; padding: 4px 2px !important; }
+      #comissaoExcelTable.comis-sem-detalhes th:nth-child(n+9) { font-size: 0 !important; }
+      #comissaoExcelTable.comis-sem-detalhes th:nth-child(n+9)::after { content: attr(data-curto); font-size: 10.5px; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+9) input[type=month] { display: none; }
       #comissaoExcelTable.comis-sem-detalhes .cmp-mes { display: block; font-size: 10px; text-align: center; color: var(--muted, #64748b); cursor: pointer; font-weight: 700; }
-      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) > div > div { flex-direction: column; gap: 2px; align-items: stretch; }
-      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=number] { font-size: 10px !important; padding: 2px 1px !important; text-align: center !important; width: 100%; -moz-appearance: textfield; }
-      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=number]::-webkit-inner-spin-button,
-      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+8) input[type=checkbox] { margin: 0 auto !important; }`;
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+9) > div > div { flex-direction: column; gap: 2px; align-items: stretch; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+9) input[type=number] { font-size: 10px !important; padding: 2px 1px !important; text-align: center !important; width: 100%; -moz-appearance: textfield; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+9) input[type=number]::-webkit-inner-spin-button,
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+9) input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+      #comissaoExcelTable.comis-sem-detalhes td:nth-child(n+9) input[type=checkbox] { margin: 0 auto !important; }`;
     document.head.appendChild(css);
     const marcar = () => {
       tab.querySelectorAll('tr:first-child th').forEach((th, i) => { const m = (th.textContent || '').match(/Parcela\s+(\d+)/); if (m) th.dataset.curto = 'P' + m[1]; });
