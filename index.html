@@ -20068,6 +20068,10 @@ function proRender(){
 .pl-kpi-total span { color: #fff; font-size: 16px; }
 .pl-kpi-total b { font-size: clamp(18px, 2.5cqi, 30px); color: #fff; }
 .pl-kpi-total i { position: absolute; right: 9px; bottom: 3px; font-style: normal; font-weight: 800; font-size: 13px; }
+.pl-status { display: inline-flex; gap: 0; margin: 0 0 10px; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.pl-status button { border: 0; border-left: 1px solid var(--line); background: var(--card); color: inherit; padding: 5px 14px; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.pl-status button:first-child { border-left: 0; }
+.pl-status button.on { background: var(--red, #C8102E); color: #fff; }
 .pl-vistas { display: flex; justify-content: flex-end; gap: 8px; margin: 12px 0 10px; flex-wrap: wrap; }
 .pl-vistas .pl-bt-tudo { margin-right: auto; }
 .pl-vistas button { border: 1px solid var(--line); background: var(--card); color: inherit; border-radius: 8px; padding: 4px 16px; font-size: 12.5px; cursor: pointer; }
@@ -20253,9 +20257,9 @@ function proRender(){
     return linhasTodas().filter(r => dataOk(r.m) && lojaOk(r.l || '-', r.n) && (!F.seg.size || F.seg.has(r.s)) && statusOk(r) && pagoOk(r));
   }
   function somar(rs){
-    const t = { ativa: 0, qtd: 0, pago: 0, aguarda: 0, canc: 0 };
-    rs.forEach(r => { const v = Number(r.v) || 0; if (r.c) t.canc += v; else { t.ativa += v; t.qtd += Number(r.q) || 0; if (r.p) t.pago += v; else t.aguarda += v; } });
-    t.ticket = t.qtd ? t.ativa / t.qtd : 0; t.ret = (t.ativa + t.canc) ? t.ativa / (t.ativa + t.canc) : null;
+    const t = { ativa: 0, qtd: 0, pago: 0, aguarda: 0, canc: 0, total: 0 };
+    rs.forEach(r => { const v = Number(r.v) || 0; t.total += v; t.qtd += Number(r.q) || 0; if (r.p) t.pago += v; else t.aguarda += v; if (r.c) t.canc += v; else t.ativa += v; });
+    t.ticket = t.qtd ? t.total / t.qtd : 0; t.ret = (t.ativa + t.canc) ? t.ativa / (t.ativa + t.canc) : null;
     return t;
   }
   // todas as lojas cadastradas aparecem (mesmo sem venda ainda), mais as lojas que só aparecem nas vendas
@@ -20272,10 +20276,11 @@ function proRender(){
       if (segs && !segs.includes(r.s)) return;
       const k = r.l || '-', o = m.get(k) || { id: k, nome: r.n || 'Sem loja definida', ativa: 0, canc: 0, qtd: 0, seg: {} };
       const v = Number(r.v) || 0;
-      if (r.c) o.canc += v; else { o.ativa += v; o.qtd += Number(r.q) || 0; o.seg[r.s] = (o.seg[r.s] || 0) + v; }
+      if (r.c) o.canc += v; else o.ativa += v;
+      o.qtd += Number(r.q) || 0; o.seg[r.s] = (o.seg[r.s] || 0) + v; o.total = o.ativa + o.canc;
       m.set(k, o);
     });
-    return [...m.values()].filter(o => o.ativa || o.canc || o.id !== '-').sort((a, b) => b.ativa - a.ativa || a.nome.localeCompare(b.nome, 'pt-BR'));
+    return [...m.values()].map(o => Object.assign(o, { total: (o.ativa || 0) + (o.canc || 0) })).filter(o => o.total || o.id !== '-').sort((a, b) => b.total - a.total || a.nome.localeCompare(b.nome, 'pt-BR'));
   }
 
   // opções de cada filtro de marcar
@@ -20289,7 +20294,7 @@ function proRender(){
     return [];
   }
   function rotuloFiltro(chave){
-    const S = est.f[chave]; if (!S.size) return 'Todos';
+    const S = est.f[chave]; if (!S.size || (S.size > 1 && opcoesDe(chave).every(o => S.has(o.v)))) return 'Todos';
     if (S.size === 1) { const v = [...S][0], o = opcoesDe(chave).find(x => x.v === v); return o ? o.t : v; }
     return 'Seleções múltiplas';
   }
@@ -20332,15 +20337,16 @@ function proRender(){
   // ---------- quadros ----------
   function kpisHtml(t){
     const k = (tit, val, cls) => `<div class="pl-kpi ${cls || ''}"><span>${tit}</span><b>${val}</b></div>`;
-    return `<div class="pl-kpi pl-kpi-total"><span>Produção Total</span><b>${num(t.ativa)}</b><i title="Retenção: quanto da produção não foi cancelado">${pct(t.ret)}</i></div>
-      ${k('C/ Pagamento', num(t.pago))}${k('Ag. Pagamento', num(t.aguarda))}${k('Qtd Cotas', num(t.qtd))}${k('Ticket Médio', num(t.ticket))}${k('Cancelado', num(t.canc))}`;
+    const st = statusEscolhido(), tit = st === 'ativa' ? 'Produção Ativa' : st === 'cancelada' ? 'Produção Cancelada' : 'Produção Total';
+    return `<div class="pl-kpi pl-kpi-total"><span>${tit}</span><b>${num(t.total)}</b><i title="Retenção: quanto do total vendido continua ativo">${pct(t.ret)}</i></div>
+      ${k('C/ Pagamento', num(t.pago))}${k('Ag. Pagamento', num(t.aguarda))}${k('Qtd Cotas', num(t.qtd))}${k('Ticket Médio', num(t.ticket))}${st === 'ativa' ? k('Cancelado', '—') : k('Cancelado', num(t.canc))}`;
   }
   function rankingHtml(rs){
     return GRUPOS.map(([tit, segs, forte]) => {
-      const lista = porLoja(rs, segs), max = Math.max(1, ...lista.map(o => o.ativa));
+      const lista = porLoja(rs, segs), max = Math.max(1, ...lista.map(o => o.total));
       const linhas = lista.map(o => { const ret = (o.ativa + o.canc) ? o.ativa / (o.ativa + o.canc) : null;
-        return `<div class="pl-lin" title="${esc(o.nome)}: produção ativa ${esc(curto(o.ativa))} · ${o.qtd} cota(s) · cancelado ${esc(curto(o.canc))} · retenção ${pct(ret)}"><span class="pl-nome">${esc(o.nome)}</span>
-          <span class="pl-barra"><i class="${forte ? 'forte' : ''}" style="width:${o.ativa ? Math.max(2, Math.round(o.ativa / max * 100)) : 0}%"></i><b>${esc(curto(o.ativa))}</b></span><span class="pl-pct">${pct(ret)}</span></div>`; }).join('');
+        return `<div class="pl-lin" title="${esc(o.nome)}: total ${esc(curto(o.total))} · ativa ${esc(curto(o.ativa))} · cancelado ${esc(curto(o.canc))} · ${o.qtd} cota(s) · retenção ${pct(ret)}"><span class="pl-nome">${esc(o.nome)}</span>
+          <span class="pl-barra"><i class="${forte ? 'forte' : ''}" style="width:${o.total ? Math.max(2, Math.round(o.total / max * 100)) : 0}%"></i><b>${esc(curto(o.total))}</b></span><span class="pl-pct">${pct(ret)}</span></div>`; }).join('');
       return `<div class="pl-rank"><h3>${tit}</h3><div class="pl-rank-lista">${linhas || '<p class="pl-vazio">Sem vendas neste filtro.</p>'}</div></div>`;
     }).join('');
   }
@@ -20354,7 +20360,7 @@ function proRender(){
     });
     const meses = [...new Set(anos.reduce((acc, a) => acc.concat(mesesDo(a)), []))].sort((a, b) => a - b);
     if (!meses.length) return '';
-    const soma = {}; rs.forEach(r => { if (r.c) return; const k = String(r.m).slice(0, 7); soma[k] = (soma[k] || 0) + (Number(r.v) || 0); });
+    const soma = {}; rs.forEach(r => { const k = String(r.m).slice(0, 7); soma[k] = (soma[k] || 0) + (Number(r.v) || 0); });
     const series = anos.slice(0, CORES.length).map((a, j) => ({ a, cor: CORES[j], ys: meses.map(m => mesesDo(a).includes(m) ? (soma[a + '-' + pad(m)] || 0) : null) }));
     const n = meses.length, larg = ((document.querySelector('#painelLojasCard .pl-corpo') || {}).clientWidth || 1000) - 22;
     const W = Math.max(300, Math.round(larg)), H = W < 600 ? 200 : 250, pe = 34, pd = 34, ps = 30, pi = 32;
@@ -20385,7 +20391,7 @@ function proRender(){
     const lista = porLoja(rs, null);
     if (!lista.length) return '<p class="pl-vazio">Sem vendas neste filtro.</p>';
     const linhas = lista.map((o, i) => { const ret = (o.ativa + o.canc) ? o.ativa / (o.ativa + o.canc) : null;
-      return `<tr><td>${i + 1}</td><td><b>${esc(o.nome)}</b></td><td>${num(o.ativa)}</td><td>${num(o.seg['Imóvel'] || 0)}</td><td>${num(o.seg['Veículo'] || 0)}</td><td>${num(o.seg['Serviço'] || 0)}</td><td>${num(o.qtd)}</td><td>${num(o.qtd ? o.ativa / o.qtd : 0)}</td><td>${num(o.canc)}</td><td>${pct(ret)}</td></tr>`; }).join('');
+      return `<tr><td>${i + 1}</td><td><b>${esc(o.nome)}</b></td><td>${num(o.total)}</td><td>${num(o.seg['Imóvel'] || 0)}</td><td>${num(o.seg['Veículo'] || 0)}</td><td>${num(o.seg['Serviço'] || 0)}</td><td>${num(o.qtd)}</td><td>${num(o.qtd ? o.total / o.qtd : 0)}</td><td>${num(o.canc)}</td><td>${pct(ret)}</td></tr>`; }).join('');
     return `<div class="pl-tabela"><table><thead><tr><th>#</th><th>Unidade</th><th>Produção</th><th>Imóveis</th><th>Veículos</th><th>Serviços</th><th>Cotas</th><th>Ticket médio</th><th>Cancelado</th><th>Retenção</th></tr></thead><tbody>${linhas}</tbody></table></div>`;
   }
 
@@ -20409,11 +20415,12 @@ function proRender(){
     else {
       const rs = filtradas(), t = somar(rs);
       const vazio = !linhasTodas().length ? `<p class="pl-aviso">Ainda não há vendas lançadas neste período. As lojas já aparecem abaixo e os números entram sozinhos assim que as vendas forem lançadas no CRM.</p>` : '';
-      corpo = `${vazio}<div class="pl-kpis">${kpisHtml(t)}</div>
+      const st = statusEscolhido(), bs = (v, txt) => `<button class="${st === v ? 'on' : ''}" onclick="painelLojasStatus('${v}')">${txt}</button>`;
+      corpo = `${vazio}<div class="pl-status">${bs('todas', 'Todas')}${bs('ativa', 'Só ativas')}${bs('cancelada', 'Só canceladas')}</div><div class="pl-kpis">${kpisHtml(t)}</div>
         <div class="pl-vistas">${est.vista === 'graficos' ? `<button class="pl-bt-tudo ${est.tudo ? 'on' : ''}" onclick="painelLojasVerTudo()" title="Mostra todas as lojas nos quadros, sem precisar rolar (bom para tirar print)">${est.tudo ? '↥ Ver menos' : '↧ Ver todas'}</button>` : ''}
           <button class="${est.vista === 'graficos' ? 'on' : ''}" onclick="painelLojasVista('graficos')">Gráficos</button><button class="${est.vista === 'tabelas' ? 'on' : ''}" onclick="painelLojasVista('tabelas')">Tabelas</button></div>
         ${est.vista === 'tabelas' ? tabelaHtml(rs) : `<div class="pl-ranks ${est.tudo ? 'pl-tudo' : ''}">${rankingHtml(rs)}</div>${linhaHtml(rs)}`}
-        <small class="muted pl-nota">Produção = vendas ativas (não canceladas) · Retenção (%) = quanto do total vendido continua ativo: produção ÷ (produção + cancelado) · C/ Pagamento = com ao menos uma parcela marcada como recebida${est.carregando ? ' · atualizando…' : ''}</small>`;
+        <small class="muted pl-nota">Produção Total = tudo o que foi vendido, ativas e canceladas (use "Só ativas" ou "Só canceladas" para separar) · Retenção (%) = quanto do total vendido continua ativo: produção ÷ (produção + cancelado) · C/ Pagamento = com ao menos uma parcela marcada como recebida${est.carregando ? ' · atualizando…' : ''}</small>`;
     }
     // guarda a rolagem das listas e o cursor da busca (a tela é desenhada de novo a cada clique)
     const rolagem = [...c.querySelectorAll('.pl-rank-lista')].map(e => e.scrollTop);
@@ -20433,12 +20440,19 @@ function proRender(){
   function filtrosAtivos(){ return CHAVES.filter(k => est.f[k].size).length + (est.datas.size === 1 && [...est.datas][0] === ANO_ATUAL ? 0 : 1); }
 
   // ---------- ações ----------
+  // 'todas' | 'ativa' | 'cancelada' (o que está marcado no filtro Status Cota)
+  function statusEscolhido(){
+    const S = est.f.status;
+    if (S.size === 1 && S.has('ativa')) return 'ativa';
+    if (S.size === 1 && S.has('cancelada')) return 'cancelada';
+    return S.size ? 'outro' : 'todas';
+  }
+  window.painelLojasStatus = function(v){ est.f.status = new Set(v === 'todas' ? [] : [v]); desenhar(); };
   window.painelLojasAbrirFiltro = function(chave){ est.aberto = est.aberto === chave ? '' : chave; desenhar(); };
   window.painelLojasMarcar = function(chave, i){
     const ops = est.opcoes[chave] || [], S = est.f[chave];
     if (i < 0) { if (ops.every(o => S.has(o.v))) S.clear(); else ops.forEach(o => S.add(o.v)); }
     else { const v = ops[i] && ops[i].v; if (v === undefined) return; if (S.has(v)) S.delete(v); else S.add(v); }
-    if (ops.length && ops.every(o => S.has(o.v))) S.clear();          // tudo marcado = "Todos"
     desenhar();
   };
   window.painelLojasBuscar = function(chave, t){ est.busca[chave] = t; aplicarBusca(chave); };
@@ -21301,7 +21315,7 @@ const ASSIST_BASE = [
 { id: 'filtro_cargo', so: 'lider', t: 'Como vejo qual equipe vendeu mais e o melhor de cada cargo?', k: 'filtro por cargo, cargo, melhor de cada cargo, qual equipe vendeu mais, ranking de equipes, equipe que mais vendeu, melhor lider, melhor consultor',
   r: 'No **Dashboard**, no **Filtro de Progresso Comercial**, escolha o **cargo** (ex.: Líder em treinamento). Os números passam a ser só de quem tem aquele cargo. Logo abaixo, o quadro **🏅 Resultado por cargo** mostra **o melhor de cada cargo** e **as equipes que mais venderam** (a equipe soma o líder e todos abaixo dele). Com um cargo de liderança escolhido, ele compara as equipes de cada pessoa daquele cargo. Use o filtro de período ao lado (mês, hoje, personalizado ou todo o histórico).', aba: 'dashboard' },
 { id: 'producao_lojas', so: 'lider', t: 'O que é o quadro "Produção das lojas"?', k: 'producao das lojas, ranking das lojas, qual loja vende mais, quadro das lojas, retencao, unidade, ver todas, print do quadro, filtro de data, varias lojas',
-  r: 'No **Dashboard**, quem é de **Líder em treinamento para cima** vê os números de **todas as lojas**: produção, com pagamento, aguardando pagamento, cotas, ticket médio e cancelado, além do ranking das lojas por segmento e a produção por mês. Nos filtros dá para marcar **várias opções de uma vez** (várias lojas, segmentos, UFs…), pesquisar a loja pelo nome e escolher a data em árvore (**Ano › Mês › Dia**). Nada marcado = todos. O botão **Ver todas** mostra todas as lojas nos quatro quadros sem precisar rolar (bom para tirar print), e **Tabelas** mostra tudo em tabela. Retenção = quanto do total vendido continua ativo: produção ÷ (produção + cancelado).', aba: 'dashboard' },
+  r: 'A **Produção Total** soma tudo o que foi vendido, ativas e canceladas. Use os botões **Todas**, **Só ativas** e **Só canceladas** para separar.\nNo **Dashboard**, quem é de **Líder em treinamento para cima** vê os números de **todas as lojas**: produção, com pagamento, aguardando pagamento, cotas, ticket médio e cancelado, além do ranking das lojas por segmento e a produção por mês. Nos filtros dá para marcar **várias opções de uma vez** (várias lojas, segmentos, UFs…), pesquisar a loja pelo nome e escolher a data em árvore (**Ano › Mês › Dia**). Nada marcado = todos. O botão **Ver todas** mostra todas as lojas nos quatro quadros sem precisar rolar (bom para tirar print), e **Tabelas** mostra tudo em tabela. Retenção = quanto do total vendido continua ativo: produção ÷ (produção + cancelado).', aba: 'dashboard' },
 { id: 'relatorio', t: 'Como exporto um relatório para imprimir?', k: 'imprimir relatorio, imprimo o relatorio, imprimir o dashboard, relatorio, imprimir, pdf, exportar relatorio, relatorio mensal, relatorio semanal, relatorio diario, relatorio anual, folha a4',
   r: '1. No **Dashboard**, toque em **📄 Exportar relatório**.\n2. Escolha **Diário, Semanal, Mensal, Anual ou Personalizado** e a data.\n3. Toque em **Gerar relatório**.\n4. Toque em **🖨️ Imprimir / Salvar PDF**. Para ter o arquivo, escolha "Salvar como PDF" na impressão.\nPara quem lidera, o relatório traz as lojas, o ranking das lojas, o ranking de vendedores e o ranking dos membros de cada loja; para todos, traz o seu Dashboard no período.', aba: 'dashboard' },
 { id: 'semaforo', t: 'Como funciona o Semáforo & Ranking?', k: 'semaforo, ranking, cores, verde amarelo laranja vermelho, podio, desempenho',
