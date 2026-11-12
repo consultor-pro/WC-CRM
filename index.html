@@ -1186,6 +1186,10 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .vf-det > summary::-webkit-details-marker { display: none; }
 .vf-det[open] > summary { margin-bottom: 8px; }
 .vf-det-corpo { padding: 10px 12px; border: 1px solid var(--line, #e2e8f0); border-radius: 8px; background: rgba(127,127,127,.04); line-height: 1.6; }
+
+.vc-agio { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 12px; }
+.vc-agio label { font-size: 13px; font-weight: 700; margin: 0; }
+.vc-agio input { width: 110px; margin: 0; }
 </style>
 </head>
 <body>
@@ -1916,10 +1920,6 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
         <input type="text" id="simReajusteAnual" value="5,00%" inputmode="decimal" oninput="maskPercentSim(this); calcularSimulacao()">
       </div>
       <div class="field">
-        <label title="Lucro (ágio) na venda da carta">Lucro na venda</label>
-        <input type="text" id="simAgioVenda" value="30,00%" inputmode="decimal" oninput="maskPercentSim(this); calcularSimulacao()">
-      </div>
-      <div class="field">
         <label>Prazo grupo <i class="sp-info" title="Preencha só se o grupo já estiver em andamento e faltar menos meses do que o prazo padrão da modalidade (ex.: grupo de 220x com apenas 200 meses restantes). Todas as parcelas e valores passam a usar esse número de meses.">ⓘ</i></label>
         <input type="number" id="simPrazoRestante" min="1" placeholder="Padrão" oninput="calcularSimulacao()">
       </div>
@@ -2005,6 +2005,8 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
     <div class="card">
       <h3 style="margin-top:0">💰 Estratégia de Venda da Carta Contemplada</h3>
       <p class="muted" style="font-size:12px; margin-top:0;">Cálculo de lucro líquido baseado no ágio pago por investidores sobre o crédito atualizado.</p>
+      <div class="vc-agio"><label for="simAgioVenda">Lucro na venda (ágio sobre o crédito)</label>
+        <input type="text" id="simAgioVenda" value="30,00%" inputmode="decimal" oninput="maskPercentSim(this); calcularSimulacao()"></div>
       <div id="resultadoVendaCarta" style="font-size:14px; line-height:1.6; background:#f8fafc; padding:14px; border-radius:8px; border:1px solid var(--line);"></div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
         <button class="btn" onclick="gerarVendaCarta('imagem')">🖼️ Imagem</button>
@@ -21505,7 +21507,7 @@ const ASSIST_BASE = [
 
 // ===================== SIMULADOR =====================
 { id: 'simulador', t: 'Como faço uma simulação para o cliente?', k: 'faco uma simulacao, fazer simulacao, fazer uma simulacao, simular para o cliente, simulacao, simular consorcio, simulador, parcela, lance, contemplacao, calcular plano',
-  r: '1. Vá em **SIMULADOR** › **🔢 Simulador de Cotas**.\n2. Preencha os parâmetros do plano (modalidade, crédito, meses até a contemplação, reajuste…). No imóvel, os lances são em **quantidade de parcelas** (campo Lances em parcelas).\n3. Os cartões mostram cada estratégia de contemplação (com lance e sem lance). Em cada cartão:\n- **📢 Criar publicidade**: imagem pronta, com fundo à escolha (dá para ver antes de baixar).\n- **📲 Enviar por WhatsApp**.\n- **📄 Gerar proposta** (PDF).\n- **ℹ️ Mais informações**: a evolução mês a mês.\nOutras sub-abas: **🤝 Assunção de Dívida** (quitar com desconto) e **🏦 Banco de Cotas** (várias cotas, contemplação planejada e custo ao ano).', aba: 'simulador' },
+  r: '1. Vá em **SIMULADOR** › **🔢 Cotas**.\n2. Preencha os parâmetros do plano (modalidade, crédito, meses até a contemplação, reajuste…). No imóvel, os lances são em **quantidade de parcelas** (campo Lances em parcelas).\n3. Os cartões mostram cada estratégia de contemplação (com lance e sem lance). Em cada cartão:\n- **📢 Criar publicidade**: imagem pronta, com fundo à escolha (dá para ver antes de baixar).\n- **📲 Enviar por WhatsApp**.\n- **📄 Gerar proposta** (PDF).\n- **ℹ️ Mais informações**: a evolução mês a mês.\nOutras sub-abas: **🤝 Assunção de Dívida** (quitar com desconto) e **🏦 Banco de Cotas** (várias cotas, contemplação planejada e custo ao ano).', aba: 'simulador' },
 { id: 'publicidade', t: 'Como crio uma publicidade da simulação?', k: 'publicidade, imagem da simulacao, arte para instagram, divulgacao, post, fundo da publicidade',
   r: 'No **Simulador**, embaixo do cartão da estratégia, toque em **📢 Criar publicidade** e escolha o fundo. A imagem é baixada pronta para postar. Em "Enviar Simulação para o Cliente" você escolhe se vai a logo, os seus dados e o percentual da parcela.', aba: 'simulador' },
 { id: 'proposta', t: 'Como gero a proposta em PDF?', k: 'proposta, pdf da simulacao, enviar proposta, documento para o cliente',
@@ -21551,7 +21553,7 @@ const ASSIST_BASE = [
 { id: 'banco_cotas', t: 'Como funciona o Banco de Cotas?', k: 'banco de cotas, varias cotas, várias cotas, cotas menores, espalhar posicoes, posições no grupo, contemplacao planejada, contemplação planejada, custo ao ano, custo ao mes, dinheiro novo, quitar cotas, incc, grupo antigo, 240 meses, ja pagou, relatorio do banco de cotas',
   r: 'No **Simulador** › **🏦 Banco de Cotas**:\n- Cada linha é um grupo: quantidade e valor das cotas, **prazo original**, quantos meses o grupo **já tinha rodado** quando o cliente comprou e quantas **parcelas ele já pagou**. Prazo do cliente = prazo original − meses rodados.\n- Escolha a forma (lance livre, limitado, fixo ou sorteio), o mês da 1ª contemplação e **de quanto em quanto tempo sai a próxima**. Os lances são em quantidade de parcelas.\n- O resultado mostra o **dinheiro novo** (crédito − lances do bolso), o total pago (dinheiro novo + taxa) e o **custo ao ano e ao mês**. Com INCC, mostra também os valores reajustados.\n- **Situação de hoje**: quanto já pagou, reajustes, parcela de hoje, saldo e o custo daqui para frente.\n- **Quitação**: marque cota por cota e veja o valor com desconto, o que deixa de pagar e o ganho.\n- **⬇ Baixar relatório** gera um arquivo que abre no navegador e pode ser impresso em PDF.', aba: 'simulador' },
 { id: 'lances_parcelas', t: 'Como funcionam os lances em parcelas no imóvel?', k: 'lance em parcelas, quantidade de parcelas, lance fixo, lance limitado, lance livre, 44 parcelas, 88 parcelas, 99 parcelas, embutido, lance do bolso, porcentagem do lance, saldo devedor dividido',
-  r: 'Na Ademicon o lance é contado em **quantidade de parcelas**, não em porcentagem.\n- **1 parcela de lance** = saldo devedor (crédito + taxa) ÷ prazo do grupo. Ex.: 100 mil + 24,2% = 124.200 ÷ 220 = R$ 564,54.\n- **Lance fixo**: parcelas tiradas do próprio crédito (padrão 44 = 20% do saldo).\n- **Lance limitado**: parte do crédito + parte do bolso (padrão 44 + 44).\n- **Lance livre**: só do bolso (padrão 99 = 45%).\nNo **SIMULADOR** › **🔢 Simulador de Cotas**, com imóvel escolhido, o campo **Lances em parcelas** deixa você mudar cada quantidade. Os cartões mostram "44 parcelas · 20% do saldo devedor".', aba: 'simulador' },
+  r: 'Na Ademicon o lance é contado em **quantidade de parcelas**, não em porcentagem.\n- **1 parcela de lance** = saldo devedor (crédito + taxa) ÷ prazo do grupo. Ex.: 100 mil + 24,2% = 124.200 ÷ 220 = R$ 564,54.\n- **Lance fixo**: parcelas tiradas do próprio crédito (padrão 44 = 20% do saldo).\n- **Lance limitado**: parte do crédito + parte do bolso (padrão 44 + 44).\n- **Lance livre**: só do bolso (padrão 99 = 45%).\nNo **SIMULADOR** › **🔢 Cotas**, com imóvel escolhido, o campo **Lances em parcelas** deixa você mudar cada quantidade. Os cartões mostram "44 parcelas · 20% do saldo devedor".', aba: 'simulador' },
 { id: 'scripts_nichos', t: 'Como uso os scripts por nicho (Indicadores e Lead Frio)?', k: 'scripts, script de ligacao, script indicacao, ligar para indicado, lead frio, quem nao me conhece, abrir script, fechar script, minimizar script, nichos',
   r: 'Em **Material de Apoio** › **💬 Scripts por Nicho**:\n- Cada script aparece **fechado**, só com o título. Toque no título para abrir e de novo para fechar.\n- **🤝 Indicadores**: o roteiro para ligar para quem você recebeu por indicação (use o nome de quem indicou logo no começo).\n- **❄️ Lead Frio**: para quem não te conhece (em 10 segundos diga quem é, por que ligou e o que ganha).\n- Os outros nichos também têm roteiro completo: abertura, perguntas, objeções e fechamento.\nDá para criar e editar os seus scripts.', aba: 'materialApoio' },
 { id: 'comissao_resumo', t: 'Por que a Comissão mostra só Total Ativo e Total Cancelado?', k: 'comissao resumida, so total ativo, total cancelado, ver todos os numeros, esconder numeros, minimizar comissao, cores dos numeros, projecao detalhada, minimizar colunas, 15 parcelas, legenda das cores, contorno roxo',
@@ -25639,6 +25641,19 @@ function simAlternarLances(forcar){
 }
 (function(){ let a = false; try { a = localStorage.getItem('crm_sim_lances_abertos') === '1'; } catch (e) {} simAlternarLances(a); })();
 </script>
+<script id="simAbasNomesScript">
+(function(){
+  const NOMES = [['simCotas', '🔢 Cotas'], ['simInvest', '🏦 Aplicação'], ['simFinanciamento', '🏠 Financiamento'], ['simComparativo', '⚖️ Financ. x Consórcio'], ['simAssuncao', '🤝 Assunção']];
+  function encurtar(){
+    document.querySelectorAll('#simulador .tab-pill').forEach(b => {
+      const oc = b.getAttribute('onclick') || '', par = NOMES.find(([id]) => oc.includes("'" + id + "'"));
+      if (par && b.textContent.trim() !== par[1]) { if (!b.title) b.title = b.textContent.trim(); b.textContent = par[1]; }
+    });
+  }
+  let n = 0; const t = setInterval(() => { encurtar(); if (++n > 20) clearInterval(t); }, 500);
+  document.addEventListener('DOMContentLoaded', encurtar);
+})();
+</script>
 <script id="mapaTudoScript">
 // ===== MAPA DE COTAS: as 10.000 cotas numa tela só =====
 // Botão "Ver as 10.000 numa tela" abre uma tela cheia com uma grade de 100 x 100 quadradinhos (cota 1 no canto
@@ -26013,7 +26028,7 @@ function simAlternarLances(forcar){
   #simAbasFixas.colada { box-shadow: 0 6px 16px -8px rgba(15,23,42,.28); }
   #simAbasFixas .tab-pills { margin: 0 !important; border-bottom: 0; padding-bottom: 10px; flex-wrap: nowrap; scrollbar-width: thin; }
   #simAbasFixas .tab-pill { flex: none; white-space: nowrap; }
-  @media (min-width: 769px) { #simAbasFixas .tab-pills { flex-wrap: wrap; row-gap: 6px; } }
+  @media (min-width: 769px) { #simAbasFixas .tab-pills { flex-wrap: nowrap; gap: 6px; overflow-x: auto; } #simAbasFixas .tab-pill { padding: 7px 9px; font-size: 12.5px; } }
   @media (max-width: 768px) { #simAbasFixas { margin: -4px -14px 12px; padding: 8px 14px 0; } }`;
   document.head.appendChild(css);
 
