@@ -25352,6 +25352,12 @@ const ASSIST_BASE = [
     const totLiberado = soma(l => l.libN), totBolso = soma(l => l.bolsoN), totEmb = soma(l => l.embN);
     const totParcelas = base.parc.reduce((a, b) => a + b, 0), totPago = totParcelas;   // o lance do bolso abate o saldo e volta no crédito: não conta como pago
     const totTaxa = creditoTotal * taxa, totNovo = totLiberado - totBolso, totIncc = totPago - totNovo - totTaxa;
+    // lance do bolso mês a mês: o dinheiro do lance volta junto com o crédito na contemplação,
+    // então não precisa ter o total de uma vez, só o que sai em cada mês
+    const bolsoPorMes = {};
+    cotas.forEach(c => { const v = c.l.bolsoR * c.fm; if (v > 0) { const k = c.m + c.l.o; bolsoPorMes[k] = (bolsoPorMes[k] || 0) + v; } });
+    const mesesLance = Object.keys(bolsoPorMes).length, maiorLanceMes = Math.max(0, ...Object.values(bolsoPorMes));
+    const mesMaiorLance = mesesLance ? +Object.keys(bolsoPorMes).find(k => bolsoPorMes[k] === maiorLanceMes) : 0;
     const realNovo = soma(l => l.novo * l.q), realPago = soma(l => l.parcTot);
     // anos de referência: prazo de cada grupo, pesado pelo dinheiro novo
     const anosRef = Math.max(1, soma(l => Math.max(0, l.novoN) * l.prazo)) / Math.max(1, soma(l => Math.max(0, l.novoN))) / 12;
@@ -25392,7 +25398,8 @@ const ASSIST_BASE = [
 
     // ---- resultado ----
     $('kpisRes').innerHTML =
-      kpi('Lances do bolso', R(totBolso), 'abatem o saldo devedor', 'ruim') +
+      kpi('Lances do bolso', R(totBolso), mesesLance > 1 ? `soma de ${mesesLance} meses com lance · abatem o saldo devedor` : 'abatem o saldo devedor', 'ruim') +
+      (maiorLanceMes > 0 ? kpi('Lance do bolso por mês', R(maiorLanceMes), mesesLance > 1 ? `é o que precisa ter disponível: o lance volta com o crédito a cada contemplação${Object.values(bolsoPorMes).some(v => Math.abs(v - maiorLanceMes) > 1) ? ` · maior mês: ${mesMaiorLance}º` : ''}` : 'só um mês com lance', 'bom') : '') +
       kpi('Lances embutidos', R(totEmb), 'saem do crédito') +
       kpi('Crédito liberado', R(totLiberado), `de ${R(creditoTotal)} contratados`) +
       kpi('Dinheiro novo', R(totNovo), comIncc ? 'já com o crédito reajustado na contemplação' : 'crédito liberado − lances do bolso', 'bom') +
@@ -25409,14 +25416,15 @@ const ASSIST_BASE = [
     const nSort = soma(l => l.forma === 'sort' ? l.q : 0);
     $('fraseRes').innerHTML = (totBolso > 0 ? `Recebe <b>${R(totLiberado)}</b> de crédito, mas <b>${R(totBolso)}</b> saíram do bolso nos lances: o dinheiro novo é <b>${R(totNovo)}</b>.` : `O dinheiro novo é <b>${R(totNovo)}</b>${totEmb > 0 ? ` (os lances embutidos de ${R(totEmb)} saíram do próprio crédito)` : ''}.`) + ` Por ele paga <b>${R(totParcelas)}</b> em parcelas, da compra até o fim, um custo de <b>${PC(simples)}</b> (<b>${PM(simples)}</b>).` +
       (k > 0 && nSort ? ` Com ${k} cota(s) sorteada(s) por mês num grupo de ${milhar(Npart)}, cada cota tem ${P(k / Npart * 100, 2)} de chance por mês; os meses do sorteio são uma estimativa.` : '');
+    if (maiorLanceMes > 0 && mesesLance > 1) $('fraseRes').innerHTML += ` <b>Lance por mês:</b> como o dinheiro do lance volta junto com o crédito em cada contemplação, não é preciso ter os <b>${R(totBolso)}</b> de uma vez: basta ter <b>${R(maiorLanceMes)}</b> disponível no mês de cada lance (são ${mesesLance} meses com lance do bolso).`;
     // linha do tempo
     const marcos = [...new Set([1, H || 1, H + 1, ...cotas.map(c => c.m + c.l.o), 12, 24, 36, 48, 60, 120, T].filter(m => m >= 1 && m <= T))].sort((a, b) => a - b);
-    let t = '<thead><tr><th>Mês</th><th>Contempladas no mês</th><th>Contempladas até aqui</th><th>Dinheiro novo no mês</th><th>Parcela do mês seguinte</th></tr></thead><tbody>';
+    let t = '<thead><tr><th>Mês</th><th>Contempladas no mês</th><th>Contempladas até aqui</th><th>Lance do bolso no mês</th><th>Dinheiro novo no mês</th><th>Parcela do mês seguinte</th></tr></thead><tbody>';
     marcos.forEach(m => {
       const doMes = cotas.filter(c => c.m + c.l.o === m), ate = cotas.filter(c => c.m + c.l.o <= m).length;
       const novoMes = doMes.reduce((a, c) => a + c.l.novo * c.fm, 0);
       const desc = ativas.map(l => { const x = doMes.filter(c => c.l === l).length; return x ? `<span class="tag" style="background:${l.f.cor}"></span>${x} × ${R(l.v)} (${l.f.nome.replace('Lance ', '').toLowerCase()})` : ''; }).filter(Boolean).join(' + ');
-      t += `<tr${H && m === H ? ' style="background:var(--azul-suave)"' : ''}><td>${m}º (${anos(m)})${H && m === H ? ' · <b>hoje</b>' : ''}</td><td style="text-align:left">${desc || '—'}</td><td>${ate} de ${n}</td><td>${novoMes ? R(novoMes) : '—'}</td><td>${R(base.parc[Math.min(T, m + 1)])}</td></tr>`;
+      t += `<tr${H && m === H ? ' style="background:var(--azul-suave)"' : ''}><td>${m}º (${anos(m)})${H && m === H ? ' · <b>hoje</b>' : ''}</td><td style="text-align:left">${desc || '—'}</td><td>${ate} de ${n}</td><td>${bolsoPorMes[m] ? R(bolsoPorMes[m]) : '—'}</td><td>${novoMes ? R(novoMes) : '—'}</td><td>${R(base.parc[Math.min(T, m + 1)])}</td></tr>`;
     });
     $('tabTempo').innerHTML = t + '</tbody>';
 
