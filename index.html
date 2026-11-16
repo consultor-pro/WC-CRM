@@ -25356,6 +25356,7 @@ const ASSIST_BASE = [
     // então não precisa ter o total de uma vez, só o que sai em cada mês
     const bolsoPorMes = {};
     cotas.forEach(c => { const v = c.l.bolsoR * c.fm; if (v > 0) { const k = c.m + c.l.o; bolsoPorMes[k] = (bolsoPorMes[k] || 0) + v; } });
+    const reajCred = cotas.reduce((a, c) => a + c.l.v * (c.fm - 1), 0);   // quanto o INCC aumentou o crédito até cada contemplação
     const mesesLance = Object.keys(bolsoPorMes).length, maiorLanceMes = Math.max(0, ...Object.values(bolsoPorMes));
     const mesMaiorLance = mesesLance ? +Object.keys(bolsoPorMes).find(k => bolsoPorMes[k] === maiorLanceMes) : 0;
     const realNovo = soma(l => l.novo * l.q), realPago = soma(l => l.parcTot);
@@ -25401,7 +25402,7 @@ const ASSIST_BASE = [
       kpi('Lances do bolso', R(totBolso), mesesLance > 1 ? `soma de ${mesesLance} meses com lance · abatem o saldo devedor` : 'abatem o saldo devedor', 'ruim') +
       (maiorLanceMes > 0 ? kpi('Lance do bolso por mês', R(maiorLanceMes), mesesLance > 1 ? `é o que precisa ter disponível: o lance volta com o crédito a cada contemplação${Object.values(bolsoPorMes).some(v => Math.abs(v - maiorLanceMes) > 1) ? ` · maior mês: ${mesMaiorLance}º` : ''}` : 'só um mês com lance', 'bom') : '') +
       kpi('Lances embutidos', R(totEmb), 'saem do crédito') +
-      kpi('Crédito liberado', R(totLiberado), `de ${R(creditoTotal)} contratados`) +
+      kpi(comIncc && reajCred > 1 ? 'Crédito liberado (com INCC)' : 'Crédito liberado', R(totLiberado), comIncc && reajCred > 1 ? `${R(creditoTotal)} contratados + ${R(reajCred)} de reajuste do INCC até a contemplação${totEmb > 0 ? ' − lances embutidos' : ''}` : `de ${R(creditoTotal)} contratados${totEmb > 0 ? ' − lances embutidos' : ''}`) +
       kpi('Dinheiro novo', R(totNovo), comIncc ? 'já com o crédito reajustado na contemplação' : 'crédito liberado − lances do bolso', 'bom') +
       kpi('Total pago até o fim', R(totPago), comIncc ? `dinheiro novo + taxa de adm. ${R(totTaxa)} + reajuste ${R(totIncc)} · sem INCC: ${R(realPago)}` : `dinheiro novo ${R(totNovo)} + taxa de adm. ${R(totTaxa)}`) +
       kpi('Custo ao ano', PC(simples), comIncc ? `com INCC de ${P(incc * 100)} · sem INCC: ${PC(custoAA(realPago, realNovo, anosReal))}` : 'sobre o dinheiro novo, da compra até o fim', 'azul') +
@@ -25513,7 +25514,16 @@ const ASSIST_BASE = [
 body{margin:0;padding:24px 16px 40px} .rel{max-width:1000px;margin:0 auto} section{background:var(--papel);border:1px solid var(--linha);border-radius:12px;padding:16px;margin-top:14px;break-inside:avoid-page}
 h2{font-size:18px;margin:0 0 4px} h3{font-family:var(--fonte-titulo);font-size:14px;margin:14px 0 4px} table{margin-top:10px} th,td{white-space:normal}
 .topo{display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap} .imprimir{font:inherit;font-weight:700;border:1px solid var(--linha);background:var(--papel);color:var(--tinta);border-radius:8px;padding:8px 12px;cursor:pointer}
-@media print{.imprimir{display:none} body{padding:0;background:#fff} section{border-color:#ccc}}</style></head><body><div class="rel">
+@media print{.imprimir{display:none} body{padding:0;background:#fff} section{border-color:#ccc}}
+/* visual mais limpo: letras e números menores, sem quebrar valor no meio */
+body{font-size:13px;line-height:1.4} h1{font-size:24px} h2{font-size:15.5px} h3{font-size:13px} .sub{font-size:12px}
+.kpis{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px;margin-top:10px}
+.kpi{padding:8px 10px;border-radius:8px} .kpi span{font-size:10.5px;line-height:1.25} .kpi b{font-size:15px;line-height:1.25;margin-top:3px} .kpi small{font-size:10.5px;line-height:1.3;margin-top:3px}
+table{font-size:11.5px} th{font-size:9.5px;letter-spacing:.02em} th,td{padding:5px 6px;white-space:nowrap;vertical-align:top} td small{font-size:9.5px;line-height:1.2;display:block}
+td:nth-child(2),th:nth-child(2){white-space:normal} .frase{font-size:12.5px;padding:9px 11px} .mapa .tit{font-size:11.5px} .mapa .posicoes span{font-size:10.5px}
+@page{size:A4;margin:12mm}
+@media print{body{font-size:11px} section{padding:11px 12px;margin-top:9px;border-radius:8px} .kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px} .kpi{padding:6px 8px} .kpi b{font-size:13px} .kpi span,.kpi small{font-size:9.5px} table{font-size:9.5px} th{font-size:8px} th,td{padding:3px 4px} .frase{font-size:11px} h1{font-size:20px} .regua i,.tag,.kpi,.frase{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+</style></head><body><div class="rel">
 <div class="topo"><div><div class="selo">Simulação de Banco de Cotas</div><h1>${cliente ? esc(cliente) : 'Banco de Cotas'}</h1><p class="sub">Gerado em ${hoje}. Valores estimados: a contemplação depende das assembleias e o desconto da Assunção depende da análise da administradora.</p></div><button class="imprimir" onclick="print()">Imprimir / salvar em PDF</button></div>
 ${corpo}
 </div></body></html>`;
