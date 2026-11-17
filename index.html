@@ -1221,6 +1221,17 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 
 /* bc-sem-quit: a quitação pela Assunção de Dívida não aparece no Banco de Cotas */
 #simBanco section[aria-labelledby="t4"] { display: none !important; }
+
+#consultoresVendas.vc-modo-lista .vc-det { display: none !important; }
+#consultoresVendas:not(.vc-modo-lista) .vc-lista { display: none !important; }
+.vc-nomes { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
+.vc-nome { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: 10px; padding: 10px 12px; cursor: pointer; font: inherit; color: inherit; }
+.vc-nome:hover { border-color: #2563eb; color: #2563eb; }
+.vc-nome .vc-av { width: 34px; height: 34px; border-radius: 50%; background: #e0e7ff; color: #3730a3; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
+.vc-nome b { display: block; font-size: 14px; line-height: 1.25; }
+.vc-nome small { display: block; font-size: 11.5px; color: var(--muted, #64748b); }
+.vc-nome .vc-seta { margin-left: auto; color: var(--muted, #64748b); font-size: 18px; }
+[data-theme="dark"] .vc-nome .vc-av { background: #1e1b4b; color: #c7d2fe; }
 </style>
 </head>
 <body>
@@ -15309,7 +15320,7 @@ function injetarAbaConsultores() {
   if (main && !document.getElementById('consultoresVendas')) {
     const sec = document.createElement('section');
     sec.id = 'consultoresVendas';
-    sec.className = 'page';
+    sec.className = 'page vc-modo-lista';
     sec.innerHTML = `
       <div class="card" style="margin-bottom:16px">
         <div class="between" style="flex-wrap:wrap;gap:12px">
@@ -15327,9 +15338,19 @@ function injetarAbaConsultores() {
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:16px">
+      <div class="card vc-lista" style="margin-bottom:16px">
+        <div class="between" style="flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <h3 style="margin:0">👥 Consultores</h3>
+          <input type="text" id="vcBuscaNome" placeholder="🔍 Buscar consultor" oninput="vcDesenharNomes()" style="max-width:240px;margin:0">
+        </div>
+        <div class="vc-nomes" id="vcListaNomes"></div>
+        <small class="muted" style="display:block;margin-top:8px">Toque no nome para ver as vendas e a comissão.</small>
+      </div>
+
+      <div class="card vc-det" style="margin-bottom:16px">
         <div class="between" style="flex-wrap:wrap;gap:12px">
           <div class="row">
+            <button class="btn" onclick="vcVoltarLista()" title="Voltar para a lista de consultores">‹ Consultores</button>
             <label style="font-size:12px;font-weight:700">👤 Consultor:</label>
             <select id="vcConsultorSelect" onchange="renderVendasConsultores()" style="max-width:220px"></select>
             <label style="font-size:12px;font-weight:700">🏷️ Segmento:</label>
@@ -15353,16 +15374,16 @@ function injetarAbaConsultores() {
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:16px" id="vcInfoConsultor">
+      <div class="card vc-det" style="margin-bottom:16px" id="vcInfoConsultor">
         <!-- cabeçalho estilo planilha (nome / e-mail / telefone) injetado via JS -->
       </div>
 
-      <div class="card" style="margin-bottom:16px">
+      <div class="card vc-det" style="margin-bottom:16px">
         <h3 style="margin:0 0 8px">📅 Comissão Prevista por Mês (Bruto / Imposto / Líquido)</h3>
         <div id="vcMonthlyFlowSummary" style="display:flex;gap:10px;overflow-x:auto;padding-bottom:8px"></div>
       </div>
 
-      <div class="card" style="margin-bottom:16px;overflow-x:auto">
+      <div class="card vc-det" style="margin-bottom:16px;overflow-x:auto">
         <h3 style="margin:0 0 8px" id="vcTituloPlanilha">📋 Planilha de Vendas & Comissão do Consultor</h3>
         <p class="muted" style="font-size:12px;margin-top:0" id="vcDicaPlanilha">💡 Edite Crédito, Modalidade, Data e Valor de cada parcela diretamente na tabela — igual a uma planilha do Excel.</p>
         <div style="overflow-x:auto" id="vcExcelTableContainer">
@@ -15373,7 +15394,7 @@ function injetarAbaConsultores() {
       <!-- Barra flutuante para rolar a tabela de vendas pra esquerda/direita sem
            precisar descer até o fim da página pra achar a barra de rolagem nativa
            -- igual à aba Cálculo de Comissão. -->
-      <div class="excel-float-nav">
+      <div class="excel-float-nav vc-det">
         <button type="button" title="Rolar para a esquerda" onclick="rolarExcelTable('consultoresVendas', -1)">◀</button>
         <button type="button" title="Rolar para a direita" onclick="rolarExcelTable('consultoresVendas', 1)">▶</button>
       </div>
@@ -25892,6 +25913,44 @@ async function followEnviarMeet(followId, janela, linkColado){
   save();
   if (typeof showToast === 'function') showToast(url ? 'Convite com o link do Meet aberto no WhatsApp.' : 'Convite aberto no WhatsApp (link do Meet a combinar).');
 }
+</script>
+<script id="vcListaScript">
+// ===== CONSULTORES & VENDAS: primeiro a lista de nomes, a comissão só ao tocar no nome =====
+function vcDesenharNomes(){
+  const box = document.getElementById('vcListaNomes'); if (!box) return;
+  const busca = String(document.getElementById('vcBuscaNome')?.value || '').toLowerCase().trim();
+  const lista = (typeof equipeNaTela === 'function' ? equipeNaTela() : (usersList || []))
+    .filter(u => u && u.nome && (!busca || u.nome.toLowerCase().includes(busca)))
+    .sort((a, b) => (a.id === currentUser?.id ? -1 : b.id === currentUser?.id ? 1 : a.nome.localeCompare(b.nome, 'pt-BR')));
+  const iniciais = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase();
+  box.innerHTML = lista.length ? lista.map(u => `<button type="button" class="vc-nome" onclick="vcAbrirConsultor(this.dataset.nome)" data-nome="${esc(u.nome)}">
+      <span class="vc-av">${esc(iniciais(u.nome))}</span><span><b>${esc(u.nome)}${u.id === currentUser?.id ? ' <small style="display:inline">(você)</small>' : ''}</b><small>${esc(u.cargo || '')}</small></span><span class="vc-seta">›</span></button>`).join('')
+    : '<div class="muted" style="font-size:13px">Nenhum consultor encontrado.</div>';
+}
+function vcAbrirConsultor(nome){
+  const sec = document.getElementById('consultoresVendas'), sel = document.getElementById('vcConsultorSelect');
+  if (!sec) return;
+  if (sel) { if (![...sel.options].some(o => o.value === nome)) { const o = document.createElement('option'); o.value = nome; o.textContent = nome; sel.appendChild(o); } sel.value = nome; }
+  sec.classList.remove('vc-modo-lista');
+  try { renderVendasConsultores(); } catch (e) { console.warn(e); }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function vcVoltarLista(){
+  const sec = document.getElementById('consultoresVendas'); if (!sec) return;
+  sec.classList.add('vc-modo-lista'); vcDesenharNomes(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+(function(){
+  // sempre que a aba abre pelo menu, volta para a lista
+  const original = window.show;
+  if (typeof original === 'function') window.show = function(id){
+    const r = original.apply(this, arguments);
+    if (id === 'consultoresVendas') { const sec = document.getElementById('consultoresVendas'); if (sec) sec.classList.add('vc-modo-lista'); vcDesenharNomes(); }
+    return r;
+  };
+  // a lista acompanha as mudanças da equipe
+  const renderOriginal = window.renderVendasConsultores;
+  if (typeof renderOriginal === 'function') window.renderVendasConsultores = function(){ const r = renderOriginal.apply(this, arguments); vcDesenharNomes(); return r; };
+})();
 </script>
 <script id="mapaTudoScript">
 // ===== MAPA DE COTAS: as 10.000 cotas numa tela só =====
