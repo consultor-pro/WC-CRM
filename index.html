@@ -11394,10 +11394,10 @@ function confirmarImportacaoVendas(){
 
 
 // ---------- Follow-ups: cada comentário é uma atividade na Agenda ----------
+// data padrão da agenda: o dia (hoje ou daqui a X dias) sempre 12:00 — retorno sem hora marcada
 function agoraLocalParaInput(somarDias){
   const d = new Date(); if (somarDias) d.setDate(d.getDate() + somarDias);
-  d.setSeconds(0, 0); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T12:00`;
 }
 function fmtDataHoraCurta(d){ const x = new Date(d); return isNaN(x.getTime()) ? '-' : x.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }); }
 function resumoTexto(t, n){ t = String(t || '').replace(/\s+/g, ' ').trim(); return t.length > n ? t.slice(0, n - 1) + '…' : t; }
@@ -12536,7 +12536,7 @@ function openMeeting(leadNomePreSelecionado){
     <div class="field"><label>Responsável</label>
       <select id="mResp">${usersList.filter(u => (MODO_HIERARQUIA && !hierDonoVeTudo()) ? u.id === currentUser.id : (canSeeAllAgenda || subNames.includes(u.nome))).map(u=>`<option ${(currentUser?.nome===u.nome)?'selected':''}>${esc(u.nome)} (${esc(u.cargo)})</option>`).join('')}</select>
     </div>
-    <div class="field"><label>Data e Hora</label><input type="datetime-local" id="mDate"></div>
+    <div class="field"><label>Data e Hora</label><input type="datetime-local" id="mDate" value="${agoraLocalParaInput(0)}"></div>
     <div class="field"><label>Pauta</label><input id="mObj" placeholder="Apresentação de Empresa"></div>
     <div class="field"><label>Cor do Evento na Agenda</label>
       <div class="row" style="align-items:center;gap:8px">
