@@ -1224,14 +1224,69 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 
 #consultoresVendas.vc-modo-lista .vc-det { display: none !important; }
 #consultoresVendas:not(.vc-modo-lista) .vc-lista { display: none !important; }
-.vc-nomes { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; }
-.vc-nome { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: 10px; padding: 10px 12px; cursor: pointer; font: inherit; color: inherit; }
+.vc-nomes { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.vc-nome { display: flex; align-items: center; gap: 10px; text-align: left; width: 100%; background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: 9px; padding: 5px 10px; cursor: pointer; font: inherit; color: inherit; }
 .vc-nome:hover { border-color: #2563eb; color: #2563eb; }
-.vc-nome .vc-av { width: 34px; height: 34px; border-radius: 50%; background: #e0e7ff; color: #3730a3; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
-.vc-nome b { display: block; font-size: 14px; line-height: 1.25; }
-.vc-nome small { display: block; font-size: 11.5px; color: var(--muted, #64748b); }
+.vc-nome .vc-av { width: 28px; height: 28px; font-size: 11.5px; border-radius: 50%; background: #e0e7ff; color: #3730a3; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
+.vc-nome b { display: inline; font-size: 14px; line-height: 1.25; }
+.vc-nome small { display: inline; font-size: 12px; color: var(--muted, #64748b); margin-left: 8px; }
 .vc-nome .vc-seta { margin-left: auto; color: var(--muted, #64748b); font-size: 18px; }
 [data-theme="dark"] .vc-nome .vc-av { background: #1e1b4b; color: #c7d2fe; }
+
+/* pop-up do consultor */
+.vcp-fundo { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: none; align-items: flex-start; justify-content: center; padding: 26px 12px; overflow-y: auto; z-index: 9000; }
+.vcp-fundo.aberto { display: flex; }
+.vcp { background: var(--card, #fff); color: var(--dark, #1b2230); width: 100%; max-width: 720px; border-radius: 16px; box-shadow: 0 18px 40px -18px rgba(15,23,42,.45); overflow: hidden; }
+.vcp-cab { display: flex; gap: 12px; align-items: center; padding: 16px 18px 0; }
+.vcp-cab h2 { font-size: 18px; margin: 0; }
+.vcp-fechar { margin-left: auto; border: 0; background: var(--bg, #f1f5f9); color: inherit; width: 34px; height: 34px; border-radius: 50%; font-size: 17px; cursor: pointer; flex-shrink: 0; }
+.vcp-abas { display: flex; gap: 4px; padding: 12px 18px 0; border-bottom: 1px solid var(--line, #e2e8f0); }
+.vcp-aba { font: inherit; font-weight: 700; font-size: 14px; border: 0; background: none; color: var(--muted, #64748b); padding: 8px 14px; border-bottom: 3px solid transparent; cursor: pointer; }
+.vcp-aba.on { color: var(--red, #C8102E); border-bottom-color: var(--red, #C8102E); }
+.vcp-corpo { padding: 16px 18px 18px; }
+.vcp-dados { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px 18px; }
+.vcp-dado span { display: block; font-size: 11px; font-weight: 700; color: var(--muted, #64748b); text-transform: uppercase; letter-spacing: .03em; }
+.vcp-dado b { font-size: 14px; font-weight: 600; word-break: break-word; }
+.vcp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 14px; }
+.vcp-kpi { border: 1px solid var(--line, #e2e8f0); border-radius: 12px; padding: 10px 12px; background: var(--bg, #f8fafc); }
+.vcp-kpi span { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted, #64748b); }
+.vcp-kpi b { display: block; font-size: 17px; margin-top: 2px; font-variant-numeric: tabular-nums; }
+.vcp-kpi small { font-size: 11.5px; color: var(--muted, #64748b); }
+.vcp-kpi.verde { background: #dcfce7; border-color: transparent; } .vcp-kpi.verde b { color: #15803d; }
+.vcp-kpi.azul { background: #e0e7ff; border-color: transparent; } .vcp-kpi.azul b { color: #1d4ed8; }
+.vcp-periodo { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.vcp-seg { display: inline-flex; border: 1px solid var(--line, #e2e8f0); border-radius: 10px; overflow: hidden; }
+.vcp-seg button { font: inherit; font-size: 13px; font-weight: 700; border: 0; border-left: 1px solid var(--line, #e2e8f0); background: var(--card, #fff); color: inherit; padding: 6px 14px; cursor: pointer; }
+.vcp-seg button:first-child { border-left: 0; }
+.vcp-seg button.on { background: var(--red, #C8102E); color: #fff; }
+.vcp-nav { display: flex; align-items: center; gap: 6px; }
+.vcp-nav button { font: inherit; font-size: 16px; border: 1px solid var(--line, #e2e8f0); background: var(--card, #fff); color: inherit; width: 32px; height: 32px; border-radius: 8px; cursor: pointer; }
+.vcp-nav b { min-width: 150px; text-align: center; font-size: 14px; }
+.vcp-vendas { display: grid; gap: 6px; margin-top: 12px; }
+.vcp-venda { border: 1px solid var(--line, #e2e8f0); border-radius: 11px; padding: 9px 12px; display: grid; grid-template-columns: 1fr auto; gap: 2px 14px; }
+.vcp-venda .cli { font-weight: 800; font-size: 14.5px; }
+.vcp-venda .info { font-size: 12px; color: var(--muted, #64748b); }
+.vcp-venda .cred { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.vcp-venda .com { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; align-items: center; }
+.vcp-etq { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--bg, #f1f5f9); color: var(--muted, #64748b); }
+.vcp-etq.azul { background: #e0e7ff; color: #1d4ed8; } .vcp-etq.verde { background: #dcfce7; color: #15803d; } .vcp-etq.canc { background: #fde8eb; color: #b91c1c; }
+.vcp-venda.cancelada .cli, .vcp-venda.cancelada .cred { text-decoration: line-through; opacity: .7; }
+.vcp-editar { margin-left: auto; font: inherit; font-size: 12px; font-weight: 700; border: 0; background: none; color: var(--muted, #64748b); cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+.vcp-editar:hover { color: #2563eb; background: rgba(37,99,235,.08); }
+.vcp-vazio { padding: 20px; text-align: center; color: var(--muted, #64748b); border: 1px dashed var(--line, #e2e8f0); border-radius: 12px; margin-top: 12px; font-size: 13.5px; }
+.vcp-bloco { border: 1px solid var(--line, #e2e8f0); border-radius: 12px; padding: 12px; margin-top: 14px; }
+.vcp-bloco h3 { font-size: 14.5px; margin: 0; }
+.vcp-meses { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; margin-top: 8px; }
+.vcp-mes { min-width: 104px; border: 1px solid var(--line, #e2e8f0); border-radius: 10px; padding: 7px 10px; background: var(--bg, #f8fafc); }
+.vcp-mes span { display: block; font-size: 11.5px; font-weight: 700; color: var(--muted, #64748b); }
+.vcp-mes b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.vcp-mes.atual { border-color: #2563eb; }
+.vcp-rodape { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line, #e2e8f0); }
+[data-theme="dark"] .vcp { color: #e9edf3; }
+[data-theme="dark"] .vcp-kpi.verde { background: #14532d; } [data-theme="dark"] .vcp-kpi.verde b { color: #86efac; }
+[data-theme="dark"] .vcp-kpi.azul { background: #1e1b4b; } [data-theme="dark"] .vcp-kpi.azul b { color: #c7d2fe; }
+[data-theme="dark"] .vcp-etq.azul { background: #1e1b4b; color: #c7d2fe; } [data-theme="dark"] .vcp-etq.verde { background: #14532d; color: #86efac; } [data-theme="dark"] .vcp-etq.canc { background: #450a0a; color: #fca5a5; }
+@media (max-width: 560px) { .vcp-nav b { min-width: 110px; } .vc-nome small { display: none; } }
 </style>
 </head>
 <body>
@@ -15344,7 +15399,7 @@ function injetarAbaConsultores() {
           <input type="text" id="vcBuscaNome" placeholder="🔍 Buscar consultor" oninput="vcDesenharNomes()" style="max-width:240px;margin:0">
         </div>
         <div class="vc-nomes" id="vcListaNomes"></div>
-        <small class="muted" style="display:block;margin-top:8px">Toque no nome para ver as vendas e a comissão.</small>
+        <small class="muted" style="display:block;margin-top:8px">Toque no nome para ver o cadastro, as vendas e a comissão.</small>
       </div>
 
       <div class="card vc-det" style="margin-bottom:16px">
@@ -25923,8 +25978,8 @@ function vcDesenharNomes(){
     .filter(u => u && u.nome && (!busca || u.nome.toLowerCase().includes(busca)))
     .sort((a, b) => (a.id === currentUser?.id ? -1 : b.id === currentUser?.id ? 1 : a.nome.localeCompare(b.nome, 'pt-BR')));
   const iniciais = n => n.split(/\s+/).filter(Boolean).slice(0, 2).map(x => x[0]).join('').toUpperCase();
-  box.innerHTML = lista.length ? lista.map(u => `<button type="button" class="vc-nome" onclick="vcAbrirConsultor(this.dataset.nome)" data-nome="${esc(u.nome)}">
-      <span class="vc-av">${esc(iniciais(u.nome))}</span><span><b>${esc(u.nome)}${u.id === currentUser?.id ? ' <small style="display:inline">(você)</small>' : ''}</b><small>${esc(u.cargo || '')}</small></span><span class="vc-seta">›</span></button>`).join('')
+  box.innerHTML = lista.length ? lista.map(u => `<button type="button" class="vc-nome" onclick="vcPopAbrir(this.dataset.nome)" data-nome="${esc(u.nome)}">
+      <span class="vc-av">${esc(iniciais(u.nome))}</span><span><b>${esc(u.nome)}${u.id === currentUser?.id ? ' <small style="display:inline">(você)</small>' : ''}</b><small>${esc(typeof hierCargosTexto === 'function' ? hierCargosTexto(u) : (u.cargo || ''))}</small></span><span class="vc-seta">›</span></button>`).join('')
     : '<div class="muted" style="font-size:13px">Nenhum consultor encontrado.</div>';
 }
 function vcAbrirConsultor(nome){
@@ -25951,6 +26006,118 @@ function vcVoltarLista(){
   const renderOriginal = window.renderVendasConsultores;
   if (typeof renderOriginal === 'function') window.renderVendasConsultores = function(){ const r = renderOriginal.apply(this, arguments); vcDesenharNomes(); return r; };
 })();
+</script>
+<script id="vcPopScript">
+// ===== CONSULTORES & VENDAS: pop-up do consultor (Cadastro e Vendas) =====
+const VCP = { nome: null, aba: 'cadastro', modo: 'mes', ref: new Date() };
+function vcpFundo(){
+  let f = document.getElementById('vcPopFundo');
+  if (!f) {
+    f = document.createElement('div'); f.id = 'vcPopFundo'; f.className = 'vcp-fundo';
+    f.innerHTML = `<div class="vcp" role="dialog" aria-modal="true" aria-labelledby="vcpNome">
+      <div class="vcp-cab"><span id="vcpFoto"></span><div><h2 id="vcpNome"></h2><small class="muted" id="vcpCargo"></small></div>
+        <button class="vcp-fechar" type="button" onclick="vcPopFechar()" aria-label="Fechar">✕</button></div>
+      <div class="vcp-abas"><button class="vcp-aba" type="button" data-aba="cadastro" onclick="vcPopAba('cadastro')">👤 Cadastro</button><button class="vcp-aba" type="button" data-aba="vendas" onclick="vcPopAba('vendas')">💰 Vendas</button></div>
+      <div class="vcp-corpo" id="vcpCorpo"></div></div>`;
+    f.addEventListener('click', e => { if (e.target === f) vcPopFechar(); });
+    document.body.appendChild(f);
+  }
+  return f;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.getElementById('vcPopFundo')?.classList.contains('aberto')) vcPopFechar(); });
+function vcPopAbrir(nome){
+  VCP.nome = nome; VCP.aba = 'cadastro'; VCP.modo = 'mes'; VCP.ref = new Date();
+  const f = vcpFundo(), u = (usersList || []).find(x => x.nome === nome) || { nome };
+  document.getElementById('vcpFoto').innerHTML = typeof hierFoto === 'function' ? hierFoto(u, 46) : '';
+  document.getElementById('vcpNome').textContent = nome;
+  const loja = (typeof hierLojaNome === 'function' && typeof hierLojaPrincipal === 'function') ? hierLojaNome(hierLojaPrincipal(u)) : '';
+  document.getElementById('vcpCargo').textContent = [typeof hierCargosTexto === 'function' ? hierCargosTexto(u) : (u.cargo || ''), loja].filter(Boolean).join(' · ');
+  f.classList.add('aberto'); document.body.style.overflow = 'hidden';
+  vcPopDesenhar();
+}
+function vcPopFechar(){ document.getElementById('vcPopFundo')?.classList.remove('aberto'); document.body.style.overflow = ''; }
+function vcPopAba(a){ VCP.aba = a; vcPopDesenhar(); }
+function vcPopVendas(){ return (typeof hierVendasVisiveis === 'function' ? hierVendasVisiveis() : (db.sales || [])).filter(v => v && v.responsavel === VCP.nome).sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0)); }
+function vcPopData(v){ const t = String(v.date || ''), m = t.match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : new Date(t); }
+const vcpR = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 });
+const vcpR2 = v => Number(v || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+function vcPopDesenhar(){
+  document.querySelectorAll('#vcPopFundo .vcp-aba').forEach(b => b.classList.toggle('on', b.dataset.aba === VCP.aba));
+  const corpo = document.getElementById('vcpCorpo'); if (!corpo) return;
+  try { corpo.innerHTML = VCP.aba === 'cadastro' ? vcPopCadastro() : vcPopVendasHtml(); } catch (e) { console.warn(e); corpo.innerHTML = '<div class="vcp-vazio">Não deu para montar esta tela agora.</div>'; }
+}
+function vcPopCadastro(){
+  const u = (usersList || []).find(x => x.nome === VCP.nome) || {};
+  const lider = (() => { try { const v = hierVinculos(u)[0]; const l = v && v.liderId && usersList.find(x => x.id === v.liderId); return l ? l.nome : ''; } catch (e) { return ''; } })();
+  const loja = (typeof hierLojaNome === 'function' && typeof hierLojaPrincipal === 'function') ? hierLojaNome(hierLojaPrincipal(u)) : '';
+  const nasc = /^\d{4}-\d{2}-\d{2}/.test(u.nasc || '') ? u.nasc.slice(8, 10) + '/' + u.nasc.slice(5, 7) : '';
+  const ano = new Date().getFullYear(), vs = vcPopVendas();
+  const doAno = vs.filter(v => !v.cancelada && vcPopData(v).getFullYear() === ano), ultima = vs.find(v => !v.cancelada);
+  const dado = (r, v) => `<div class="vcp-dado"><span>${r}</span><b>${v ? esc(v) : '—'}</b></div>`;
+  return `<div class="vcp-dados">${dado('Telefone', u.tel)}${dado('E-mail', u.email)}${dado('Líder', lider)}${dado('Loja', loja)}${dado('Aniversário', nasc)}${dado('Cargo', typeof hierCargosTexto === 'function' ? hierCargosTexto(u) : u.cargo)}</div>
+    <div class="vcp-kpis">
+      <div class="vcp-kpi"><span>Cotas vendidas em ${ano}</span><b>${doAno.length}</b></div>
+      <div class="vcp-kpi verde"><span>Total vendido em ${ano}</span><b>${vcpR(doAno.reduce((t, v) => t + Number(v.valor || 0), 0))}</b></div>
+      <div class="vcp-kpi"><span>Última venda</span><b style="font-size:15px">${ultima ? vcPopData(ultima).toLocaleDateString('pt-BR') : '—'}</b><small>${ultima ? esc(ultima.lead || '') : ''}</small></div>
+    </div>
+    <div class="vcp-rodape"><small class="muted">As vendas e a comissão ficam em <b>💰 Vendas</b>.</small><button class="btn primary" type="button" onclick="vcPopAba('vendas')">Ver vendas ›</button></div>`;
+}
+function vcPopIntervalo(){
+  const r = new Date(VCP.ref);
+  if (VCP.modo === 'semana') { const i = new Date(r); i.setDate(r.getDate() - ((r.getDay() + 6) % 7)); i.setHours(0, 0, 0, 0); const f = new Date(i); f.setDate(i.getDate() + 6); f.setHours(23, 59, 59, 999); return [i, f]; }
+  if (VCP.modo === 'mes') return [new Date(r.getFullYear(), r.getMonth(), 1), new Date(r.getFullYear(), r.getMonth() + 1, 0, 23, 59, 59, 999)];
+  return [new Date(r.getFullYear(), 0, 1), new Date(r.getFullYear(), 11, 31, 23, 59, 59, 999)];
+}
+function vcPopNomePeriodo(){
+  const [i, f] = vcPopIntervalo();
+  if (VCP.modo === 'semana') return i.toLocaleDateString('pt-BR').slice(0, 5) + ' a ' + f.toLocaleDateString('pt-BR').slice(0, 5);
+  if (VCP.modo === 'mes') return i.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).replace(/^./, c => c.toUpperCase());
+  return String(i.getFullYear());
+}
+function vcPopModo(m){ VCP.modo = m; VCP.ref = new Date(); vcPopDesenhar(); }
+function vcPopAndar(p){ const r = new Date(VCP.ref); if (VCP.modo === 'semana') r.setDate(r.getDate() + 7 * p); else if (VCP.modo === 'mes') r.setMonth(r.getMonth() + p); else r.setFullYear(r.getFullYear() + p); VCP.ref = r; vcPopDesenhar(); }
+function vcPopVendasHtml(){
+  const [ini, fim] = vcPopIntervalo(), todas = vcPopVendas(), hoje = new Date();
+  const veFin = v => typeof hierVeFinanceiro !== 'function' || !MODO_HIERARQUIA || hierVeFinanceiro(v);
+  const agenda = {}; todas.forEach(v => { if (veFin(v)) { try { agenda[v.id] = generateCommissionSchedule(v) || []; } catch (e) { agenda[v.id] = []; } } });
+  const doPer = todas.filter(v => { const d = vcPopData(v); return d >= ini && d <= fim; });
+  const ativas = doPer.filter(v => !v.cancelada);
+  const comVendas = ativas.reduce((t, v) => t + (agenda[v.id] || []).reduce((a, x) => a + (x.value || 0), 0), 0);
+  const parcelas = Object.values(agenda).flat().filter(x => x && x.fullDate && !isNaN(x.fullDate.getTime()) && x.value > 0);
+  const aReceber = parcelas.filter(x => x.fullDate >= ini && x.fullDate <= fim).reduce((t, x) => t + x.value, 0);
+  const temFin = Object.keys(agenda).length > 0;
+  const meses = [];
+  for (let k = 0; k < 6; k++) {
+    const m0 = new Date(hoje.getFullYear(), hoje.getMonth() + k, 1), m1 = new Date(hoje.getFullYear(), hoje.getMonth() + k + 1, 0, 23, 59, 59);
+    meses.push({ nome: m0.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '').replace(/^./, c => c.toUpperCase()) + '/' + String(m0.getFullYear()).slice(2), valor: parcelas.filter(x => x.fullDate >= m0 && x.fullDate <= m1).reduce((t, x) => t + x.value, 0), atual: k === 0 });
+  }
+  const seg = (v, t) => `<button type="button" class="${VCP.modo === v ? 'on' : ''}" onclick="vcPopModo('${v}')">${t}</button>`;
+  const cartoes = doPer.map(v => {
+    const ag = agenda[v.id], d = vcPopData(v);
+    const info = [d.toLocaleDateString('pt-BR'), v.segmento || 'Imóvel', 'Grupo ' + (v.grupo || '-'), 'Cota ' + (v.cota || '-')].join(' · ');
+    let etq;
+    if (v.cancelada) etq = '<span class="vcp-etq canc">Cancelada · sem comissão</span>';
+    else if (!ag) etq = '<span class="vcp-etq">🔒 Comissão de outra matrícula</span>';
+    else {
+      const tot = ag.reduce((a, x) => a + (x.value || 0), 0), comValor = ag.filter(x => x.value > 0), pagas = comValor.filter(x => x.paid).length;
+      etq = `<span class="vcp-etq azul">Comissão ${vcpR2(tot)}</span><span class="vcp-etq ${comValor.length && pagas === comValor.length ? 'verde' : ''}">${pagas} de ${comValor.length} parcelas recebidas</span>${v.seguroPrestamista ? '<span class="vcp-etq">🛡️ Seguro</span>' : ''}`;
+    }
+    const editar = typeof abrirEdicaoCotaPorVenda === 'function' && ag ? `<button class="vcp-editar" type="button" onclick="vcPopFechar(); abrirEdicaoCotaPorVenda('${v.id}')">✏️ Editar</button>` : '';
+    return `<div class="vcp-venda ${v.cancelada ? 'cancelada' : ''}"><div><div class="cli">${esc(v.lead || 'Cliente')}</div><div class="info">${esc(info)}</div></div><div class="cred">${vcpR(v.valor)}</div><div class="com">${etq}${editar}</div></div>`;
+  }).join('');
+  return `<div class="vcp-periodo"><div class="vcp-seg">${seg('semana', 'Semana')}${seg('mes', 'Mês')}${seg('ano', 'Ano')}</div>
+      <div class="vcp-nav"><button type="button" onclick="vcPopAndar(-1)" aria-label="Anterior">‹</button><b>${vcPopNomePeriodo()}</b><button type="button" onclick="vcPopAndar(1)" aria-label="Próximo">›</button></div></div>
+    <div class="vcp-kpis">
+      <div class="vcp-kpi"><span>Cotas no período</span><b>${ativas.length}</b><small>${doPer.length - ativas.length ? (doPer.length - ativas.length) + ' cancelada(s)' : 'nenhuma cancelada'}</small></div>
+      <div class="vcp-kpi verde"><span>Total vendido</span><b>${vcpR(ativas.reduce((t, v) => t + Number(v.valor || 0), 0))}</b><small>só cotas ativas</small></div>
+      ${temFin ? `<div class="vcp-kpi azul"><span>Comissão das vendas</span><b>${vcpR2(comVendas)}</b><small>das vendas feitas no período</small></div>
+      <div class="vcp-kpi"><span>A receber no período</span><b>${vcpR2(aReceber)}</b><small>parcelas que caem no período</small></div>` : ''}
+    </div>
+    <div class="vcp-vendas">${cartoes || '<div class="vcp-vazio">Nenhuma venda neste período. Use ‹ › para ver outros períodos.</div>'}</div>
+    ${temFin ? `<div class="vcp-bloco"><h3>📅 Comissão a receber nos próximos meses</h3><div class="vcp-meses">${meses.map(m => `<div class="vcp-mes ${m.atual ? 'atual' : ''}"><span>${m.nome}</span><b>${vcpR(m.valor)}</b></div>`).join('')}</div></div>` : ''}
+    <div class="vcp-rodape"><small class="muted">Para editar crédito, modalidade ou parcelas, abra a planilha completa.</small>
+      <button class="btn" type="button" onclick="vcPopFechar(); vcAbrirConsultor(VCP.nome)">📋 Abrir planilha completa</button></div>`;
+}
 </script>
 <script id="mapaTudoScript">
 // ===== MAPA DE COTAS: as 10.000 cotas numa tela só =====
