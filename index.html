@@ -20484,6 +20484,8 @@ function proRender(){
     if (!currentUser) return false;
     try { if (typeof ELO_ONLINE !== 'undefined' && ELO_ONLINE && typeof eloOnSouAdmin === 'function' && eloOnSouAdmin()) return true; } catch (e) {}
     try { if (typeof hierDonoVeTudo === 'function' && hierDonoVeTudo()) return true; } catch (e) {}
+    // CRM pessoal (sem o Elo online): quem está no topo da equipe, sem ninguém acima, é o dono dos números
+    try { if (!(typeof ELO_ONLINE !== 'undefined' && ELO_ONLINE) && typeof hierTemLider === 'function' && !hierTemLider(currentUser.id)) return true; } catch (e) {}
     try { return hierMelhorNivel(currentUser) < HIER_NIVEL_CONSULTOR; } catch (e) { return false; }
   }
   const ufDe = nome => { const m = String(nome || '').trim().match(/[-–]\s*([A-Za-z]{2})\s*$/); const uf = m ? m[1].toUpperCase() : ''; return REGIOES[uf] ? uf : ''; };
