@@ -9328,6 +9328,7 @@ function openPermissionsModal(userId){
         <small class="muted">Cada pessoa tem um único líder direto. As vendas já lançadas continuam contando para a equipe da época.</small>
       </div>
 
+      <div class="field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="permProducaoLojas" ${u.verProducaoLojas !== false ? 'checked' : ''} style="width:auto;margin:0"> 🏆 Pode ver a Produção das lojas no Dashboard</label><small class="muted">Números de cada loja, sem nome de cliente, cota ou vendedor.</small></div>
       <div class="field"><label>🎯 Meta Mensal de Vendas (R$)</label><input type="text" id="permMetaMensal" value="${u.metaMensal ? 'R$ ' + Number(u.metaMensal).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}) : ''}" placeholder="R$ 0,00" oninput="maskMoneySim(this)"></div>
       <div style="display:none">
       <div class="field"><label><input type="checkbox" id="permDash" ${u.canViewGeneralDashboard?'checked':''} style="width:auto"> Visualizar Dashboard Geral</label></div>
@@ -9360,6 +9361,7 @@ function savePermissions(userId){
     if (MODO_HIERARQUIA && !hierEstaAcima(currentUser.id, u.id)) return;
     if (!MODO_HIERARQUIA) u.superiorId = document.getElementById('permSuperiorId')?.value || u.superiorId || null;
     u.metaMensal = parseSimNumber(document.getElementById('permMetaMensal')?.value || '');
+    if (document.getElementById('permProducaoLojas')) u.verProducaoLojas = document.getElementById('permProducaoLojas').checked;
     u.canViewGeneralDashboard = document.getElementById('permDash')?.checked || false;
     u.canViewAllLeads = document.getElementById('permLeads')?.checked || false;
     u.canViewAllAgenda = document.getElementById('permAgenda')?.checked || false;
@@ -20486,7 +20488,10 @@ function proRender(){
     try { if (typeof hierDonoVeTudo === 'function' && hierDonoVeTudo()) return true; } catch (e) {}
     // CRM pessoal (sem o Elo online): quem está no topo da equipe, sem ninguém acima, é o dono dos números
     try { if (!(typeof ELO_ONLINE !== 'undefined' && ELO_ONLINE) && typeof hierTemLider === 'function' && !hierTemLider(currentUser.id)) return true; } catch (e) {}
-    try { return hierMelhorNivel(currentUser) < HIER_NIVEL_CONSULTOR; } catch (e) { return false; }
+    try { if (hierMelhorNivel(currentUser) < HIER_NIVEL_CONSULTOR) return true; } catch (e) {}
+    // os demais veem também, a não ser que o líder tenha tirado (Equipe › Meta e senha)
+    const eu = (usersList || []).find(u => u.id === currentUser.id) || currentUser;
+    return eu.verProducaoLojas !== false;
   }
   const ufDe = nome => { const m = String(nome || '').trim().match(/[-–]\s*([A-Za-z]{2})\s*$/); const uf = m ? m[1].toUpperCase() : ''; return REGIOES[uf] ? uf : ''; };
   const pagou = s => { const p = s && s.paidMonths; return !!p && typeof p === 'object' && Object.keys(p).some(k => p[k] === true); };
