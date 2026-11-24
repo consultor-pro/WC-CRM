@@ -1298,7 +1298,7 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .rr-tipo { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; font-size: 12.5px; }
 .rr-tipo span { font-weight: 700; color: var(--muted, #64748b); }
 .rr-tipo button { font: inherit; font-size: 12.5px; font-weight: 700; border: 1px solid var(--line, #e2e8f0); background: #fff; color: #334155; border-radius: 999px; padding: 4px 11px; cursor: pointer; }
-.rr-tipo button.on { background: #1e3a8a; border-color: #1e3a8a; color: #fff; }
+.rr-tipo button.on { background: #3b82f6; border-color: #3b82f6; color: #fff; }
 .rr-tipo button.on:first-of-type { background: #dc2626; border-color: #dc2626; }
 .rr-local { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .rr-local input { flex: 1; min-width: 180px; margin: 0; }
@@ -2576,7 +2576,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <button type="button" onclick="setAgendaView('month')" data-view="month">Mês</button>
     </div>
   </div>
-  <div class="ag-legenda"><span><i style="background:#dc2626"></i>Retorno</span><span><i style="background:#1e3a8a"></i>Reunião (📹 online · 📍 presencial)</span></div>
+  <div class="ag-legenda"><span><i style="background:#dc2626"></i>Retorno</span><span><i style="background:#3b82f6"></i>Reunião (📹 online · 📍 presencial)</span></div>
   <div class="calendar" id="calendar"></div>
  </div>
 </section>
@@ -4192,7 +4192,7 @@ let activeResetUserId = null;
 const monthNames=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let calendarCurrentDate = new Date();
 let agendaViewMode = 'month'; // 'day' | 'week' | 'month'
-const COR_REUNIAO = '#1e3a8a';   // azul bem forte (marinho): reunião de verdade (online ou presencial)
+const COR_REUNIAO = '#3b82f6';   // azul claro (pedido do usuário): reunião de verdade (online ou presencial)
 // retorno (follow-up) fica roxo; reunião fica azul forte
 function corEventoAgenda(m){ return m && (m.tipo !== 'followup' || m.reuniao) ? COR_REUNIAO : DEFAULT_EVENT_COLOR; }
 const DEFAULT_EVENT_COLOR = '#dc2626'; // vermelho — retorno (pedido do usuário)
