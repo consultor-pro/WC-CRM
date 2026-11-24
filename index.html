@@ -1287,6 +1287,11 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 [data-theme="dark"] .vcp-kpi.azul { background: #1e1b4b; } [data-theme="dark"] .vcp-kpi.azul b { color: #c7d2fe; }
 [data-theme="dark"] .vcp-etq.azul { background: #1e1b4b; color: #c7d2fe; } [data-theme="dark"] .vcp-etq.verde { background: #14532d; color: #86efac; } [data-theme="dark"] .vcp-etq.canc { background: #450a0a; color: #fca5a5; }
 @media (max-width: 560px) { .vcp-nav b { min-width: 110px; } .vc-nome small { display: none; } }
+
+.rp-modo { display: flex; gap: 8px; flex-wrap: wrap; }
+.rp-modo label { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line, #e2e8f0); border-radius: 9px; padding: 7px 12px; cursor: pointer; font-size: 13.5px; font-weight: 600; margin: 0; }
+.rp-modo input { width: auto; margin: 0; }
+.rp-modo label:has(input:checked) { border-color: var(--red, #C8102E); background: rgba(200,16,46,.06); }
 </style>
 </head>
 <body>
@@ -6177,6 +6182,11 @@ async function createOfficialGoogleMeetEvent(meetingData) {
     }
   };
 
+  if (meetingData.modo === 'presencial' || meetingData.presencial) {
+    delete eventPayload.conferenceData;
+    if (meetingData.local) eventPayload.location = meetingData.local;
+    eventPayload.summary = (meetingData.obj || 'Apresentação de Empresa') + ' (presencial)';
+  }
   if (meetingData.semMeet) {
     delete eventPayload.conferenceData;
     eventPayload.summary = '📞 Retorno: ' + meetingData.lead;
@@ -6254,7 +6264,7 @@ function buildGoogleCalendarUrl(title, startDateStr, desc, meetUrl) {
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${dates}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(meetUrl || '')}`;
 }
 
-function sendWhatsAppInvite(leadName, leadTel, meetingDateStr, pauta, meetUrl) {
+function sendWhatsAppInvite(leadName, leadTel, meetingDateStr, pauta, meetUrl, modo, local) {
   let cleanTel = (leadTel || '').replace(/\D/g, '');
   if (!cleanTel) return alert('O lead não possui WhatsApp cadastrado.');
   if (cleanTel.length <= 11 && !cleanTel.startsWith('55')) cleanTel = '55' + cleanTel;
@@ -6262,7 +6272,9 @@ function sendWhatsAppInvite(leadName, leadTel, meetingDateStr, pauta, meetUrl) {
   const d = new Date(meetingDateStr);
   const dateFmt = !isNaN(d.getTime()) ? d.toLocaleDateString('pt-BR') : meetingDateStr;
   const timeFmt = !isNaN(d.getTime()) ? d.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'}) : '';
-  const msg = `Olá *${leadName}*, tudo bem?\n\nConfirmando nossa reunião sobre *${pauta || 'Apresentação de Empresa'}*:\n\n📅 *Data:* ${dateFmt}\n⏰ *Horário:* ${timeFmt}\n📹 *Google Meet:* ${meetUrl || 'A combinar'}\n\nNos falamos em breve!`;
+  const presencial = modo === 'presencial';
+  const onde = presencial ? `🤝 *Reunião presencial*\n📍 *Local:* ${local || 'A combinar'}` : `📹 *Google Meet:* ${meetUrl || 'A combinar'}`;
+  const msg = `Olá *${leadName}*, tudo bem?\n\nConfirmando nossa reunião sobre *${pauta || 'Apresentação de Empresa'}*:\n\n📅 *Data:* ${dateFmt}\n⏰ *Horário:* ${timeFmt}\n${onde}\n\nNos falamos em breve!`;
   window.open(`https://api.whatsapp.com/send?phone=${cleanTel}&text=${encodeURIComponent(msg)}`, '_blank');   // wa.me estraga os emojis
 }
 
@@ -12537,6 +12549,13 @@ function openMeeting(leadNomePreSelecionado){
       <select id="mResp">${usersList.filter(u => (MODO_HIERARQUIA && !hierDonoVeTudo()) ? u.id === currentUser.id : (canSeeAllAgenda || subNames.includes(u.nome))).map(u=>`<option ${(currentUser?.nome===u.nome)?'selected':''}>${esc(u.nome)} (${esc(u.cargo)})</option>`).join('')}</select>
     </div>
     <div class="field"><label>Data e Hora</label><input type="datetime-local" id="mDate" value="${agoraLocalParaInput(0)}"></div>
+    <div class="field"><label>Tipo da reunião</label>
+      <div class="rp-modo" id="mModoReuniao">
+        <label><input type="radio" name="mModo" value="online" checked onchange="rpModoMudou('m')"> 📹 Online (Google Meet)</label>
+        <label><input type="radio" name="mModo" value="presencial" onchange="rpModoMudou('m')"> 📍 Presencial</label>
+      </div>
+    </div>
+    <div class="field" id="mLocalWrap" style="display:none"><label>Local (endereço ou ponto de encontro)</label><input id="mLocal" placeholder="Ex.: Rua XV de Novembro, 120 — Centro, Piraju"></div>
     <div class="field"><label>Pauta</label><input id="mObj" placeholder="Apresentação de Empresa"></div>
     <div class="field"><label>Cor do Evento na Agenda</label>
       <div class="row" style="align-items:center;gap:8px">
@@ -12544,7 +12563,7 @@ function openMeeting(leadNomePreSelecionado){
         <small class="muted">Escolha a cor que esse compromisso vai aparecer na sua agenda.</small>
       </div>
     </div>
-    <div class="field"><label><input type="checkbox" id="mCreateGoogleEvent" ${googleLigado()?'checked':''} style="width:auto"> Enviar ao Google Agenda (com sala do Meet)</label>${googleLigado()?'':' <small class="muted">— conecte o Google na Agenda para ativar</small>'}</div>
+    <div class="field"><label><input type="checkbox" id="mCreateGoogleEvent" ${googleLigado()?'checked':''} style="width:auto"> <span id="mGoogleTxt">Enviar ao Google Agenda (com sala do Meet)</span></label>${googleLigado()?'':' <small class="muted">— conecte o Google na Agenda para ativar</small>'}</div>
     <button class="btn primary" id="btnSaveMeetingModal" onclick="saveMeeting()">Confirmar Reunião</button>
   `);
 }
@@ -12567,6 +12586,8 @@ async function saveMeeting(){
     const objVal = document.getElementById('mObj')?.value.trim() || 'Apresentação de Empresa';
     const colorVal = document.getElementById('mColor')?.value || DEFAULT_EVENT_COLOR;
     const shouldCreateGoogle = document.getElementById('mCreateGoogleEvent')?.checked;
+    const modoVal = document.querySelector('input[name="mModo"]:checked')?.value === 'presencial' ? 'presencial' : 'online';
+    const localVal = modoVal === 'presencial' ? (document.getElementById('mLocal')?.value.trim() || '') : '';
 
     if(!dateVal) return alert('Selecione data e horário.');
     if(btn) btn.disabled = true;
@@ -12575,7 +12596,7 @@ async function saveMeeting(){
     if (shouldCreateGoogle) {
       const tok = await ensureGoogleToken(false);
       if (tok) {
-        const res = await createOfficialGoogleMeetEvent({ lead: leadNome, responsavel: cleanResp, date: dateVal, obj: objVal });
+        const res = await createOfficialGoogleMeetEvent({ lead: leadNome, responsavel: cleanResp, date: dateVal, obj: objVal, modo: modoVal, local: localVal });
         if (res && res.eventId) { meetUrl = res.meetUrl || ''; googleEventId = res.eventId; }
         else googlePendente = true;
       } else if (googleLigado()) googlePendente = true;
@@ -12585,14 +12606,16 @@ async function saveMeeting(){
       id: crypto.randomUUID(), lead: leadNome, responsavel: cleanResp,
       date: dateVal, obj: objVal, color: colorVal, meetUrl, googleEventId, status: 'Ativo', comments: []
     };
+    if (modoVal === 'presencial') { novaReuniao.modo = 'presencial'; novaReuniao.local = localVal; }
     if (l) novaReuniao.leadId = l.id;
     if (googlePendente) novaReuniao.googlePendente = true;
     db.meetings.push(novaReuniao);
 
-    registrarAcaoAutomaticaLead(leadNome, `📅 Reunião agendada para ${new Date(dateVal).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} — Pauta: ${objVal}`);
+    registrarAcaoAutomaticaLead(leadNome, `📅 Reunião ${modoVal === 'presencial' ? 'presencial ' : ''}agendada para ${new Date(dateVal).toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})} — Pauta: ${objVal}${localVal ? ' — Local: ' + localVal : ''}`);
 
     save(); closeModal();
-    alert(meetUrl ? `Reunião agendada e enviada ao Google Agenda com Meet!\nLink: ${meetUrl}`
+    alert(modoVal === 'presencial' ? (googleEventId ? 'Reunião presencial agendada e enviada ao Google Agenda!' : 'Reunião presencial agendada!') + '\nPara mandar o convite, abra a reunião na agenda e toque em 📲 WhatsApp.'
+      : meetUrl ? `Reunião agendada e enviada ao Google Agenda com Meet!\nLink: ${meetUrl}`
       : googleEventId ? 'Reunião agendada e enviada ao Google Agenda!'
       : googlePendente ? 'Reunião agendada! Ela vai para o Google Agenda assim que a conexão voltar.'
       : 'Reunião agendada com sucesso!');
@@ -12612,7 +12635,7 @@ function buildEventItemHtml(m, opts){
   const commentBadge = (m.comments && m.comments.length > 0) ? ` 💬${m.comments.length}` : '';
   const color = m.color || DEFAULT_EVENT_COLOR;
   return `<div class="event-item ${isDone?'done':'active'}" style="--evt-color:${color}" onclick="openEventActionModal('${m.id}','meeting')" title="${esc(m.lead)}${opts.showDate?(' — '+new Date(m.date).toLocaleDateString('pt-BR')):''}">
-    <span class="evt-time">${m.tipo === 'followup' ? '📞' : '📹'} ${time}</span><span class="evt-name">${esc(m.lead)}${commentBadge}</span>
+    <span class="evt-time">${m.tipo === 'followup' ? '📞' : m.modo === 'presencial' ? '📍' : '📹'} ${time}</span><span class="evt-name">${esc(m.lead)}${commentBadge}</span>
   </div>`;
 }
 
@@ -12869,13 +12892,14 @@ function openEventActionModal(id, type, opts){
       <p style="margin:2px 0"><b>Responsável:</b> ${esc(item.responsavel||'-')}</p>
       <p style="margin:2px 0"><b>Pauta:</b> ${esc(item.obj || '-')}</p>
       <div style="margin-top:10px;padding:10px;background:#fff;border-radius:8px;border:1px solid #bfdbfe">
-        <small style="color:var(--blue);font-weight:700">Google Meet:</small>
+        ${item.modo === 'presencial' ? `<small style="color:var(--blue);font-weight:700">📍 Reunião presencial:</small>
+        <div style="font-size:13px;font-weight:700;margin-bottom:6px">${esc(item.local || 'Local a combinar')}</div>` : `<small style="color:var(--blue);font-weight:700">Google Meet:</small>
         <div style="font-size:13px;font-weight:700;margin-bottom:6px">
           ${meetUrl ? `<a href="${meetUrl}" target="_blank" style="color:var(--blue)">${meetUrl}</a>` : 'Nenhuma sala gerada'}
-        </div>
+        </div>`}
         <div class="row ag-acoes">
-          ${meetUrl ? `<button class="btn blue" onclick="window.open('${meetUrl}','_blank')">📹 Entrar</button>` : `<button class="btn purple" onclick="generateGoogleMeetForExistingMeeting('${item.id}')">✨ Gerar Meet</button>`}
-          <button class="btn green" onclick="sendWhatsAppInvite('${esc(item.lead)}','${esc(leadObj?leadObj.tel:'')}','${item.date}','${esc(item.obj||'')}','${meetUrl}')">📲 WhatsApp</button>
+          ${item.modo === 'presencial' ? (item.local ? `<a class="btn blue" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.local)}" target="_blank" rel="noopener" style="text-decoration:none">🗺️ Ver no mapa</a>` : '') : meetUrl ? `<button class="btn blue" onclick="window.open('${meetUrl}','_blank')">📹 Entrar</button>` : `<button class="btn purple" onclick="generateGoogleMeetForExistingMeeting('${item.id}')">✨ Gerar Meet</button>`}
+          <button class="btn green" onclick="rpEnviarConvite('${item.id}')">📲 WhatsApp</button>
           <a href="${gCalUrl}" target="_blank" class="btn purple" style="text-decoration:none">📅 Google Agenda</a>
         </div>
       </div>
@@ -12998,7 +13022,14 @@ function openEditMeetingModal(id){
     </div>
     <div class="field"><label>Data e Hora</label><input type="datetime-local" id="emDate" value="${esc(String(item.date || '').slice(0, 16))}"></div>
     <div class="field"><label>Pauta</label><input id="emObj" value="${esc(item.obj || '')}" placeholder="Apresentação de Empresa"></div>
-    <div class="field"><label>Link do Google Meet (opcional)</label><input id="emMeet" value="${esc(item.meetUrl || '')}" placeholder="https://meet.google.com/..."></div>
+    <div class="field"><label>Tipo da reunião</label>
+      <div class="rp-modo">
+        <label><input type="radio" name="emModo" value="online" ${item.modo === 'presencial' ? '' : 'checked'} onchange="rpModoMudou('em')"> 📹 Online (Google Meet)</label>
+        <label><input type="radio" name="emModo" value="presencial" ${item.modo === 'presencial' ? 'checked' : ''} onchange="rpModoMudou('em')"> 📍 Presencial</label>
+      </div>
+    </div>
+    <div class="field" id="emLocalWrap" style="${item.modo === 'presencial' ? '' : 'display:none'}"><label>Local (endereço ou ponto de encontro)</label><input id="emLocal" value="${esc(item.local || '')}" placeholder="Ex.: Rua XV de Novembro, 120 — Centro, Piraju"></div>
+    <div class="field" id="emMeetWrap" style="${item.modo === 'presencial' ? 'display:none' : ''}"><label>Link do Google Meet (opcional)</label><input id="emMeet" value="${esc(item.meetUrl || '')}" placeholder="https://meet.google.com/..."></div>
     <div class="field"><label>Cor do Evento na Agenda</label>
       <input type="color" id="emColor" value="${esc(item.color || DEFAULT_EVENT_COLOR)}" style="width:46px;height:34px;padding:2px;cursor:pointer">
     </div>
@@ -13018,6 +13049,8 @@ async function saveEditMeeting(id){
   const obj = (document.getElementById('emObj')?.value || '').trim() || 'Apresentação de Empresa';
   let meet = (document.getElementById('emMeet')?.value || '').trim();
   const color = document.getElementById('emColor')?.value || item.color || DEFAULT_EVENT_COLOR;
+  const modoNovo = document.querySelector('input[name="emModo"]:checked')?.value === 'presencial' ? 'presencial' : 'online';
+  const localNovo = modoNovo === 'presencial' ? (document.getElementById('emLocal')?.value || '').trim() : '';
   if (!date) return alert('Selecione data e horário.');
   if (meet && !/^https?:\/\//i.test(meet)) meet = 'https://' + meet;
   const btn = document.getElementById('btnSalvarEdicaoReuniao'); if (btn) btn.disabled = true;
@@ -13030,7 +13063,10 @@ async function saveEditMeeting(id){
   if (mudouData) mudancas.push('data: ' + new Date(date).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }));
   if (obj !== (item.obj || '')) mudancas.push('pauta: ' + obj);
 
-  item.lead = lead; item.responsavel = resp; item.date = date; item.obj = obj; item.color = color; item.meetUrl = meet;
+  if (modoNovo !== (item.modo === 'presencial' ? 'presencial' : 'online')) mudancas.push(modoNovo === 'presencial' ? 'agora é presencial' : 'agora é online');
+  if (modoNovo === 'presencial' && localNovo !== (item.local || '')) mudancas.push('local: ' + (localNovo || 'a combinar'));
+  item.lead = lead; item.responsavel = resp; item.date = date; item.obj = obj; item.color = color; item.meetUrl = modoNovo === 'presencial' ? (item.meetUrl || '') : meet;
+  if (modoNovo === 'presencial') { item.modo = 'presencial'; item.local = localNovo; } else { delete item.modo; delete item.local; }
   if (mudouLead) { const l = db.leads.find(x => x.nome === lead); if (l) item.leadId = l.id; else delete item.leadId; }
   if (mudouData && item.status === 'Encerrado') item.status = 'Ativo';
   if (mudancas.length) registrarAcaoAutomaticaLead(lead, '✏️ Agendamento editado — ' + mudancas.join(' · '));
@@ -21624,6 +21660,8 @@ const ASSIST_BASE = [
   r: '1. Em **Cálculo de Comissão** (ou em **Consultores & Vendas**), toque em **🏬 Passar vendas para uma loja**.\n2. Escolha a **loja de destino**.\n3. Marque as vendas: **Marcar todas**, **Só as sem loja** ou uma por uma (dá para buscar pelo cliente, grupo ou cota).\n4. Toque em **🏬 Passar para a loja** e confirme.\nA loja define em qual equipe a venda conta. Se a loja ainda não existe, crie antes em Usuários › + Nova loja.', aba: 'comissoes' },
 { id: 'follow_meet', t: 'Como mando o link do Google Meet ao responder um follow-up?', k: 'meet no follow, link do meet follow, responder follow meet, enviar meet whatsapp, retorno por video, reuniao por video follow',
   r: '- **Ao responder** (ou criar) um follow-up no mural, marque **📹 Vai ser reunião por vídeo**. Se já tiver o link, cole; se deixar em branco, o CRM cria a sala no Google Agenda. Ao publicar, o WhatsApp abre com o convite (data, horário e link).\n- **No painel do follow-up**, toque em **📹 Criar Meet e enviar** (ou **Enviar link do Meet**, se o link já existir).\nSem o Google Agenda conectado, o CRM pede para você colar o link.', aba: 'agenda' },
+{ id: 'agenda_presencial', t: 'Como marco uma reunião presencial e mando o convite?', k: 'reuniao presencial, presencial, encontro, local da reuniao, endereco reuniao, convite presencial, whatsapp presencial',
+  r: '1. Em **Agendar Reunião**, escolha **📍 Presencial** em Tipo da reunião e escreva o **local**.\n2. Confirme. No Google Agenda o evento vai com o endereço, sem sala do Meet.\n3. Para mandar o convite, abra a reunião na agenda e toque em **📲 WhatsApp**: a mensagem diz que é presencial e mostra o local.\nNa agenda, a reunião presencial aparece com 📍. Dá para trocar entre online e presencial em **✏️ Editar**.', aba: 'agenda' },
 { id: 'agenda_editar', t: 'Como edito um agendamento (pauta, horário, responsável)?', k: 'editar agendamento, editar reuniao, mudar pauta, alterar pauta, trocar horario, mudar responsavel, corrigir agendamento, link do meet',
   r: '1. Na **Agenda Comercial**, toque no compromisso.\n2. No Painel do Agendamento, toque em **✏️ Editar**.\n3. Mude o que precisar: **cliente**, **responsável**, **data e hora**, **pauta**, **link do Meet** e **cor**.\n4. Toque em **💾 Salvar alterações**.\nA mudança fica registrada no mural do cliente e, se a reunião estiver no Google Agenda, vai para lá também.', aba: 'agenda' },
 { id: 'agenda_reagendar', t: 'Como reagendo ou encerro uma reunião?', k: 'reagendar, remarcar, mudar horario, encerrar reuniao, concluir reuniao, cancelar reuniao, excluir reuniao',
@@ -26124,6 +26162,21 @@ function vcPopVendasHtml(){
     ${temFin ? `<div class="vcp-bloco"><h3>📅 Comissão a receber nos próximos meses</h3><div class="vcp-meses">${meses.map(m => `<div class="vcp-mes ${m.atual ? 'atual' : ''}"><span>${m.nome}</span><b>${vcpR(m.valor)}</b></div>`).join('')}</div></div>` : ''}
     <div class="vcp-rodape"><small class="muted">Para editar crédito, modalidade ou parcelas, abra a planilha completa.</small>
       <button class="btn" type="button" onclick="vcPopFechar(); vcAbrirConsultor(VCP.nome)">📋 Abrir planilha completa</button></div>`;
+}
+</script>
+<script id="reuniaoPresencialScript">
+// ===== REUNIÃO ONLINE OU PRESENCIAL =====
+function rpModoMudou(pref){
+  const pres = document.querySelector(`input[name="${pref}Modo"]:checked`)?.value === 'presencial';
+  const loc = document.getElementById(pref + 'LocalWrap'); if (loc) loc.style.display = pres ? '' : 'none';
+  const meet = document.getElementById(pref + 'MeetWrap'); if (meet) meet.style.display = pres ? 'none' : '';
+  const g = document.getElementById(pref + 'GoogleTxt'); if (g) g.textContent = pres ? 'Enviar ao Google Agenda (com o endereço, sem sala do Meet)' : 'Enviar ao Google Agenda (com sala do Meet)';
+  if (pres) setTimeout(() => document.getElementById(pref + 'Local')?.focus(), 30);
+}
+function rpEnviarConvite(id){
+  const m = (db.meetings || []).find(x => x.id === id); if (!m) return;
+  const lead = (m.leadId && (db.leads || []).find(l => l.id === m.leadId)) || (db.leads || []).find(l => l.nome === m.lead);
+  sendWhatsAppInvite(m.lead, lead ? lead.tel : '', m.date, m.obj || '', m.meetUrl || '', m.modo, m.local);
 }
 </script>
 <script id="mapaTudoScript">
