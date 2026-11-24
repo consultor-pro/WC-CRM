@@ -1292,6 +1292,18 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .rp-modo label { display: flex; align-items: center; gap: 6px; border: 1px solid var(--line, #e2e8f0); border-radius: 9px; padding: 7px 12px; cursor: pointer; font-size: 13.5px; font-weight: 600; margin: 0; }
 .rp-modo input { width: auto; margin: 0; }
 .rp-modo label:has(input:checked) { border-color: var(--red, #C8102E); background: rgba(200,16,46,.06); }
+
+.ag-legenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted, #64748b); margin: 0 0 8px; }
+.ag-legenda i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.rr-tipo { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; font-size: 12.5px; }
+.rr-tipo span { font-weight: 700; color: var(--muted, #64748b); }
+.rr-tipo button { font: inherit; font-size: 12.5px; font-weight: 700; border: 1px solid var(--line, #e2e8f0); background: #fff; color: #334155; border-radius: 999px; padding: 4px 11px; cursor: pointer; }
+.rr-tipo button.on { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.rr-tipo button.on:first-of-type { background: #7c3aed; border-color: #7c3aed; }
+.rr-local { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.rr-local input { flex: 1; min-width: 180px; margin: 0; }
+/* a cor vem do tipo (retorno roxo, reunião azul), então o seletor de cor sai das telas */
+.field:has(#mColor), .field:has(#emColor), .field:has(#newColorVal) { display: none !important; }
 </style>
 </head>
 <body>
@@ -2564,6 +2576,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <button type="button" onclick="setAgendaView('month')" data-view="month">Mês</button>
     </div>
   </div>
+  <div class="ag-legenda"><span><i style="background:#7c3aed"></i>Retorno</span><span><i style="background:#1d4ed8"></i>Reunião (📹 online · 📍 presencial)</span></div>
   <div class="calendar" id="calendar"></div>
  </div>
 </section>
@@ -4179,6 +4192,9 @@ let activeResetUserId = null;
 const monthNames=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let calendarCurrentDate = new Date();
 let agendaViewMode = 'month'; // 'day' | 'week' | 'month'
+const COR_REUNIAO = '#1d4ed8';   // azul forte: reunião de verdade (online ou presencial)
+// retorno (follow-up) fica roxo; reunião fica azul forte
+function corEventoAgenda(m){ return m && (m.tipo !== 'followup' || m.reuniao) ? COR_REUNIAO : DEFAULT_EVENT_COLOR; }
 const DEFAULT_EVENT_COLOR = '#7c3aed'; // roxo — padrão pedido pelo usuário para NÃO ser azul
 
 function formatCurrencyInput(input) {
@@ -6130,7 +6146,7 @@ async function processarFilaGoogle(){
       if (m.googleEventId) {
         if (await updateGoogleCalendarEventTime(m.googleEventId, m.date)) { delete m.googlePendente; mudou = true; }
       } else if (m.status !== 'Encerrado') {
-        const res = await createOfficialGoogleMeetEvent({ lead: m.lead, responsavel: m.responsavel, date: m.date, obj: m.obj, semMeet: m.tipo === 'followup' });
+        const res = await createOfficialGoogleMeetEvent({ lead: m.lead, responsavel: m.responsavel, date: m.date, obj: m.tipo === 'followup' && m.reuniao ? 'Reunião: ' + m.lead : m.obj, semMeet: m.tipo === 'followup' && !m.reuniao, modo: (m.modo === 'presencial' || m.reuniao === 'presencial') ? 'presencial' : '', local: m.local || '' });
         if (res && res.eventId) { m.googleEventId = res.eventId; if (res.meetUrl && !m.meetUrl) m.meetUrl = res.meetUrl; delete m.googlePendente; mudou = true; }
       } else { delete m.googlePendente; mudou = true; }
     }
@@ -11458,7 +11474,7 @@ function muralFollowHtml(l, opts){
     const aberto = f && f.status !== 'Encerrado';
     const pai = c.parentId ? l.comments.find(x => x.id === c.parentId) : null;
     const ehAuto = c.origem === 'auto';
-    const cor = f ? (f.color || DEFAULT_EVENT_COLOR) : '';
+    const cor = f ? corEventoAgenda(f) : '';
     const destaque = (respondendo && respondendo.id === c.id) || (opts.destacar && opts.destacar === c.id);
     const origem = origemLabelComentario(c.origem).replace(/^\S+\s/, ''); // só o nome, sem o ícone
     return `
@@ -11505,8 +11521,16 @@ function muralFollowHtml(l, opts){
           </select>
         </div>
       </div>
-      <label class="fu-meet"><input type="checkbox" id="newCommentMeet" onchange="document.getElementById('newCommentMeetLinkWrap').style.display = this.checked ? '' : 'none'"> 📹 Vai ser reunião por vídeo: mandar o link do Google Meet pelo WhatsApp</label>
+      <div class="field"><label>Na agenda vai como</label>
+        <div class="rp-modo">
+          <label><input type="radio" name="newCommentTipo" value="retorno" checked onchange="rrTipoMudou()"> 📞 Só retorno</label>
+          <label><input type="radio" name="newCommentTipo" value="online" onchange="rrTipoMudou()"> 📹 Reunião online</label>
+          <label><input type="radio" name="newCommentTipo" value="presencial" onchange="rrTipoMudou()"> 📍 Reunião presencial</label>
+        </div>
+      </div>
       <div class="field" id="newCommentMeetLinkWrap" style="display:none"><label>Link do Meet <small class="muted">(deixe em branco para o CRM criar no Google Agenda)</small></label><input id="newCommentMeetLink" placeholder="https://meet.google.com/..."></div>
+      <div class="field" id="newCommentLocalWrap" style="display:none"><label>Local (endereço ou ponto de encontro)</label><input id="newCommentLocal" placeholder="Ex.: Rua XV de Novembro, 120 — Centro"></div>
+      <label class="fu-meet" id="newCommentConviteWrap" style="display:none"><input type="checkbox" id="newCommentConvite" checked> 📲 Ao publicar, abrir o WhatsApp com o convite da reunião</label>
       <button class="btn primary" onclick="addLeadComment('${l.id}')">${respondendo ? 'Publicar resposta' : 'Publicar'}</button>
     </div>`;
 }
@@ -11716,11 +11740,22 @@ function addLeadComment(leadId){
 
     // 2) a atividade na Agenda (em aberto fica colorida; encerrada fica apagada).
     //    "Só anotação" não cria nada na agenda.
-    const querMeet = !semAgenda && document.getElementById('newCommentMeet')?.checked;
+    const tipoAg = semAgenda ? 'retorno' : (document.querySelector('input[name="newCommentTipo"]:checked')?.value || 'retorno');
     const linkMeet = (document.getElementById('newCommentMeetLink')?.value || '').trim();
-    const janelaWhats = querMeet ? window.open('', '_blank') : null;   // abre já (no clique), senão o navegador bloqueia
+    const localReuniao = (document.getElementById('newCommentLocal')?.value || '').trim();
+    const querConvite = tipoAg !== 'retorno' && document.getElementById('newCommentConvite')?.checked && String(l.tel || '').replace(/\D/g, '');
+    const janelaWhats = querConvite ? window.open('', '_blank') : null;   // abre já (no clique), senão o navegador bloqueia
     const followNovo = !semAgenda ? criarFollowParaComentario(l, novo, dataAgenda, status) : null;
-    if (querMeet && followNovo) setTimeout(() => followEnviarMeet(followNovo.id, janelaWhats, linkMeet), 0);
+    if (followNovo && tipoAg !== 'retorno') {
+      followNovo.reuniao = tipoAg;
+      if (tipoAg === 'presencial') followNovo.local = localReuniao;
+      if (tipoAg === 'online' && linkMeet) followNovo.meetUrl = /^https?:\/\//i.test(linkMeet) ? linkMeet : 'https://' + linkMeet;
+      novo.text += tipoAg === 'presencial' ? `\n📍 Reunião presencial${localReuniao ? ' — ' + localReuniao : ''}` : '\n📹 Reunião online';
+    }
+    if (followNovo && querConvite) {
+      if (tipoAg === 'online') setTimeout(() => followEnviarMeet(followNovo.id, janelaWhats, linkMeet), 0);
+      else setTimeout(() => rrAbrirConvite(followNovo.id, janelaWhats), 0);
+    }
 
     // 3) se é resposta, o follow-up respondido é encerrado automaticamente
     let encerrouAnterior = false;
@@ -12633,9 +12668,9 @@ function buildEventItemHtml(m, opts){
   const isDone = m.status === 'Encerrado';
   const time = m.date ? new Date(m.date).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '--:--';
   const commentBadge = (m.comments && m.comments.length > 0) ? ` 💬${m.comments.length}` : '';
-  const color = m.color || DEFAULT_EVENT_COLOR;
+  const color = corEventoAgenda(m);
   return `<div class="event-item ${isDone?'done':'active'}" style="--evt-color:${color}" onclick="openEventActionModal('${m.id}','meeting')" title="${esc(m.lead)}${opts.showDate?(' — '+new Date(m.date).toLocaleDateString('pt-BR')):''}">
-    <span class="evt-time">${m.tipo === 'followup' ? '📞' : m.modo === 'presencial' ? '📍' : '📹'} ${time}</span><span class="evt-name">${esc(m.lead)}${commentBadge}</span>
+    <span class="evt-time">${m.tipo === 'followup' && !m.reuniao ? '📞' : (m.modo === 'presencial' || m.reuniao === 'presencial') ? '📍' : '📹'} ${time}</span><span class="evt-name">${esc(m.lead)}${commentBadge}</span>
   </div>`;
 }
 
@@ -12829,16 +12864,22 @@ function openFollowActionModal(item, opts){
   const waLink = leadObj ? buildWhatsAppLink(leadObj.tel, `Olá ${(leadObj.nome||'').split(' ')[0]}, tudo bem?`) : '';
   openModal(`
     <div class="between"><h2>📞 Follow-up</h2><button class="btn" onclick="closeModal()">✕</button></div>
-    <div style="margin:12px 0;padding:12px;background:${isDone ? '#f8fafc' : '#faf5ff'};border-radius:10px;border:1px solid var(--line);border-left:5px solid ${isDone ? '#cbd5e1' : (item.color || DEFAULT_EVENT_COLOR)}">
+    <div style="margin:12px 0;padding:12px;background:${isDone ? '#f8fafc' : '#faf5ff'};border-radius:10px;border:1px solid var(--line);border-left:5px solid ${isDone ? '#cbd5e1' : corEventoAgenda(item)}">
       <h3 style="margin:0 0 6px">${agendaClienteHtml(item, leadObj)}</h3>
       <p style="margin:2px 0"><b>Data:</b> ${fmtDataHoraCurta(item.date)} · <b>Responsável:</b> ${esc(item.responsavel||'-')}</p>
       <p style="margin:2px 0"><b>Situação:</b> ${isDone ? '✔ Encerrado' : '🟣 Em aberto — precisa de atenção'}</p>
       <div style="margin-top:8px;white-space:pre-wrap;color:#1e293b;font-size:13.5px">${esc(comentario ? comentario.text : (item.obj || ''))}</div>
+      ${!isDone ? `<div class="rr-tipo"><span>Na agenda vai como:</span>
+        <button type="button" class="${!item.reuniao ? 'on' : ''}" onclick="rrMudarTipo('${item.id}','retorno')">📞 Retorno</button>
+        <button type="button" class="${item.reuniao === 'online' ? 'on' : ''}" onclick="rrMudarTipo('${item.id}','online')">📹 Reunião online</button>
+        <button type="button" class="${item.reuniao === 'presencial' ? 'on' : ''}" onclick="rrMudarTipo('${item.id}','presencial')">📍 Reunião presencial</button></div>
+        ${item.reuniao === 'presencial' ? `<div class="rr-local"><input id="rrLocal" value="${esc(item.local || '')}" placeholder="Local da reunião (endereço)"><button type="button" class="btn" onclick="rrSalvarLocal('${item.id}')">Salvar local</button>${item.local ? `<a class="btn" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.local)}" target="_blank" rel="noopener" style="text-decoration:none">🗺️ Mapa</a>` : ''}</div>` : ''}` : ''}
       <div class="row ag-acoes" style="gap:8px;flex-wrap:wrap;margin-top:10px">
         ${leadObj && comentario ? `<button class="btn blue" onclick="reabrirMural('${leadObj.id}', {replyTo:'${comentario.id}'})">↩️ Responder e marcar retorno</button>` : ''}
         ${!isDone ? `<button class="btn green" onclick="closeMeetingAction('${item.id}')">✅ Encerrar</button>` : `<button class="btn" onclick="reopenMeetingAction('${item.id}')">↩️ Reabrir</button>`}
         ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none">📲 WhatsApp</a>` : ''}
-        ${!isDone && leadObj ? `<button class="btn" onclick="followEnviarMeet('${item.id}', window.open('', '_blank'))" title="${item.meetUrl ? 'Manda o convite com o link do Meet pelo WhatsApp' : 'Cria o link do Google Meet e manda o convite pelo WhatsApp'}">📹 ${item.meetUrl ? 'Enviar link do Meet' : 'Criar Meet e enviar'}</button>` : ''}
+        ${!isDone && leadObj && item.reuniao === 'presencial' ? `<button class="btn" onclick="rrAbrirConvite('${item.id}', window.open('', '_blank'))" title="Manda o convite da reunião presencial pelo WhatsApp">📍 Enviar convite</button>` : ''}
+        ${!isDone && leadObj && item.reuniao !== 'presencial' ? `<button class="btn" onclick="followEnviarMeet('${item.id}', window.open('', '_blank'))" title="${item.meetUrl ? 'Manda o convite com o link do Meet pelo WhatsApp' : 'Cria o link do Google Meet e manda o convite pelo WhatsApp'}">📹 ${item.meetUrl ? 'Enviar link do Meet' : 'Criar Meet e enviar'}</button>` : ''}
         ${item.meetUrl ? `<button class="btn blue" onclick="window.open('${esc(item.meetUrl)}','_blank')">🎥 Entrar no Meet</button>` : ''}
         <button class="btn" onclick="openRescheduleModal('${item.id}')">🔄 Mudar data</button>
         <button class="btn danger" onclick="deleteEventAction('${item.id}')">🗑️ Excluir</button>
@@ -21660,6 +21701,8 @@ const ASSIST_BASE = [
   r: '1. Em **Cálculo de Comissão** (ou em **Consultores & Vendas**), toque em **🏬 Passar vendas para uma loja**.\n2. Escolha a **loja de destino**.\n3. Marque as vendas: **Marcar todas**, **Só as sem loja** ou uma por uma (dá para buscar pelo cliente, grupo ou cota).\n4. Toque em **🏬 Passar para a loja** e confirme.\nA loja define em qual equipe a venda conta. Se a loja ainda não existe, crie antes em Usuários › + Nova loja.', aba: 'comissoes' },
 { id: 'follow_meet', t: 'Como mando o link do Google Meet ao responder um follow-up?', k: 'meet no follow, link do meet follow, responder follow meet, enviar meet whatsapp, retorno por video, reuniao por video follow',
   r: '- **Ao responder** (ou criar) um follow-up no mural, marque **📹 Vai ser reunião por vídeo**. Se já tiver o link, cole; se deixar em branco, o CRM cria a sala no Google Agenda. Ao publicar, o WhatsApp abre com o convite (data, horário e link).\n- **No painel do follow-up**, toque em **📹 Criar Meet e enviar** (ou **Enviar link do Meet**, se o link já existir).\nSem o Google Agenda conectado, o CRM pede para você colar o link.', aba: 'agenda' },
+{ id: 'agenda_retorno_reuniao', t: 'Qual a diferença entre retorno e reunião na agenda?', k: 'retorno ou reuniao, cor da agenda, roxo, azul, marcar reuniao no comentario, follow reuniao, reuniao presencial comentario',
+  r: 'Na agenda, **🟣 roxo** é **retorno** (só lembrar de falar com o cliente) e **🔵 azul forte** é **reunião** de verdade, online (📹) ou presencial (📍).\n- Ao fazer ou responder um comentário no mural, escolha em **Na agenda vai como**: **📞 Só retorno**, **📹 Reunião online** ou **📍 Reunião presencial** (com o local). Marcando reunião, dá para abrir o WhatsApp com o convite ao publicar.\n- Num follow-up que já existe, abra ele na agenda e troque o tipo nos botões **Na agenda vai como**.', aba: 'agenda' },
 { id: 'agenda_presencial', t: 'Como marco uma reunião presencial e mando o convite?', k: 'reuniao presencial, presencial, encontro, local da reuniao, endereco reuniao, convite presencial, whatsapp presencial',
   r: '1. Em **Agendar Reunião**, escolha **📍 Presencial** em Tipo da reunião e escreva o **local**.\n2. Confirme. No Google Agenda o evento vai com o endereço, sem sala do Meet.\n3. Para mandar o convite, abra a reunião na agenda e toque em **📲 WhatsApp**: a mensagem diz que é presencial e mostra o local.\nNa agenda, a reunião presencial aparece com 📍. Dá para trocar entre online e presencial em **✏️ Editar**.', aba: 'agenda' },
 { id: 'agenda_editar', t: 'Como edito um agendamento (pauta, horário, responsável)?', k: 'editar agendamento, editar reuniao, mudar pauta, alterar pauta, trocar horario, mudar responsavel, corrigir agendamento, link do meet',
@@ -26177,6 +26220,44 @@ function rpEnviarConvite(id){
   const m = (db.meetings || []).find(x => x.id === id); if (!m) return;
   const lead = (m.leadId && (db.leads || []).find(l => l.id === m.leadId)) || (db.leads || []).find(l => l.nome === m.lead);
   sendWhatsAppInvite(m.lead, lead ? lead.tel : '', m.date, m.obj || '', m.meetUrl || '', m.modo, m.local);
+}
+</script>
+<script id="retornoReuniaoScript">
+// ===== RETORNO OU REUNIÃO (online / presencial) =====
+function rrTipoMudou(){
+  const t = document.querySelector('input[name="newCommentTipo"]:checked')?.value || 'retorno';
+  const show = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v ? '' : 'none'; };
+  show('newCommentMeetLinkWrap', t === 'online'); show('newCommentLocalWrap', t === 'presencial'); show('newCommentConviteWrap', t !== 'retorno');
+}
+function rrAbrirConvite(followId, janela){
+  const f = (db.meetings || []).find(m => m.id === followId);
+  const fechar = () => { try { if (janela && !janela.closed) janela.close(); } catch (e) {} };
+  if (!f) return fechar();
+  const lead = (f.leadId && (db.leads || []).find(l => l.id === f.leadId)) || (db.leads || []).find(l => l.nome === f.lead);
+  if (!lead || !String(lead.tel || '').replace(/\D/g, '')) { fechar(); return alert('Este cliente não tem telefone no cadastro.'); }
+  const original = window.open;
+  window.open = (u) => { if (janela && !janela.closed) { janela.location.href = u; return janela; } return original.call(window, u, '_blank'); };
+  try { sendWhatsAppInvite(f.lead, lead.tel, f.date, 'Apresentação de Empresa', f.meetUrl || '', f.reuniao === 'presencial' ? 'presencial' : '', f.local || ''); } finally { window.open = original; }
+  if (typeof registrarAcaoAutomaticaLead === 'function') registrarAcaoAutomaticaLead(lead.nome, `📲 Convite da reunião presencial enviado pelo WhatsApp para ${fmtDataHoraCurta(f.date)}${f.local ? ' — ' + f.local : ''}`);
+  save();
+}
+function rrMudarTipo(followId, tipo){
+  const f = (db.meetings || []).find(m => m.id === followId); if (!f) return;
+  const antes = f.reuniao || 'retorno'; if (antes === tipo) return;
+  if (tipo === 'retorno') { delete f.reuniao; } else f.reuniao = tipo;
+  if (tipo !== 'presencial') delete f.local;
+  const nomes = { retorno: '📞 retorno', online: '📹 reunião online', presencial: '📍 reunião presencial' };
+  if (typeof registrarAcaoAutomaticaLead === 'function') registrarAcaoAutomaticaLead(f.leadId || f.lead, `Agenda de ${fmtDataHoraCurta(f.date)} agora é ${nomes[tipo]}`);
+  save();
+  if (typeof renderAgenda === 'function') renderAgenda();
+  openEventActionModal(f.id, 'meeting');
+  if (tipo === 'presencial') setTimeout(() => document.getElementById('rrLocal')?.focus(), 60);
+}
+function rrSalvarLocal(followId){
+  const f = (db.meetings || []).find(m => m.id === followId); if (!f) return;
+  f.local = (document.getElementById('rrLocal')?.value || '').trim();
+  save(); if (typeof showToast === 'function') showToast('Local da reunião salvo.');
+  openEventActionModal(f.id, 'meeting');
 }
 </script>
 <script id="mapaTudoScript">
