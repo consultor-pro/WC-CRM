@@ -12372,7 +12372,8 @@ function renderDashboard(){
   }
 
   const filteredLeads = baseLeads.filter(l => { const d = new Date(l.created || 0); return !isNaN(d.getTime()) && d >= start && d <= end; });
-  const filteredMeetings = baseMeetings.filter(m => { const d = new Date(m.date || 0); return !isNaN(d.getTime()) && d >= start && d <= end; });
+  // só reuniões de verdade (online ou presencial); retorno (follow-up) não conta como agendamento
+  const filteredMeetings = baseMeetings.filter(m => { if (m.tipo === 'followup' && !m.reuniao) return false; const d = new Date(m.date || 0); return !isNaN(d.getTime()) && d >= start && d <= end; });
   const filteredSales = baseSales.filter(s => { const d = new Date(s.date || 0); return !isNaN(d.getTime()) && d >= start && d <= end; });
   const activeSales = filteredSales.filter(s => !s.cancelada);
   try { renderClientesMes(baseSales); } catch (e) { console.warn('clientes por mês', e); }
