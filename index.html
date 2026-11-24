@@ -589,8 +589,8 @@ body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user
   align-items: center;
   gap: 6px;
   line-height: 1.25;
-  border-left: 3px solid var(--evt-color, #7c3aed);
-  background: color-mix(in srgb, var(--evt-color, #7c3aed) 14%, #fff);
+  border-left: 3px solid var(--evt-color, #dc2626);
+  background: color-mix(in srgb, var(--evt-color, #dc2626) 14%, #fff);
   color: #1e293b;
   overflow: hidden;
 }
@@ -692,7 +692,7 @@ body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user
 .dia-mais { flex: none; margin-top: 3px; height: 19px; line-height: 19px; font-size: 11px; font-weight: 800; color: var(--red); text-align: center; cursor: pointer; border-radius: 5px; }
 .dia-mais:hover { background: #fee2e2; }
 [data-theme="dark"] .dia-mais:hover { background: rgba(200,16,46,.2); }
-.event-item .evt-time { flex: none; font-weight: 800; color: var(--evt-color, #7c3aed); white-space: nowrap; }
+.event-item .evt-time { flex: none; font-weight: 800; color: var(--evt-color, #dc2626); white-space: nowrap; }
 .event-item .evt-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .event-item.done { background: #f1f5f9; color: #64748b; border-left-color: #94a3b8; text-decoration: line-through; }
 .event-item.done .evt-time { color: #94a3b8; }
@@ -762,7 +762,7 @@ body.arrastando-info, body.arrastando-info * { cursor: grabbing !important; user
 [data-theme="dark"] .exp-linha:hover { background: #161b22; }
 [data-theme="dark"] .exp-linha { border-bottom-color: #21262d; }
 .fu-card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px 10px; margin-bottom: 10px; }
-.fu-card.aberto { border-left: 4px solid var(--fu-cor, #7c3aed); }
+.fu-card.aberto { border-left: 4px solid var(--fu-cor, #dc2626); }
 .fu-card.encerrado .fu-texto { color: #475569; }
 .fu-card.destaque { box-shadow: 0 0 0 2px var(--red); }
 .fu-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: 11.5px; color: #94a3b8; margin-bottom: 6px; }
@@ -1298,8 +1298,8 @@ body.arrastando-gasto, body.arrastando-gasto * { cursor: grabbing !important; us
 .rr-tipo { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; font-size: 12.5px; }
 .rr-tipo span { font-weight: 700; color: var(--muted, #64748b); }
 .rr-tipo button { font: inherit; font-size: 12.5px; font-weight: 700; border: 1px solid var(--line, #e2e8f0); background: #fff; color: #334155; border-radius: 999px; padding: 4px 11px; cursor: pointer; }
-.rr-tipo button.on { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
-.rr-tipo button.on:first-of-type { background: #7c3aed; border-color: #7c3aed; }
+.rr-tipo button.on { background: #1e3a8a; border-color: #1e3a8a; color: #fff; }
+.rr-tipo button.on:first-of-type { background: #dc2626; border-color: #dc2626; }
 .rr-local { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
 .rr-local input { flex: 1; min-width: 180px; margin: 0; }
 /* a cor vem do tipo (retorno roxo, reunião azul), então o seletor de cor sai das telas */
@@ -2576,7 +2576,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <button type="button" onclick="setAgendaView('month')" data-view="month">Mês</button>
     </div>
   </div>
-  <div class="ag-legenda"><span><i style="background:#7c3aed"></i>Retorno</span><span><i style="background:#1d4ed8"></i>Reunião (📹 online · 📍 presencial)</span></div>
+  <div class="ag-legenda"><span><i style="background:#dc2626"></i>Retorno</span><span><i style="background:#1e3a8a"></i>Reunião (📹 online · 📍 presencial)</span></div>
   <div class="calendar" id="calendar"></div>
  </div>
 </section>
@@ -4192,10 +4192,10 @@ let activeResetUserId = null;
 const monthNames=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 let calendarCurrentDate = new Date();
 let agendaViewMode = 'month'; // 'day' | 'week' | 'month'
-const COR_REUNIAO = '#1d4ed8';   // azul forte: reunião de verdade (online ou presencial)
+const COR_REUNIAO = '#1e3a8a';   // azul bem forte (marinho): reunião de verdade (online ou presencial)
 // retorno (follow-up) fica roxo; reunião fica azul forte
 function corEventoAgenda(m){ return m && (m.tipo !== 'followup' || m.reuniao) ? COR_REUNIAO : DEFAULT_EVENT_COLOR; }
-const DEFAULT_EVENT_COLOR = '#7c3aed'; // roxo — padrão pedido pelo usuário para NÃO ser azul
+const DEFAULT_EVENT_COLOR = '#dc2626'; // vermelho — retorno (pedido do usuário)
 
 function formatCurrencyInput(input) {
   let val = input.value.replace(/\D/g, '');
@@ -12865,7 +12865,7 @@ function openFollowActionModal(item, opts){
   const waLink = leadObj ? buildWhatsAppLink(leadObj.tel, `Olá ${(leadObj.nome||'').split(' ')[0]}, tudo bem?`) : '';
   openModal(`
     <div class="between"><h2>📞 Follow-up</h2><button class="btn" onclick="closeModal()">✕</button></div>
-    <div style="margin:12px 0;padding:12px;background:${isDone ? '#f8fafc' : '#faf5ff'};border-radius:10px;border:1px solid var(--line);border-left:5px solid ${isDone ? '#cbd5e1' : corEventoAgenda(item)}">
+    <div style="margin:12px 0;padding:12px;background:${isDone ? '#f8fafc' : '#fff'};border-radius:10px;border:1px solid var(--line);border-left:5px solid ${isDone ? '#cbd5e1' : corEventoAgenda(item)}">
       <h3 style="margin:0 0 6px">${agendaClienteHtml(item, leadObj)}</h3>
       <p style="margin:2px 0"><b>Data:</b> ${fmtDataHoraCurta(item.date)} · <b>Responsável:</b> ${esc(item.responsavel||'-')}</p>
       <p style="margin:2px 0"><b>Situação:</b> ${isDone ? '✔ Encerrado' : '🟣 Em aberto — precisa de atenção'}</p>
