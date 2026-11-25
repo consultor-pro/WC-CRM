@@ -953,6 +953,20 @@ table:not(.excel-table) td .user-avatar { width: 22px !important; height: 22px !
 
 /* --- Modo escuro --- */
 :root[data-theme="dark"] { --bg: #0d1117; --card: #161b22; --line: #30363d; }
+/* Envio em sequência */
+.seq-continuar { margin:10px 0; padding:10px 12px; border-radius:10px; background:rgba(22,163,74,.08); border:1px solid rgba(22,163,74,.35); font-size:13px; }
+.seq-lista { max-height:38vh; overflow-y:auto; border:1px solid var(--line); border-radius:10px; }
+.seq-item { display:flex; gap:10px; align-items:flex-start; padding:8px 10px; border-bottom:1px solid var(--line); cursor:pointer; font-size:13px; }
+.seq-item:last-child { border-bottom:0; }
+.seq-item.recente { opacity:.7; }
+.seq-tag { background:#fef3c7; color:#92400e; border-radius:6px; padding:1px 6px; font-weight:700; font-size:10.5px; }
+.seq-barra { height:8px; border-radius:6px; background:var(--line); overflow:hidden; margin:12px 0 4px; }
+.seq-barra div { height:100%; background:var(--green); transition:width .3s; }
+.seq-ok { margin-top:10px; padding:8px 10px; border-radius:8px; background:rgba(22,163,74,.1); color:var(--green); font-size:12.5px; font-weight:600; }
+.seq-fim { display:flex; gap:12px; margin:14px 0; }
+.seq-fim div { flex:1; text-align:center; padding:14px; border:1px solid var(--line); border-radius:10px; }
+.seq-fim b { display:block; font-size:28px; }
+.seq-fim small { color:var(--muted); }
 /* Mensagens prontas (WhatsApp por nicho e fase) */
 .msg-aviso { margin:8px 0; padding:8px 10px; border-radius:8px; background:#fef3c7; color:#92400e; font-size:12.5px; }
 .msg-nichos { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
@@ -1688,6 +1702,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
       <button class="btn" id="leadsFiltrosLimpar" onclick="leadsFiltrosLimpar()" style="display:none">Limpar</button>
       <button class="btn" onclick="abrirImportarPlanilha()">📥 Importar Planilha</button>
       <button class="btn green" onclick="abrirExportarLeads()">📤 Exportar seleção</button>
+      <button class="btn green" onclick="seqAbrir()" title="Manda a mensagem de apresentação para os leads da tela, um por um">📲 Envio em sequência</button>
       <select id="leadFilterScore" onchange="renderLeads()" style="max-width:190px">
         <option value="all">Todos os Scores</option>
         <option value="Quente">🔥 Quente</option>
@@ -10051,6 +10066,7 @@ function renderLeads(){
   } else {
     rows.sort((a,b) => new Date(b.created || 0) - new Date(a.created || 0));
   }
+  window.__leadsFiltrados = rows;   // usado pelo Envio em sequência
 
   const renderedHtml = rows.map(l=>{
     const comCount = l.comments ? l.comments.length : 0;
@@ -10516,6 +10532,192 @@ function msgEnviarComVideo(btn){
     if (err && err.name === 'AbortError') return;   // cancelou no compartilhar
     showToast('⚠️ Não deu para compartilhar o vídeo: ' + (err && err.message ? err.message : 'erro'));
   });
+}
+
+// ============================================================
+// ENVIO EM SEQUÊNCIA (WhatsApp, um lead depois do outro)
+// ------------------------------------------------------------
+// Pega os leads que estão na tela (com os filtros da aba Leads), monta uma
+// fila e abre um por um no WhatsApp com a mensagem de apresentação já
+// preenchida. Você toca em enviar no WhatsApp, volta, e o próximo já está
+// pronto. Gratuito e sem robô: cada envio é seu. A fila fica guardada no
+// aparelho, então dá para parar e continuar depois.
+// ============================================================
+const SEQ_DIAS_REPETIDO = 7;
+let seqEstado = null;   // { ids:[], idx, nicho, msgId, enviados:[], pulados:[], inicio }
+function seqChave(){ return `crm_envio_seq_${EQUIPE_ID}_${msgUid()}`; }
+function seqGravar(){ try { if (seqEstado) localStorage.setItem(seqChave(), JSON.stringify(seqEstado)); else localStorage.removeItem(seqChave()); } catch (e) {} }
+function seqLer(){ try { return JSON.parse(localStorage.getItem(seqChave()) || 'null'); } catch (e) { return null; } }
+
+// Último WhatsApp registrado pelo CRM nas Notas do lead (data em ms)
+function seqUltimoEnvio(lead){
+  let ultimo = 0;
+  (lead.comments || []).forEach(c => {
+    if (!/^📲 WhatsApp enviado/.test(c.text || '')) return;
+    const t = parseInt(String(c.id || '').replace(/^c_/, ''), 10) || 0;
+    if (t > ultimo) ultimo = t;
+  });
+  return ultimo;
+}
+function seqRecebeuRecente(lead){ const t = seqUltimoEnvio(lead); return t && (Date.now() - t) < SEQ_DIAS_REPETIDO * 86400000; }
+
+// Mensagem usada para um lead: nicho escolhido ou o sugerido pelo cadastro
+function seqMensagemPara(lead){
+  const lista = msgLista();
+  if (seqEstado && seqEstado.msgId) { const m = lista.find(x => x.id === seqEstado.msgId); if (m) return m; }
+  const nicho = (seqEstado && seqEstado.nicho && seqEstado.nicho !== '__auto') ? seqEstado.nicho : msgNichoSugerido(lead);
+  const doNicho = lista.filter(m => (m.nicho || 'Geral') === nicho);
+  const geral = lista.filter(m => (m.nicho || 'Geral') === 'Geral');
+  const pool = doNicho.length ? doNicho : (geral.length ? geral : lista);
+  return pool.find(m => m.fase === 'Apresentação') || pool[0] || null;
+}
+
+function seqAbrir(){
+  const salvo = seqLer();
+  const filtrados = (window.__leadsFiltrados || []).filter(l => buildWhatsAppLink(l.tel));
+  const continuar = salvo && salvo.idx < salvo.ids.length
+    ? `<div class="seq-continuar"><b>Você tem um envio parado:</b> ${salvo.idx} de ${salvo.ids.length} feitos.
+        <div class="row" style="gap:8px;margin-top:8px"><button class="btn green" onclick="seqContinuar()">▶️ Continuar de onde parei</button><button class="btn" onclick="seqDescartar()">Descartar</button></div></div>` : '';
+  if (!filtrados.length) {
+    openModal(`<div class="between"><h2 style="margin:0">📲 Envio em sequência</h2><button class="btn" onclick="closeModal()">✕</button></div>${continuar}
+      <p class="muted" style="margin-top:12px">Nenhum lead com WhatsApp válido na tela. Ajuste os filtros da aba Leads e tente de novo.</p>`);
+    return;
+  }
+  let pularRecente = true; try { pularRecente = localStorage.getItem('crm_envio_seq_pular') !== '0'; } catch (e) {}
+  let limite = 30; try { limite = parseInt(localStorage.getItem('crm_envio_seq_limite'), 10) || 30; } catch (e) {}
+  const nichos = msgNichos();
+  window.__seqCandidatos = filtrados.map(l => l.id);
+  openModal(`<div class="between"><h2 style="margin:0">📲 Envio em sequência</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    ${continuar}
+    <p class="muted" style="font-size:13px;margin:8px 0 12px">Os leads que estão na tela entram na fila. O CRM abre um por um no WhatsApp com a mensagem pronta; você só toca em enviar.</p>
+    <div style="display:grid;grid-template-columns:1fr 120px;gap:10px">
+      <div class="field"><label>Mensagem de qual nicho?</label><select id="seqNicho" onchange="seqAtualizarPrevia()">
+        <option value="__auto">🔮 Automático (pelo cadastro de cada lead)</option>
+        ${nichos.map(n => `<option value="${esc(n)}">${msgIconeNicho(n)} ${esc(n)}</option>`).join('')}
+      </select></div>
+      <div class="field"><label>Máximo nesta rodada</label><input id="seqLimite" type="number" min="1" max="500" value="${limite}" oninput="seqAtualizarPrevia()"></div>
+    </div>
+    <label style="display:flex;gap:6px;align-items:center;justify-content:flex-start;font-size:12.5px;margin:2px 0 10px;cursor:pointer"><input type="checkbox" id="seqPularRecente" style="width:auto;margin:0" ${pularRecente ? 'checked' : ''} onchange="seqAtualizarPrevia()"> Pular quem já recebeu WhatsApp pelo CRM nos últimos ${SEQ_DIAS_REPETIDO} dias</label>
+    <div class="between" style="margin-bottom:6px"><b id="seqContagem"></b><span><button class="tc-btn" onclick="seqMarcarTodos(true)">Marcar todos</button><button class="tc-btn" onclick="seqMarcarTodos(false)">Desmarcar</button></span></div>
+    <div class="seq-lista" id="seqLista"></div>
+    <div class="row" style="gap:8px;margin-top:12px"><button class="btn green" onclick="seqIniciar()">▶️ Iniciar envio</button><button class="btn" onclick="closeModal()">Cancelar</button></div>`);
+  seqAtualizarPrevia(true);
+}
+
+function seqAtualizarPrevia(primeira){
+  const box = document.getElementById('seqLista');
+  if (!box) return;
+  const pular = document.getElementById('seqPularRecente')?.checked;
+  const marcados = primeira ? null : new Set([...box.querySelectorAll('input[data-id]:checked')].map(i => i.dataset.id));
+  const nicho = document.getElementById('seqNicho')?.value || '__auto';
+  const anterior = seqEstado; seqEstado = { nicho };   // só para a prévia da mensagem
+  box.innerHTML = (window.__seqCandidatos || []).map(id => {
+    const l = db.leads.find(x => x.id === id); if (!l) return '';
+    const recente = seqRecebeuRecente(l);
+    const marcado = marcados ? (marcados.has(id) && !(pular && recente)) : !(pular && recente);
+    const m = seqMensagemPara(l);
+    return `<label class="seq-item ${recente ? 'recente' : ''}"><input type="checkbox" data-id="${id}" ${marcado ? 'checked' : ''} onchange="seqContar()" style="width:auto;margin:0">
+      <span><b>${esc(l.nome || '')}</b> <small class="muted">${esc(l.tel || '')}</small>${recente ? ' <small class="seq-tag">já recebeu</small>' : ''}<br><small class="muted">${m ? msgIconeNicho(m.nicho) + ' ' + esc(m.nicho) + ' · ' + esc(m.titulo) : 'sem mensagem'}</small></span></label>`;
+  }).join('');
+  seqEstado = anterior;
+  seqContar();
+}
+function seqMarcarTodos(v){ document.querySelectorAll('#seqLista input[data-id]').forEach(i => { i.checked = v; }); seqContar(); }
+function seqContar(){
+  const n = document.querySelectorAll('#seqLista input[data-id]:checked').length;
+  const lim = Math.max(1, parseInt(document.getElementById('seqLimite')?.value, 10) || 30);
+  const el = document.getElementById('seqContagem');
+  if (el) el.textContent = n > lim ? `${n} marcados · vão ${lim} nesta rodada` : `${n} na fila`;
+}
+
+function seqIniciar(){
+  const lim = Math.max(1, parseInt(document.getElementById('seqLimite')?.value, 10) || 30);
+  const ids = [...document.querySelectorAll('#seqLista input[data-id]:checked')].map(i => i.dataset.id).slice(0, lim);
+  if (!ids.length) { showToast('⚠️ Marque pelo menos um lead.'); return; }
+  const nicho = document.getElementById('seqNicho')?.value || '__auto';
+  try { localStorage.setItem('crm_envio_seq_limite', String(lim)); localStorage.setItem('crm_envio_seq_pular', document.getElementById('seqPularRecente')?.checked ? '1' : '0'); } catch (e) {}
+  seqEstado = { ids, idx: 0, nicho, msgId: null, enviados: [], pulados: [], inicio: new Date().toISOString() };
+  seqGravar();
+  seqRender();
+}
+function seqContinuar(){ seqEstado = seqLer(); if (!seqEstado) return; seqRender(); }
+function seqDescartar(){ seqEstado = null; seqGravar(); seqAbrir(); }
+
+function seqRender(){
+  if (!seqEstado) return;
+  // pula leads que foram excluídos ou perderam o telefone
+  while (seqEstado.idx < seqEstado.ids.length) {
+    const l = db.leads.find(x => x.id === seqEstado.ids[seqEstado.idx]);
+    if (l && buildWhatsAppLink(l.tel)) break;
+    seqEstado.pulados.push(seqEstado.ids[seqEstado.idx]); seqEstado.idx++;
+  }
+  seqGravar();
+  const total = seqEstado.ids.length;
+  if (seqEstado.idx >= total) return seqFim();
+  const lead = db.leads.find(x => x.id === seqEstado.ids[seqEstado.idx]);
+  const m = seqMensagemPara(lead);
+  const texto = m ? msgPreencher(m.texto, lead) : '';
+  const pct = Math.round(seqEstado.idx / total * 100);
+  const ultimo = seqEstado.ultimoNome ? `<div class="seq-ok">✓ Aberto para ${esc(seqEstado.ultimoNome)}. Enviou lá no WhatsApp? Então siga para o próximo.</div>` : '';
+  openModal(`<div class="between"><h2 style="margin:0">📲 Envio em sequência</h2><button class="btn" onclick="seqParar()">✕</button></div>
+    <div class="seq-barra"><div style="width:${pct}%"></div></div>
+    <small class="muted">${seqEstado.idx} de ${total} · ${seqEstado.enviados.length} enviados · ${seqEstado.pulados.length} pulados</small>
+    ${ultimo}
+    <h3 style="margin:12px 0 2px">${esc(lead.nome || '')}</h3>
+    <small class="muted">${esc(lead.tel || '')}${lead.cidade ? ' · ' + esc(lead.cidade) : ''}${m ? ' · ' + msgIconeNicho(m.nicho) + ' ' + esc(m.nicho) : ''}${seqRecebeuRecente(lead) ? ' · <b style="color:var(--gold)">já recebeu WhatsApp há pouco</b>' : ''}</small>
+    <div class="field" style="margin-top:8px"><label>Mensagem (pode ajustar só para este lead)</label><textarea id="seqTexto" style="min-height:150px">${esc(texto)}</textarea></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button class="btn green" style="font-size:15px;padding:10px 18px" onclick="seqEnviar()">📲 Enviar</button>
+      <button class="btn" onclick="seqPular()">Pular</button>
+      <button class="btn" onclick="seqParar()">⏸ Parar</button>
+    </div>`);
+}
+
+function seqEnviar(){
+  const lead = db.leads.find(x => x.id === seqEstado.ids[seqEstado.idx]);
+  const texto = (document.getElementById('seqTexto')?.value || '').trim();
+  if (!lead || !texto) { showToast('⚠️ A mensagem está vazia.'); return; }
+  const link = buildWhatsAppLink(lead.tel, texto);
+  if (!link) { seqPular(); return; }
+  window.open(link, '_blank');   // no próprio clique, para o navegador não bloquear
+  const m = seqMensagemPara(lead);
+  if (!lead.comments) lead.comments = [];
+  lead.comments.unshift({
+    id: 'c_' + Date.now(),
+    author: currentUser ? (currentUser.nome || currentUser.email) : '',
+    date: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
+    text: `📲 WhatsApp enviado (envio em sequência): ${m ? `${m.nicho} · ${m.fase} · ${m.titulo}` : 'mensagem'}`,
+    origem: 'manual'
+  });
+  seqEstado.enviados.push(lead.id);
+  seqEstado.ultimoNome = lead.nome || '';
+  seqEstado.idx++;
+  seqGravar();
+  save();
+  seqRender();   // quando você voltar do WhatsApp, o próximo já está aqui
+}
+function seqPular(){
+  seqEstado.pulados.push(seqEstado.ids[seqEstado.idx]);
+  seqEstado.ultimoNome = '';
+  seqEstado.idx++;
+  seqGravar();
+  seqRender();
+}
+function seqParar(){
+  if (!seqEstado) { closeModal(); return; }
+  const faltam = seqEstado.ids.length - seqEstado.idx;
+  seqGravar();
+  closeModal();
+  if (faltam > 0) showToast(`⏸ Envio parado. Faltam ${faltam}. Para continuar, toque em 📲 Envio em sequência.`);
+}
+function seqFim(){
+  const e = seqEstado.enviados.length, p = seqEstado.pulados.length;
+  seqEstado = null; seqGravar();
+  openModal(`<div class="between"><h2 style="margin:0">✅ Envio concluído</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <div class="seq-fim"><div><b>${e}</b><small>enviados</small></div><div><b>${p}</b><small>pulados</small></div></div>
+    <p class="muted" style="font-size:13px">Cada envio ficou registrado nas Notas do lead. Agora é responder quem retornar e marcar as reuniões. 🙏</p>
+    <button class="btn primary" onclick="closeModal()">Fechar</button>`);
+  if (typeof renderLeads === 'function') renderLeads();
 }
 
 function limparFiltrosLeads(){
@@ -22099,6 +22301,8 @@ const ASSIST_BASE = [
   r: 'Toque no ícone **📲** ao lado do telefone do cliente (na lista de leads, na agenda ou no cadastro). Abre a conversa com ele no WhatsApp.' },
 { id: 'lead_notas', t: 'Como anoto o que conversei com o cliente (follow-up)?', k: 'anotacao, follow up, comentario, mural de negociacao, notas do cliente, historico do cliente, retorno',
   r: '1. Em **Leads & Carteira**, toque em **Notas** na linha do cliente.\n2. Escreva a anotação no **Mural de Negociação**.\n3. Se quiser lembrar de voltar a falar, escolha **data e hora**: o retorno aparece na sua **Agenda**.\n4. Escolha a situação (em aberto, encerrado ou só anotação) e toque em **Publicar**.', aba: 'leads' },
+{ id: 'envioSequencia', t: 'Como mandar WhatsApp para vários leads (envio em sequência)?', k: 'envio em massa, mensagem em massa, disparo, varios leads, sequencia, lista, transmissao, mandar para todos',
+  r: 'Em **Leads & Carteira**, filtre os leads que quer (por indicador, origem, etapa...) e toque em **📲 Envio em sequência**. Escolha o nicho (ou Automático), confira a lista e toque em **Iniciar envio**. O CRM abre um lead por vez no WhatsApp com a mensagem pronta: você toca em enviar lá, volta, e o próximo já está na tela. Dá para **Pular** ou **Parar** e continuar depois. Cada envio fica nas Notas do lead. É gratuito e sem robô, por isso é seguro para o seu número.', aba: 'leads' },
 { id: 'mensagensProntas', t: 'Como mandar mensagem pronta no WhatsApp?', k: 'mensagens prontas, whatsapp, mensagem pronta, script, nicho, fase, apresentacao, fechamento, video explicativo, modelo de mensagem',
   r: 'Toque no **📲 WhatsApp** do lead (na lista de Leads, nas Notas ou na Agenda). Escolha o **nicho**, depois a mensagem pela **fase** (Apresentação, O que eu faço, Vídeo explicativo, Follow-up, Fechamento, Pós-venda). O nome do cliente e o seu já vão preenchidos; ajuste se quiser e toque em **Enviar no WhatsApp**. Para editar, criar mensagens ou colocar o seu vídeo (link ou arquivo guardado no aparelho): **Leads & Carteira** › **💬 Mensagens Prontas**. No celular, a mensagem de vídeo tem o botão **🎬 Enviar com o vídeo**, que manda o arquivo pelo compartilhar do WhatsApp.', aba: 'leads' },
 { id: 'indicadores', t: 'O que é "Meus Indicadores"?', k: 'indicadores, quem indicou, indicacao, parceiros que indicam, cadastrar indicador',
