@@ -953,6 +953,27 @@ table:not(.excel-table) td .user-avatar { width: 22px !important; height: 22px !
 
 /* --- Modo escuro --- */
 :root[data-theme="dark"] { --bg: #0d1117; --card: #161b22; --line: #30363d; }
+/* Mensagens prontas (WhatsApp por nicho e fase) */
+.msg-aviso { margin:8px 0; padding:8px 10px; border-radius:8px; background:#fef3c7; color:#92400e; font-size:12.5px; }
+.msg-nichos { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+.msg-nicho { display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 8px; border:1px solid var(--line); border-radius:10px; background:var(--card); color:inherit; font:inherit; font-weight:600; cursor:pointer; }
+.msg-nicho span { font-size:24px; }
+.msg-nicho small { font-size:10.5px; color:var(--green); font-weight:700; }
+.msg-nicho.sug { border-color:var(--green); box-shadow:0 0 0 2px rgba(22,163,74,.15); }
+.msg-nicho:hover { border-color:var(--green); }
+.msg-fases { max-height:46vh; overflow-y:auto; padding-right:4px; }
+.msg-fase { margin-bottom:10px; }
+.msg-fase-tit { font-weight:700; font-size:13px; margin:4px 0 6px; }
+.msg-opcao { display:block; width:100%; text-align:left; padding:8px 10px; margin-bottom:6px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:inherit; font:inherit; cursor:pointer; }
+.msg-opcao b { display:block; font-size:13px; }
+.msg-opcao span { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:12px; color:var(--muted); white-space:pre-line; }
+.msg-opcao.on, .msg-opcao:hover { border-color:var(--green); }
+.msg-opcao.on { background:rgba(22,163,74,.08); }
+.msg-grade { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:10px; }
+.msg-card { border:1px solid var(--line); border-radius:10px; padding:10px; background:var(--card); }
+.msg-card-txt { margin-top:6px; font-size:12.5px; white-space:pre-wrap; max-height:130px; overflow-y:auto; color:inherit; background:rgba(100,116,139,.07); border-radius:8px; padding:8px; }
+.msg-vars { display:flex; flex-wrap:wrap; gap:4px; align-items:center; font-size:12px; }
+
 [data-theme="dark"] body { color: #e6edf3; }
 [data-theme="dark"] .card, [data-theme="dark"] .kpi, [data-theme="dark"] .modalbox { background: var(--card); color: #e6edf3; border-color: var(--line); }
 [data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea { background: #0d1117; color: #e6edf3; border-color: #30363d; }
@@ -1653,6 +1674,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
  <div class="row" style="margin-bottom:12px">
    <button class="btn primary" id="subTabLeadsBtn" onclick="mostrarSubAbaLeads('lista')">📋 Leads</button>
    <button class="btn" id="subTabIndicadoresBtn" onclick="mostrarSubAbaLeads('indicadores')">🤝 Meus Indicadores</button>
+   <button class="btn" id="subTabMensagensBtn" onclick="mostrarSubAbaLeads('mensagens')">💬 Mensagens Prontas</button>
  </div>
  <div id="leadsListaSubaba">
  <div class="card">
@@ -1722,6 +1744,27 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
      <button class="btn primary" onclick="adicionarIndicador()">+ Cadastrar Indicador</button>
    </div>
    <div style="overflow-x:auto"><table><thead><tr><th>Indicador</th><th>Leads indicados</th><th>Ações</th></tr></thead><tbody id="indicadoresTable"></tbody></table></div>
+ </div>
+ <div id="leadsMensagensSubaba" class="card" style="display:none">
+   <div class="between" style="margin-bottom:12px;gap:10px;flex-wrap:wrap">
+     <div>
+       <h2>💬 Mensagens Prontas</h2>
+       <small class="muted">Mensagens de WhatsApp por nicho e por fase da venda. Abra pelo botão de WhatsApp do lead (na lista, nas Notas ou na Agenda): o nome do cliente e o seu já vão preenchidos.</small>
+     </div>
+     <div class="row" style="gap:8px"><button class="btn primary" onclick="msgEditar()">+ Nova mensagem</button><button class="btn" onclick="msgRestaurarPadroes()">↺ Restaurar padrões</button></div>
+   </div>
+   <div class="row" style="gap:10px;flex-wrap:wrap;margin-bottom:10px">
+     <div class="field" style="min-width:200px;flex:1"><label>Seu nome nas mensagens</label><input id="msgMeuNomeInput" onchange="msgDefinirCampo('meuNome', this.value)"></div>
+     <div class="field" style="min-width:260px;flex:2"><label>Link do seu vídeo explicativo (YouTube, Drive...)</label><input id="msgVideoInput" placeholder="https://..." onchange="msgDefinirCampo('video', this.value)"></div>
+   </div>
+   <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:6px">
+     <select id="msgFiltroNicho" onchange="renderMensagensTab()" style="max-width:220px"></select>
+     <select id="msgFiltroFase" onchange="renderMensagensTab()" style="max-width:220px"></select>
+     <input id="msgBusca" placeholder="Buscar mensagem" oninput="renderMensagensTab()" style="max-width:220px">
+     <small class="muted" id="msgContador"></small>
+   </div>
+   <small class="muted" style="display:block;margin-bottom:10px">Variáveis: {nome} {nome_completo} {meu_nome} {indicador} {cidade} {profissao} {saudacao} {video}</small>
+   <div id="msgGrade" class="msg-grade"></div>
  </div>
 </section>
 
@@ -10022,7 +10065,7 @@ function renderLeads(){
     const tagsLinha = (l.tags && l.tags.length) ? ' ' + l.tags.map(t=>`<span class="tc-tag">${esc(t)}</span>`).join(' ') : '';
     return `<tr>
       <td><b class="tc-link" title="Abrir cadastro do cliente" onclick="openLead('${l.id}')">${esc(l.nome)}</b><span class="tc-sub"> · ${esc(l.cidade||'-')}${(l.origem==='Indicação' && l.indicador) ? ` · ind. ${esc(l.indicador)}` : ''}${(l.responsavel && currentUser && l.responsavel !== currentUser.nome) ? ` · 👤 ${esc(l.responsavel)}` : ''}</span>${tagsLinha}</td>
-      <td>${esc(l.tel||'-')}${linkWhatsAppTel(l.tel)}</td>
+      <td>${esc(l.tel||'-')}${l.tel ? ` <a href="#" title="Enviar mensagem pronta no WhatsApp" style="text-decoration:none" onclick="event.preventDefault();event.stopPropagation();abrirMensagensProntas('${l.id}')">📲</a>` : ''}</td>
       <td>${esc(l.origem||'Indicação')}</td>
       <td><span class="tc-ponto" style="background:${corScore}"></span>${esc(l.scoreCategory||'Morno')}</td>
       <td><span class="tc-tag">${esc(l.stage||'Prospecção')}</span></td>
@@ -10051,6 +10094,366 @@ function renderLeads(){
   }
 }
 
+// ============================================================
+// MENSAGENS PRONTAS (WhatsApp) — por NICHO e por FASE
+// ------------------------------------------------------------
+// O botão de WhatsApp do lead (lista de Leads, Notas e Agenda) abre esta
+// janela: 1) escolhe o nicho, 2) escolhe a mensagem pela fase da venda,
+// 3) ajusta se quiser e envia. O nome do cliente e o seu já vão no texto.
+// As mensagens ficam em Leads › 💬 Mensagens Prontas, onde dá para editar,
+// duplicar, excluir e criar novas. Ficam no db (vão junto no backup/nuvem)
+// e numa cópia no aparelho, separadas por usuário.
+// Variáveis: {nome} {nome_completo} {meu_nome} {indicador} {cidade}
+//            {profissao} {saudacao} {video}
+// ============================================================
+const MSG_FASES = ['Apresentação', 'O que eu faço', 'Vídeo explicativo', 'Follow-up', 'Fechamento', 'Pós-venda e indicações'];
+const MSG_FASE_ICONE = { 'Apresentação':'👋', 'O que eu faço':'💡', 'Vídeo explicativo':'🎬', 'Follow-up':'🔁', 'Fechamento':'🤝', 'Pós-venda e indicações':'🎁' };
+
+// Base de cada nicho: os textos completos são montados uma vez e depois
+// ficam livres para você editar (não dependem mais desta tabela).
+const MSG_NICHOS_BASE = [
+  { n:'Geral', ic:'📣', tr:'', obj:'imóvel, carro ou investimento',
+    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, consultor da Ademicon.\n\nEu ajudo pessoas a conquistar imóvel, veículo ou fazer o patrimônio crescer *sem pagar juros de financiamento*.\n\nPosso te explicar em 15 minutos como funciona? Fica melhor pra você amanhã de manhã ou à tarde?',
+    faco:'Funciona assim, {nome}: em vez de pagar juros no banco, você entra num grupo de consórcio com parcelas planejadas. Todo mês tem assembleia, e você pode ser contemplado por sorteio ou por lance. Quando sai a carta, você compra à vista o imóvel ou o carro que escolher.\n\nResultado: o bem sai bem mais barato do que no financiamento, e o dinheiro fica protegido da inflação até lá.',
+    fecha:'{nome}, pelo que conversamos, a carta que faz sentido pra você já está separada. Pra garantir sua cota neste grupo, só preciso de uma foto do RG/CNH e de um comprovante de endereço. Te mando o link para assinar agora mesmo. Pode ser?' },
+  { n:'Indicação', ic:'🙋', tr:'', obj:'imóvel, carro ou investimento',
+    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, da Ademicon. O(a) *{indicador}* me passou seu contato e disse que você é uma pessoa que pensa no futuro.\n\nEu ajudo pessoas a comprar imóvel, carro ou investir *sem pagar juros de financiamento*. Posso te explicar em 15 minutos como funciona? Melhor amanhã de manhã ou à tarde?',
+    faco:'{nome}, o que eu fiz com o(a) {indicador} foi um planejamento pelo consórcio: parcelas que cabem no bolso, sem juros, e a carta de crédito pra comprar à vista quando for contemplado (por sorteio ou lance).\n\nÉ por isso que ele(a) lembrou de você. Quer que eu monte uma simulação no seu perfil?',
+    fecha:'{nome}, a simulação que te mostrei é a que mais combina com o seu objetivo. Pra garantir a cota neste grupo, me manda uma foto do RG/CNH e um comprovante de endereço que eu já te envio o link para assinar. Vamos?' },
+  { n:'Indicadores', ic:'🤝', tr:'', obj:'imóvel, carro, reforma ou investimento',
+    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, da Ademicon. Estou montando um grupo de parceiros que me indicam pessoas que querem comprar imóvel, carro ou investir, e você foi uma das primeiras pessoas que eu lembrei.\n\nPosso te explicar em 10 minutos como funciona a parceria?',
+    faco:'{nome}, é simples: você me passa o nome e o telefone de quem tem vontade de comprar imóvel, trocar de carro, reformar ou investir. Eu faço todo o atendimento, com cuidado e sem pressão, e te mantenho informado de cada indicação.\n\nVocê não precisa vender nada, só lembrar de mim quando alguém comentar esses planos.',
+    fecha:'{nome}, vamos começar? Me manda agora os 3 primeiros nomes e telefones que vierem na sua cabeça de quem está pensando em imóvel ou carro. Eu já começo o atendimento hoje e te dou retorno de cada um. 🙏' },
+  { n:'Corretores', ic:'🏠', tr:'', obj:'imóvel',
+    apres:'{saudacao}, {nome}! Aqui é o {meu_nome}, consultor da Ademicon aqui da região. Sei que muito cliente de corretor trava no financiamento: banco recusa, juros altos ou entrada que não fecha.\n\nO consórcio pode ser a saída pra esse cliente, e o imóvel volta pra você vender quando a carta sair. Topa um café de 20 minutos pra falarmos de uma parceria?',
+    faco:'{nome}, a parceria funciona assim: o cliente que não aprovou financiamento, ou que quer comprar daqui a 1 ou 2 anos, você me indica. Eu cuido dele no consórcio e, quando a carta for contemplada, ele compra à vista com você.\n\nVocê não perde o cliente e ainda passa a ter compradores com dinheiro na mão. Também trabalho com cartas contempladas, que servem pra fechar negócio mais rápido.',
+    fecha:'{nome}, vamos oficializar a parceria? Me passa os clientes que travaram no financiamento nos últimos meses que eu já entro em contato esta semana, sempre falando em seu nome. Combinado?' },
+  { n:'Produtores rurais', ic:'🚜', tr:'', obj:'trator, máquinas, caminhão ou terra',
+    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, da Ademicon. Tenho ajudado produtores da região a comprar trator, máquinas, caminhão e até terra *sem pagar juros*, planejando a compra de acordo com a safra.\n\nPosso passar aí na propriedade ou te ligar 15 minutos pra mostrar como funciona?',
+    faco:'{nome}, o consórcio é um planejamento: você paga parcelas que cabem no fluxo da propriedade e, quando é contemplado (por sorteio ou lance), recebe a carta pra comprar à vista a máquina, o caminhão ou a terra.\n\nDá pra usar o lance pra antecipar a contemplação depois de uma boa safra. É uma forma de crescer sem ficar preso a juros.',
+    fecha:'{nome}, a carta que montamos garante a máquina que você precisa no prazo que você quer. Pra reservar a cota neste grupo, me manda uma foto do RG/CNH e um comprovante de endereço que eu te envio o contrato para assinar. Fechamos?' },
+  { n:'Contabilidade', ic:'📊', tr:'', obj:'sede própria, frota ou equipamentos',
+    apres:'{saudacao}, {nome}! Aqui é o {meu_nome}, consultor da Ademicon. Muitos clientes de escritório contábil querem comprar sede, veículo ou equipamento e acabam pagando juros altos no banco.\n\nO consórcio é uma alternativa de planejamento que o contador pode indicar com segurança. Posso te apresentar em 20 minutos e conversarmos sobre uma parceria?',
+    faco:'{nome}, para os seus clientes empresas, o consórcio funciona como investimento em patrimônio sem descapitalizar o caixa: parcelas planejadas, sem juros, e a carta de crédito para comprar sede, frota ou equipamentos à vista.\n\nPara o escritório, é mais um serviço de valor para oferecer na consultoria, e eu faço todo o atendimento.',
+    fecha:'{nome}, que tal começarmos com 2 ou 3 clientes que você sabe que têm plano de expansão? Você me apresenta, eu faço a análise e te mantenho informado de tudo. Posso contar com você?' },
+  { n:'Advogados', ic:'⚖️', tr:'Dr(a). ', obj:'escritório próprio, carro ou patrimônio',
+    apres:'{saudacao}, Dr(a). {nome}! Aqui é o {meu_nome}, da Ademicon. Tenho ajudado profissionais do Direito a conquistar o escritório próprio, o carro ou montar patrimônio *sem juros de financiamento*.\n\nPosso te mostrar em 15 minutos, no horário que for melhor pra você?',
+    faco:'Dr(a). {nome}, o consórcio é um planejamento patrimonial: parcelas sem juros e, na contemplação (sorteio ou lance), a carta de crédito para comprar à vista o imóvel ou o veículo.\n\nTambém é uma boa ferramenta para clientes seus que recebem valores de partilha, inventário ou indenização e querem transformar o dinheiro em patrimônio.',
+    fecha:'Dr(a). {nome}, a carta que simulamos atende bem o seu objetivo. Para garantir a cota neste grupo, me envie uma foto do RG/CNH e um comprovante de endereço, que te mando o contrato para assinatura digital. Podemos seguir?' },
+  { n:'Oficinas', ic:'🔧', tr:'', obj:'equipamentos, ampliação ou carro de serviço',
+    apres:'{saudacao}, {nome}! Aqui é o {meu_nome}, da Ademicon. Tenho ajudado donos de oficina a comprar equipamento novo, ampliar o barracão ou trocar o carro de serviço *sem pagar juros de financiamento*.\n\nPosso passar aí 15 minutos pra te mostrar como funciona?',
+    faco:'{nome}, funciona assim: você paga parcelas planejadas, sem juros, e quando é contemplado (sorteio ou lance) recebe a carta pra comprar à vista o elevador, o scanner, o barracão ou o veículo.\n\nE tem mais: os clientes que passam aí pensando em trocar de carro ou caminhão, você pode me indicar que eu cuido deles.',
+    fecha:'{nome}, com essa carta você garante o equipamento que vai aumentar o faturamento da oficina. Pra reservar a cota, me manda foto do RG/CNH e um comprovante de endereço que eu te envio o contrato. Vamos fechar?' },
+  { n:'Saúde', ic:'🩺', tr:'Dr(a). ', obj:'consultório, equipamentos ou imóvel',
+    apres:'{saudacao}, Dr(a). {nome}! Aqui é o {meu_nome}, da Ademicon. Tenho ajudado profissionais da saúde a montar ou ampliar o consultório e trocar equipamentos *sem pagar juros de financiamento*.\n\nPosso te mostrar em 15 minutos, no horário entre atendimentos que for melhor pra você?',
+    faco:'Dr(a). {nome}, o consórcio é um planejamento: parcelas sem juros e, na contemplação (sorteio ou lance), a carta de crédito para comprar à vista a sala, o imóvel ou os equipamentos da clínica.\n\nÉ uma forma de crescer o patrimônio sem comprometer o caixa com juros.',
+    fecha:'Dr(a). {nome}, a carta que simulamos encaixa bem no seu plano. Para garantir a cota neste grupo, me envie uma foto do RG/CNH e um comprovante de endereço, que te mando o contrato para assinatura digital. Podemos seguir?' }
+];
+
+function msgPadroes(){
+  const lista = [];
+  MSG_NICHOS_BASE.forEach(b => {
+    const t = b.tr ? b.tr + '{nome}' : '{nome}';
+    lista.push({ nicho:b.n, fase:'Apresentação', titulo:'Primeiro contato', texto:b.apres });
+    lista.push({ nicho:b.n, fase:'O que eu faço', titulo:'Como funciona', texto:b.faco });
+    lista.push({ nicho:b.n, fase:'Vídeo explicativo', titulo:'Vídeo de como funciona', texto:`${t}, preparei um vídeo curtinho explicando como funciona o consórcio para quem quer ${b.obj}. Leva menos de 3 minutos:\n\n🎬 {video}\n\nDepois me conta o que achou, que eu tiro qualquer dúvida. — {meu_nome}` });
+    lista.push({ nicho:b.n, fase:'Follow-up', titulo:'Retorno após conversa', texto:`Oi, ${t}! Tudo bem? Aqui é o {meu_nome}. Fiquei pensando na nossa conversa e preparei uma simulação certinha pra você. Posso te mandar agora ou prefere que eu te ligue 5 minutinhos?` });
+    lista.push({ nicho:b.n, fase:'Follow-up', titulo:'Sem resposta', texto:`Oi, ${t}! {meu_nome} aqui de novo. Sei que a rotina é corrida, então vou ser rápido: ainda faz sentido conversarmos sobre ${b.obj} sem juros? Se não for o momento, sem problema, é só me avisar. 🙂` });
+    lista.push({ nicho:b.n, fase:'Fechamento', titulo:'Fechar a cota', texto:b.fecha });
+    lista.push({ nicho:b.n, fase:'Pós-venda e indicações', titulo:'Pedir indicações', texto:`${t}, muito obrigado pela confiança! 🙏 Uma ajuda: quem são as pessoas que você conhece que têm vontade de ${b.n === 'Corretores' || b.n === 'Indicadores' ? 'comprar imóvel, carro ou investir' : 'conquistar ' + b.obj}? Pode me mandar o nome e o telefone aqui mesmo. Prometo cuidar delas com o mesmo carinho. — {meu_nome}` });
+  });
+  // Extras gerais
+  lista.push({ nicho:'Geral', fase:'Follow-up', titulo:'Confirmar reunião', texto:'Oi, {nome}! Passando pra confirmar nossa conversa. Está de pé? Qualquer imprevisto me avisa que a gente remarca. Até logo! — {meu_nome}' });
+  lista.push({ nicho:'Geral', fase:'Follow-up', titulo:'Reativar lead frio', texto:'Oi, {nome}! Quanto tempo! Aqui é o {meu_nome}, da Ademicon. Lembrei de você e queria saber: ainda tem aquele plano de comprar imóvel ou carro? Posso te mandar uma simulação atualizada, sem compromisso.' });
+  lista.push({ nicho:'Geral', fase:'Pós-venda e indicações', titulo:'Lembrete de assembleia', texto:'Oi, {nome}! Aqui é o {meu_nome}. A assembleia do seu grupo está chegando. Se quiser conversar sobre estratégia de lance, estou à disposição! 🍀' });
+  lista.push({ nicho:'Geral', fase:'Pós-venda e indicações', titulo:'Feliz aniversário', texto:'Feliz aniversário, {nome}! 🎉 Que Deus abençoe muito o seu novo ano, com saúde, paz e muitas conquistas. Um abraço, {meu_nome}.' });
+  return lista;
+}
+
+function msgUid(){ return currentUser ? (currentUser.id || currentUser.nome || 'geral') : 'geral'; }
+function msgChaveLocal(){ return `crm_msgs_prontas_${EQUIPE_ID}_${msgUid()}`; }
+function msgNovoId(){ return (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8); }
+
+// Estrutura guardada: { lista:[{id,nicho,fase,titulo,texto}], meuNome, video }
+function msgDados(){
+  if (!db.mensagensProntas || typeof db.mensagensProntas !== 'object' || Array.isArray(db.mensagensProntas)) db.mensagensProntas = {};
+  const uid = msgUid();
+  let d = db.mensagensProntas[uid];
+  if (!d || !Array.isArray(d.lista)) {
+    try { d = JSON.parse(localStorage.getItem(msgChaveLocal()) || 'null'); } catch (e) { d = null; }
+    if (!d || !Array.isArray(d.lista)) d = { lista: msgPadroes().map(m => Object.assign({ id: msgNovoId() }, m)), meuNome: '', video: '' };
+    db.mensagensProntas[uid] = d;
+  }
+  return d;
+}
+function msgLista(){ return msgDados().lista; }
+function msgSalvar(){
+  try { localStorage.setItem(msgChaveLocal(), JSON.stringify(msgDados())); } catch (e) {}
+  save();
+}
+function msgMeuNome(){ return (msgDados().meuNome || '').trim() || (currentUser && currentUser.nome) || ''; }
+function msgNichos(){
+  const ordem = MSG_NICHOS_BASE.map(b => b.n);
+  const usados = [...new Set(msgLista().map(m => m.nicho || 'Geral'))];
+  return [...ordem.filter(n => usados.includes(n)), ...usados.filter(n => !ordem.includes(n)).sort()];
+}
+function msgIconeNicho(n){ const b = MSG_NICHOS_BASE.find(x => x.n === n); return b ? b.ic : '💬'; }
+function msgFases(){
+  const usadas = [...new Set(msgLista().map(m => m.fase || 'Apresentação'))];
+  return [...MSG_FASES.filter(f => usadas.includes(f)), ...usadas.filter(f => !MSG_FASES.includes(f)).sort()];
+}
+
+function msgSaudacao(){ const h = new Date().getHours(); return h < 12 ? 'Bom dia' : (h < 18 ? 'Boa tarde' : 'Boa noite'); }
+function msgCapitalizar(p){ p = String(p || ''); return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : ''; }
+function msgPreencher(texto, lead){
+  lead = lead || {};
+  const completo = String(lead.nome || '').trim().replace(/\s+/g, ' ');
+  const mapa = {
+    nome: msgCapitalizar(completo.split(' ')[0]),
+    nome_completo: completo,
+    meu_nome: msgMeuNome(),
+    indicador: lead.indicador || 'um amigo em comum',
+    cidade: lead.cidade || '',
+    profissao: lead.prof || '',
+    saudacao: msgSaudacao(),
+    video: (msgDados().video || '').trim() || '[link do vídeo: cadastre em Leads › Mensagens Prontas]'
+  };
+  return String(texto || '').replace(/\{(\w+)\}/g, (m, k) => Object.prototype.hasOwnProperty.call(mapa, k) ? mapa[k] : m);
+}
+
+// Sugere o nicho pelo cadastro do lead (profissão, tags, origem)
+function msgNichoSugerido(lead){
+  const t = [lead.prof, lead.segmento, ...(lead.tags || [])].join(' ').toLowerCase();
+  const tem = re => re.test(t) && msgNichos().length;
+  if (tem(/corretor|imobili/)) return 'Corretores';
+  if (tem(/produtor|rural|fazend|agro|sitio|sítio|pecuar/)) return 'Produtores rurais';
+  if (tem(/contab|contador/)) return 'Contabilidade';
+  if (tem(/advog|jurid|juríd|direito/)) return 'Advogados';
+  if (tem(/oficina|mec[aâ]nic|funilar|diesel/)) return 'Oficinas';
+  if (tem(/m[eé]dic|dentist|odonto|cl[ií]nic|consult[oó]rio|fisio|psic|nutri|sa[uú]de|veterin/)) return 'Saúde';
+  if (lead.origem === 'Indicação' && lead.indicador) return 'Indicação';
+  return 'Geral';
+}
+
+// ---------- Janela de envio (aberta pelo botão de WhatsApp) ----------
+let msgEnvio = { leadId: null, nicho: null, sel: null, texto: '' };
+
+function abrirMensagensProntas(leadId){
+  const lead = db.leads.find(l => l.id === leadId);
+  if (!lead) return;
+  msgEnvio = { leadId, nicho: null, sel: null, texto: '' };
+  msgRenderEnvio();
+}
+
+function msgRenderEnvio(){
+  const lead = db.leads.find(l => l.id === msgEnvio.leadId);
+  if (!lead) return;
+  const temWhats = !!buildWhatsAppLink(lead.tel);
+  const sugerido = msgNichoSugerido(lead);
+  const cab = `<div class="between"><h2 style="margin:0">📲 WhatsApp · ${esc(lead.nome || '')}</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    ${temWhats ? '' : '<div class="msg-aviso">⚠️ Este lead não tem um WhatsApp válido cadastrado. Você ainda pode copiar a mensagem.</div>'}`;
+
+  // Passo 1: escolher o nicho
+  if (!msgEnvio.nicho) {
+    const nichos = msgNichos();
+    openModal(`${cab}
+      <p class="muted" style="font-size:13px;margin:8px 0 10px">Para qual nicho é a mensagem?</p>
+      <div class="msg-nichos">${nichos.map(n => `<button class="msg-nicho ${n === sugerido ? 'sug' : ''}" data-n="${esc(n)}" onclick="msgEnvio.nicho=this.dataset.n;msgRenderEnvio()"><span>${msgIconeNicho(n)}</span>${esc(n)}${n === sugerido ? '<small>sugerido</small>' : ''}</button>`).join('')}</div>
+      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:14px">
+        ${temWhats ? `<a class="btn" href="${buildWhatsAppLink(lead.tel)}" target="_blank" rel="noopener" style="text-decoration:none;color:inherit" onclick="closeModal()">Abrir conversa sem mensagem</a>` : ''}
+        <button class="btn" onclick="closeModal();msgIrParaAba()">✏️ Editar mensagens</button>
+      </div>`);
+    return;
+  }
+
+  // Passo 2: escolher a mensagem pela fase
+  const doNicho = msgLista().filter(m => (m.nicho || 'Geral') === msgEnvio.nicho);
+  const blocos = msgFases().map(f => {
+    const itens = doNicho.filter(m => (m.fase || 'Apresentação') === f);
+    if (!itens.length) return '';
+    return `<div class="msg-fase"><div class="msg-fase-tit">${MSG_FASE_ICONE[f] || '💬'} ${esc(f)}</div>
+      ${itens.map(m => `<button class="msg-opcao ${msgEnvio.sel === m.id ? 'on' : ''}" onclick="msgEscolher('${m.id}')"><b>${esc(m.titulo || 'Sem título')}</b><span>${esc(msgPreencher(m.texto, lead))}</span></button>`).join('')}
+    </div>`;
+  }).join('') || '<p class="muted">Nenhuma mensagem neste nicho ainda. Crie em ✏️ Editar mensagens.</p>';
+
+  let lembrar = true; try { lembrar = localStorage.getItem('crm_msgs_registrar') !== '0'; } catch (e) {}
+  openModal(`${cab}
+    <div class="row" style="gap:8px;margin:8px 0 10px;align-items:center">
+      <button class="btn" onclick="msgEnvio.nicho=null;msgEnvio.sel=null;msgEnvio.texto='';msgRenderEnvio()">← Nichos</button>
+      <b>${msgIconeNicho(msgEnvio.nicho)} ${esc(msgEnvio.nicho)}</b>
+    </div>
+    <div class="msg-fases">${blocos}</div>
+    <div class="field" style="margin-top:12px"><label>Mensagem que vai ser enviada (pode ajustar)</label>
+      <textarea id="msgTextoEnvio" style="min-height:140px" oninput="msgEnvio.texto=this.value" placeholder="Escolha uma mensagem acima">${esc(msgEnvio.texto)}</textarea></div>
+    <label style="display:flex;gap:6px;align-items:center;justify-content:flex-start;font-size:12.5px;margin:4px 0 10px;cursor:pointer"><input type="checkbox" id="msgRegistrarNota" style="width:auto;margin:0" ${lembrar ? 'checked' : ''} onchange="try{localStorage.setItem('crm_msgs_registrar',this.checked?'1':'0')}catch(e){}"> Registrar o envio nas Notas do lead</label>
+    <div class="row" style="gap:8px;flex-wrap:wrap">
+      <button class="btn green" onclick="msgEnviarWhats()" ${temWhats ? '' : 'disabled'}>📲 Enviar no WhatsApp</button>
+      <button class="btn" onclick="msgCopiarEnvio(this)">📋 Copiar</button>
+    </div>`);
+}
+
+function msgEscolher(id){
+  const lead = db.leads.find(l => l.id === msgEnvio.leadId);
+  const m = msgLista().find(x => x.id === id);
+  if (!lead || !m) return;
+  msgEnvio.sel = id;
+  msgEnvio.texto = msgPreencher(m.texto, lead);
+  msgRenderEnvio();
+  setTimeout(() => { const t = document.getElementById('msgTextoEnvio'); if (t) t.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 30);
+}
+
+function msgEnviarWhats(){
+  const lead = db.leads.find(l => l.id === msgEnvio.leadId);
+  if (!lead) return;
+  const texto = (document.getElementById('msgTextoEnvio')?.value || '').trim();
+  if (!texto) { showToast('⚠️ Escolha ou escreva uma mensagem.'); return; }
+  const link = buildWhatsAppLink(lead.tel, texto);
+  if (!link) { showToast('⚠️ Este lead não tem WhatsApp válido. Use Copiar.'); return; }
+  window.open(link, '_blank');   // no próprio clique, para o navegador não bloquear
+  if (document.getElementById('msgRegistrarNota')?.checked) msgRegistrarEnvio(lead);
+  closeModal();
+}
+
+function msgRegistrarEnvio(lead){
+  const m = msgLista().find(x => x.id === msgEnvio.sel);
+  const desc = m ? `${msgEnvio.nicho} · ${m.fase} · ${m.titulo}` : 'mensagem personalizada';
+  if (!lead.comments) lead.comments = [];
+  lead.comments.unshift({
+    id: 'c_' + Date.now(),
+    author: currentUser ? (currentUser.nome || currentUser.email) : '',
+    date: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
+    text: `📲 WhatsApp enviado: ${desc}`,
+    origem: 'manual'
+  });
+  save();
+}
+
+function msgCopiarEnvio(btn){
+  const t = (document.getElementById('msgTextoEnvio')?.value || '').trim();
+  if (!t) { showToast('⚠️ Escolha ou escreva uma mensagem.'); return; }
+  const ok = () => { btn.textContent = 'Copiado ✓'; setTimeout(() => { btn.textContent = '📋 Copiar'; }, 1800); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok, () => prompt('Copie o texto:', t));
+  else prompt('Copie o texto:', t);
+}
+
+function msgIrParaAba(){
+  irParaAbaCmd('leads');
+  setTimeout(() => mostrarSubAbaLeads('mensagens'), 80);
+}
+
+// ---------- Sub-aba Leads › 💬 Mensagens Prontas ----------
+function renderMensagensTab(){
+  const grade = document.getElementById('msgGrade');
+  if (!grade) return;
+  const d = msgDados();
+  const nomeEl = document.getElementById('msgMeuNomeInput');
+  if (nomeEl && document.activeElement !== nomeEl) { nomeEl.value = d.meuNome || ''; nomeEl.placeholder = (currentUser && currentUser.nome) || 'Seu nome'; }
+  const vidEl = document.getElementById('msgVideoInput');
+  if (vidEl && document.activeElement !== vidEl) vidEl.value = d.video || '';
+
+  const selN = document.getElementById('msgFiltroNicho');
+  const atualN = selN ? selN.value : 'all';
+  if (selN) { selN.innerHTML = `<option value="all">Todos os nichos</option>` + msgNichos().map(n => `<option value="${esc(n)}">${msgIconeNicho(n)} ${esc(n)}</option>`).join(''); selN.value = msgNichos().includes(atualN) ? atualN : 'all'; }
+  const selF = document.getElementById('msgFiltroFase');
+  const atualF = selF ? selF.value : 'all';
+  if (selF) { selF.innerHTML = `<option value="all">Todas as fases</option>` + msgFases().map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join(''); selF.value = msgFases().includes(atualF) ? atualF : 'all'; }
+
+  const fN = selN ? selN.value : 'all', fF = selF ? selF.value : 'all';
+  const q = (document.getElementById('msgBusca')?.value || '').toLowerCase();
+  const itens = d.lista.filter(m => (fN === 'all' || (m.nicho || 'Geral') === fN) && (fF === 'all' || (m.fase || 'Apresentação') === fF) && (!q || [m.nicho, m.fase, m.titulo, m.texto].join(' ').toLowerCase().includes(q)));
+  const exemplo = { nome: 'João Silva', indicador: 'Maria', cidade: 'Piraju', prof: '' };
+  grade.innerHTML = itens.map(m => `<div class="msg-card">
+      <div class="between" style="gap:6px;align-items:flex-start"><b>${esc(m.titulo || 'Sem título')}</b><span class="tc-tag">${msgIconeNicho(m.nicho)} ${esc(m.nicho || 'Geral')}</span></div>
+      <small class="muted">${MSG_FASE_ICONE[m.fase] || '💬'} ${esc(m.fase || '')}</small>
+      <div class="msg-card-txt">${esc(msgPreencher(m.texto, exemplo))}</div>
+      <div class="row" style="gap:4px;margin-top:8px"><button class="tc-btn" onclick="msgEditar('${m.id}')">Editar</button><button class="tc-btn" onclick="msgDuplicar('${m.id}')">Duplicar</button><button class="tc-btn perigo" onclick="msgExcluir('${m.id}')">Excluir</button></div>
+    </div>`).join('') || '<div class="empty-state"><span class="emoji">💬</span>Nenhuma mensagem com esses filtros.</div>';
+  const cont = document.getElementById('msgContador');
+  if (cont) cont.textContent = `${itens.length} de ${d.lista.length} mensagens`;
+}
+
+function msgDefinirCampo(campo, valor){
+  msgDados()[campo] = String(valor || '').trim();
+  msgSalvar();
+  showToast('✅ Salvo.');
+}
+
+function msgEditar(id){
+  const m = id ? msgLista().find(x => x.id === id) : null;
+  const fN = document.getElementById('msgFiltroNicho')?.value;
+  const fF = document.getElementById('msgFiltroFase')?.value;
+  const nicho = m ? m.nicho : (fN && fN !== 'all' ? fN : 'Geral');
+  const fase = m ? m.fase : (fF && fF !== 'all' ? fF : 'Apresentação');
+  const vars = ['nome', 'nome_completo', 'meu_nome', 'indicador', 'cidade', 'profissao', 'saudacao', 'video'];
+  openModal(`<div class="between"><h2 style="margin:0">${m ? '✏️ Editar mensagem' : '➕ Nova mensagem'}</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <div class="grid-2" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+      <div class="field"><label>Nicho</label><input id="msgEdNicho" list="msgListaNichos" value="${esc(nicho)}" placeholder="Ex: Corretores"><datalist id="msgListaNichos">${msgNichos().map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
+      <div class="field"><label>Fase</label><input id="msgEdFase" list="msgListaFases" value="${esc(fase)}" placeholder="Ex: Apresentação"><datalist id="msgListaFases">${[...new Set([...MSG_FASES, ...msgFases()])].map(f => `<option value="${esc(f)}">`).join('')}</datalist></div>
+    </div>
+    <small class="muted">Para criar um nicho ou uma fase nova, é só digitar o nome.</small>
+    <div class="field" style="margin-top:8px"><label>Título</label><input id="msgEdTitulo" value="${esc(m ? m.titulo : '')}" placeholder="Ex: Primeiro contato"></div>
+    <div class="field"><label>Texto</label><textarea id="msgEdTexto" style="min-height:170px" oninput="msgAtualizarPrevia()">${esc(m ? m.texto : '')}</textarea></div>
+    <div class="msg-vars">Inserir: ${vars.map(v => `<button type="button" class="tc-btn" onclick="msgInserirVar('${v}')">{${v}}</button>`).join('')}</div>
+    <small class="muted">Use *texto* para negrito no WhatsApp.</small>
+    <div class="field" style="margin-top:8px"><label>Prévia (exemplo com João Silva)</label><div id="msgEdPrevia" class="msg-card-txt" style="max-height:none"></div></div>
+    <div class="row" style="gap:8px;margin-top:10px"><button class="btn primary" onclick="msgSalvarEdicao('${m ? m.id : ''}')">💾 Salvar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>`);
+  msgAtualizarPrevia();
+}
+function msgAtualizarPrevia(){
+  const el = document.getElementById('msgEdPrevia');
+  if (el) el.textContent = msgPreencher(document.getElementById('msgEdTexto')?.value || '', { nome: 'João Silva', indicador: 'Maria', cidade: 'Piraju', prof: '' });
+}
+function msgInserirVar(v){
+  const t = document.getElementById('msgEdTexto');
+  if (!t) return;
+  const ini = t.selectionStart ?? t.value.length, fim = t.selectionEnd ?? t.value.length;
+  t.value = t.value.slice(0, ini) + '{' + v + '}' + t.value.slice(fim);
+  t.focus(); t.selectionStart = t.selectionEnd = ini + v.length + 2;
+  msgAtualizarPrevia();
+}
+function msgSalvarEdicao(id){
+  const nicho = (document.getElementById('msgEdNicho')?.value || '').trim() || 'Geral';
+  const fase = (document.getElementById('msgEdFase')?.value || '').trim() || 'Apresentação';
+  const titulo = (document.getElementById('msgEdTitulo')?.value || '').trim();
+  const texto = (document.getElementById('msgEdTexto')?.value || '').trim();
+  if (!titulo || !texto) { showToast('⚠️ Preencha o título e o texto.'); return; }
+  const lista = msgLista();
+  const m = id ? lista.find(x => x.id === id) : null;
+  if (m) Object.assign(m, { nicho, fase, titulo, texto });
+  else lista.push({ id: msgNovoId(), nicho, fase, titulo, texto });
+  msgSalvar();
+  closeModal();
+  renderMensagensTab();
+  showToast('✅ Mensagem salva.');
+}
+function msgDuplicar(id){
+  const lista = msgLista();
+  const i = lista.findIndex(x => x.id === id);
+  if (i < 0) return;
+  lista.splice(i + 1, 0, Object.assign({}, lista[i], { id: msgNovoId(), titulo: lista[i].titulo + ' (cópia)' }));
+  msgSalvar();
+  renderMensagensTab();
+}
+function msgExcluir(id){
+  const lista = msgLista();
+  const m = lista.find(x => x.id === id);
+  if (!m || !confirm(`Excluir a mensagem "${m.titulo}"?`)) return;
+  msgDados().lista = lista.filter(x => x.id !== id);
+  msgSalvar();
+  renderMensagensTab();
+}
+function msgRestaurarPadroes(){
+  if (!confirm('Trazer de volta as mensagens padrão que estiverem faltando? As suas mensagens e as que você editou continuam como estão.')) return;
+  const lista = msgLista();
+  const chave = m => [m.nicho, m.fase, m.titulo].join('|').toLowerCase();
+  const existentes = new Set(lista.map(chave));
+  let n = 0;
+  msgPadroes().forEach(p => { if (!existentes.has(chave(p))) { lista.push(Object.assign({ id: msgNovoId() }, p)); n++; } });
+  msgSalvar();
+  renderMensagensTab();
+  showToast(n ? `✅ ${n} mensagem(ns) restaurada(s).` : 'Todas as mensagens padrão já estão na lista.');
+}
+
 function limparFiltrosLeads(){
   const ids = ['leadSearch','leadFilterUser','leadFilterScore','leadFilterStage','leadFilterOrigem','leadFilterIndicador'];
   ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = el.tagName === 'SELECT' ? 'all' : ''; });
@@ -10067,23 +10470,17 @@ function limparFiltrosLeads(){
 // ============================================================
 
 function mostrarSubAbaLeads(qual){
-  const lista = document.getElementById('leadsListaSubaba');
-  const indicadores = document.getElementById('leadsIndicadoresSubaba');
-  const btnLista = document.getElementById('subTabLeadsBtn');
-  const btnIndicadores = document.getElementById('subTabIndicadoresBtn');
-  if (!lista || !indicadores) return;
-  if (qual === 'indicadores'){
-    lista.style.display = 'none';
-    indicadores.style.display = 'block';
-    btnLista?.classList.remove('primary');
-    btnIndicadores?.classList.add('primary');
-    renderIndicadoresTab();
-  } else {
-    lista.style.display = 'block';
-    indicadores.style.display = 'none';
-    btnIndicadores?.classList.remove('primary');
-    btnLista?.classList.add('primary');
-  }
+  const abas = { lista: ['leadsListaSubaba', 'subTabLeadsBtn'], indicadores: ['leadsIndicadoresSubaba', 'subTabIndicadoresBtn'], mensagens: ['leadsMensagensSubaba', 'subTabMensagensBtn'] };
+  if (!abas[qual]) qual = 'lista';
+  if (!document.getElementById('leadsListaSubaba')) return;
+  Object.keys(abas).forEach(k => {
+    const painel = document.getElementById(abas[k][0]);
+    const btn = document.getElementById(abas[k][1]);
+    if (painel) painel.style.display = k === qual ? 'block' : 'none';
+    btn?.classList.toggle('primary', k === qual);
+  });
+  if (qual === 'indicadores') renderIndicadoresTab();
+  if (qual === 'mensagens') renderMensagensTab();
 }
 
 function adicionarIndicador(){
@@ -11544,7 +11941,7 @@ function openLeadCommentsModal(leadId, opts){
   const telLink = buildTelLink(l.tel);
   const acoesRapidas = `
     <div class="row" style="margin:10px 0 4px;gap:8px;flex-wrap:wrap">
-      ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none;font-size:12px;padding:6px 12px">WhatsApp</a>` : ''}
+      ${l.tel ? `<button class="btn green" style="font-size:12px;padding:6px 12px" onclick="abrirMensagensProntas('${l.id}')">📲 WhatsApp</button>` : ''}
       ${telLink ? `<a class="btn" href="${telLink}" style="text-decoration:none;font-size:12px;padding:6px 12px;color:inherit">Ligar</a>` : ''}
       <button class="btn" style="font-size:12px;padding:6px 12px" onclick="openMeeting('${esc(l.nome)}')">Agendar reunião</button>
       <button class="btn" style="font-size:12px;padding:6px 12px" onclick="exportarMuralPDF('${l.id}')">Exportar PDF</button>
@@ -12878,7 +13275,7 @@ function openFollowActionModal(item, opts){
       <div class="row ag-acoes" style="gap:8px;flex-wrap:wrap;margin-top:10px">
         ${leadObj && comentario ? `<button class="btn blue" onclick="reabrirMural('${leadObj.id}', {replyTo:'${comentario.id}'})">↩️ Responder e marcar retorno</button>` : ''}
         ${!isDone ? `<button class="btn green" onclick="closeMeetingAction('${item.id}')">✅ Encerrar</button>` : `<button class="btn" onclick="reopenMeetingAction('${item.id}')">↩️ Reabrir</button>`}
-        ${waLink ? `<a class="btn green" href="${waLink}" target="_blank" rel="noopener" style="text-decoration:none">📲 WhatsApp</a>` : ''}
+        ${leadObj && leadObj.tel ? `<button class="btn green" onclick="abrirMensagensProntas('${leadObj.id}')">📲 WhatsApp</button>` : ''}
         ${!isDone && leadObj && item.reuniao === 'presencial' ? `<button class="btn" onclick="rrAbrirConvite('${item.id}', window.open('', '_blank'))" title="Manda o convite da reunião presencial pelo WhatsApp">📍 Enviar convite</button>` : ''}
         ${!isDone && leadObj && item.reuniao !== 'presencial' ? `<button class="btn" onclick="followEnviarMeet('${item.id}', window.open('', '_blank'))" title="${item.meetUrl ? 'Manda o convite com o link do Meet pelo WhatsApp' : 'Cria o link do Google Meet e manda o convite pelo WhatsApp'}">📹 ${item.meetUrl ? 'Enviar link do Meet' : 'Criar Meet e enviar'}</button>` : ''}
         ${item.meetUrl ? `<button class="btn blue" onclick="window.open('${esc(item.meetUrl)}','_blank')">🎥 Entrar no Meet</button>` : ''}
@@ -12941,7 +13338,7 @@ function openEventActionModal(id, type, opts){
         </div>`}
         <div class="row ag-acoes">
           ${item.modo === 'presencial' ? (item.local ? `<a class="btn blue" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.local)}" target="_blank" rel="noopener" style="text-decoration:none">🗺️ Ver no mapa</a>` : '') : meetUrl ? `<button class="btn blue" onclick="window.open('${meetUrl}','_blank')">📹 Entrar</button>` : `<button class="btn purple" onclick="generateGoogleMeetForExistingMeeting('${item.id}')">✨ Gerar Meet</button>`}
-          <button class="btn green" onclick="rpEnviarConvite('${item.id}')">📲 WhatsApp</button>
+          <button class="btn green" onclick="rpEnviarConvite('${item.id}')">📲 Convite</button>${leadObj && leadObj.tel ? `<button class="btn green" onclick="abrirMensagensProntas('${leadObj.id}')">💬 Mensagens</button>` : ''}
           <a href="${gCalUrl}" target="_blank" class="btn purple" style="text-decoration:none">📅 Google Agenda</a>
         </div>
       </div>
@@ -21638,6 +22035,8 @@ const ASSIST_BASE = [
   r: 'Toque no ícone **📲** ao lado do telefone do cliente (na lista de leads, na agenda ou no cadastro). Abre a conversa com ele no WhatsApp.' },
 { id: 'lead_notas', t: 'Como anoto o que conversei com o cliente (follow-up)?', k: 'anotacao, follow up, comentario, mural de negociacao, notas do cliente, historico do cliente, retorno',
   r: '1. Em **Leads & Carteira**, toque em **Notas** na linha do cliente.\n2. Escreva a anotação no **Mural de Negociação**.\n3. Se quiser lembrar de voltar a falar, escolha **data e hora**: o retorno aparece na sua **Agenda**.\n4. Escolha a situação (em aberto, encerrado ou só anotação) e toque em **Publicar**.', aba: 'leads' },
+{ id: 'mensagensProntas', t: 'Como mandar mensagem pronta no WhatsApp?', k: 'mensagens prontas, whatsapp, mensagem pronta, script, nicho, fase, apresentacao, fechamento, video explicativo, modelo de mensagem',
+  r: 'Toque no **📲 WhatsApp** do lead (na lista de Leads, nas Notas ou na Agenda). Escolha o **nicho**, depois a mensagem pela **fase** (Apresentação, O que eu faço, Vídeo explicativo, Follow-up, Fechamento, Pós-venda). O nome do cliente e o seu já vão preenchidos; ajuste se quiser e toque em **Enviar no WhatsApp**. Para editar, criar mensagens ou colocar o link do seu vídeo: **Leads & Carteira** › **💬 Mensagens Prontas**.', aba: 'leads' },
 { id: 'indicadores', t: 'O que é "Meus Indicadores"?', k: 'indicadores, quem indicou, indicacao, parceiros que indicam, cadastrar indicador',
   r: 'São as pessoas que **indicam clientes** para você. Em **Leads & Carteira** › **🤝 Meus Indicadores** você cadastra cada uma. Depois, ao cadastrar um lead com origem "Indicação", escolha **Quem indicou?**. Assim você vê quanto cada indicador trouxe.', aba: 'leads' },
 { id: 'importar_planilha', t: 'Como importo uma planilha de clientes?', k: 'subir lista, subir contatos, importar planilha, importar excel, subir lista de clientes, importar csv, carregar contatos',
