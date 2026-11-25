@@ -1757,6 +1757,7 @@ if (localStorage.getItem('crm_res_monitor_minimizado') !== 'false') {
      <div class="field" style="min-width:200px;flex:1"><label>Seu nome nas mensagens</label><input id="msgMeuNomeInput" onchange="msgDefinirCampo('meuNome', this.value)"></div>
      <div class="field" style="min-width:260px;flex:2"><label>Link do seu vídeo explicativo (YouTube, Drive...)</label><input id="msgVideoInput" placeholder="https://..." onchange="msgDefinirCampo('video', this.value)"></div>
    </div>
+   <div class="field" style="margin-bottom:12px"><label>Vídeo explicativo enviado como arquivo (fica só neste aparelho)</label><div id="msgVideoBox"></div><small class="muted">No celular, a mensagem de vídeo ganha o botão "Enviar com o vídeo". Carregue o vídeo em cada aparelho que for usar. Até 100 MB.</small></div>
    <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:6px">
      <select id="msgFiltroNicho" onchange="renderMensagensTab()" style="max-width:220px"></select>
      <select id="msgFiltroFase" onchange="renderMensagensTab()" style="max-width:220px"></select>
@@ -10216,7 +10217,7 @@ function msgPreencher(texto, lead){
     cidade: lead.cidade || '',
     profissao: lead.prof || '',
     saudacao: msgSaudacao(),
-    video: (msgDados().video || '').trim() || '[link do vídeo: cadastre em Leads › Mensagens Prontas]'
+    video: (msgDados().video || '').trim() || (msgVideoCache ? '(vídeo em anexo)' : '[link do vídeo: cadastre em Leads › Mensagens Prontas]')
   };
   return String(texto || '').replace(/\{(\w+)\}/g, (m, k) => Object.prototype.hasOwnProperty.call(mapa, k) ? mapa[k] : m);
 }
@@ -10243,6 +10244,7 @@ function abrirMensagensProntas(leadId){
   if (!lead) return;
   msgEnvio = { leadId, nicho: null, sel: null, texto: '' };
   msgRenderEnvio();
+  if (!msgVideoCarregado) msgCarregarVideo().then(() => { if (msgEnvio.leadId === leadId && msgEnvio.nicho) msgRenderEnvio(); });
 }
 
 function msgRenderEnvio(){
@@ -10277,6 +10279,10 @@ function msgRenderEnvio(){
   }).join('') || '<p class="muted">Nenhuma mensagem neste nicho ainda. Crie em ✏️ Editar mensagens.</p>';
 
   let lembrar = true; try { lembrar = localStorage.getItem('crm_msgs_registrar') !== '0'; } catch (e) {}
+  const selM = msgLista().find(x => x.id === msgEnvio.sel);
+  const ehVideo = !!selM && (/\{video\}/.test(selM.texto || '') || selM.fase === 'Vídeo explicativo');
+  const btnVideo = ehVideo && msgVideoCache ? `<button class="btn green" onclick="msgEnviarComVideo(this)">🎬 Enviar com o vídeo</button>` : '';
+  const dicaVideo = ehVideo && !msgVideoCache && !(msgDados().video || '').trim() ? '<div class="msg-aviso">🎬 Carregue seu vídeo (ou cole o link) em Leads › 💬 Mensagens Prontas para ele ir junto.</div>' : (ehVideo && msgVideoCache ? '<small class="muted" style="display:block;margin-bottom:8px">🎬 No celular, "Enviar com o vídeo" abre o compartilhar: escolha o WhatsApp e o contato. O texto também fica copiado, caso precise colar.</small>' : '');
   openModal(`${cab}
     <div class="row" style="gap:8px;margin:8px 0 10px;align-items:center">
       <button class="btn" onclick="msgEnvio.nicho=null;msgEnvio.sel=null;msgEnvio.texto='';msgRenderEnvio()">← Nichos</button>
@@ -10285,9 +10291,9 @@ function msgRenderEnvio(){
     <div class="msg-fases">${blocos}</div>
     <div class="field" style="margin-top:12px"><label>Mensagem que vai ser enviada (pode ajustar)</label>
       <textarea id="msgTextoEnvio" style="min-height:140px" oninput="msgEnvio.texto=this.value" placeholder="Escolha uma mensagem acima">${esc(msgEnvio.texto)}</textarea></div>
-    <label style="display:flex;gap:6px;align-items:center;justify-content:flex-start;font-size:12.5px;margin:4px 0 10px;cursor:pointer"><input type="checkbox" id="msgRegistrarNota" style="width:auto;margin:0" ${lembrar ? 'checked' : ''} onchange="try{localStorage.setItem('crm_msgs_registrar',this.checked?'1':'0')}catch(e){}"> Registrar o envio nas Notas do lead</label>
+    ${dicaVideo}<label style="display:flex;gap:6px;align-items:center;justify-content:flex-start;font-size:12.5px;margin:4px 0 10px;cursor:pointer"><input type="checkbox" id="msgRegistrarNota" style="width:auto;margin:0" ${lembrar ? 'checked' : ''} onchange="try{localStorage.setItem('crm_msgs_registrar',this.checked?'1':'0')}catch(e){}"> Registrar o envio nas Notas do lead</label>
     <div class="row" style="gap:8px;flex-wrap:wrap">
-      <button class="btn green" onclick="msgEnviarWhats()" ${temWhats ? '' : 'disabled'}>📲 Enviar no WhatsApp</button>
+      ${btnVideo}<button class="btn green" onclick="msgEnviarWhats()" ${temWhats ? '' : 'disabled'}>📲 ${btnVideo ? 'Enviar só o texto' : 'Enviar no WhatsApp'}</button>
       <button class="btn" onclick="msgCopiarEnvio(this)">📋 Copiar</button>
     </div>`);
 }
@@ -10314,7 +10320,7 @@ function msgEnviarWhats(){
   closeModal();
 }
 
-function msgRegistrarEnvio(lead){
+function msgRegistrarEnvio(lead, comVideo){
   const m = msgLista().find(x => x.id === msgEnvio.sel);
   const desc = m ? `${msgEnvio.nicho} · ${m.fase} · ${m.titulo}` : 'mensagem personalizada';
   if (!lead.comments) lead.comments = [];
@@ -10322,7 +10328,7 @@ function msgRegistrarEnvio(lead){
     id: 'c_' + Date.now(),
     author: currentUser ? (currentUser.nome || currentUser.email) : '',
     date: new Date().toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }),
-    text: `📲 WhatsApp enviado: ${desc}`,
+    text: `📲 WhatsApp enviado: ${desc}${comVideo ? ' + vídeo' : ''}`,
     origem: 'manual'
   });
   save();
@@ -10358,6 +10364,7 @@ function renderMensagensTab(){
   const atualF = selF ? selF.value : 'all';
   if (selF) { selF.innerHTML = `<option value="all">Todas as fases</option>` + msgFases().map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join(''); selF.value = msgFases().includes(atualF) ? atualF : 'all'; }
 
+  msgRenderVideoBox();
   const fN = selN ? selN.value : 'all', fF = selF ? selF.value : 'all';
   const q = (document.getElementById('msgBusca')?.value || '').toLowerCase();
   const itens = d.lista.filter(m => (fN === 'all' || (m.nicho || 'Geral') === fN) && (fF === 'all' || (m.fase || 'Apresentação') === fF) && (!q || [m.nicho, m.fase, m.titulo, m.texto].join(' ').toLowerCase().includes(q)));
@@ -10452,6 +10459,82 @@ function msgRestaurarPadroes(){
   msgSalvar();
   renderMensagensTab();
   showToast(n ? `✅ ${n} mensagem(ns) restaurada(s).` : 'Todas as mensagens padrão já estão na lista.');
+}
+
+// ---------- Vídeo explicativo guardado no aparelho (enviado como arquivo) ----------
+// O vídeo fica só neste aparelho (IndexedDB), não vai para a nuvem nem para o
+// backup, para não pesar o banco. No celular, o botão "Enviar com o vídeo"
+// abre o compartilhar do sistema com o vídeo + o texto; aí é só escolher o
+// WhatsApp e o contato. No computador o navegador geralmente não deixa
+// compartilhar arquivo, então fica o envio pelo link.
+let msgVideoCache = null;        // File do vídeo, carregado antes do clique
+let msgVideoCarregado = false;
+function msgVideoChave(){ return `msg_video_${EQUIPE_ID}_${msgUid()}`; }
+async function msgCarregarVideo(){
+  try {
+    const v = await idbGetArquivo(msgVideoChave());
+    msgVideoCache = (v && v.blob) ? new File([v.blob], v.nome || 'video.mp4', { type: v.tipo || v.blob.type || 'video/mp4' }) : null;
+  } catch (e) { msgVideoCache = null; }
+  msgVideoCarregado = true;
+  return msgVideoCache;
+}
+function msgPodeCompartilharVideo(){
+  try { return !!(msgVideoCache && navigator.canShare && navigator.canShare({ files: [msgVideoCache] })); } catch (e) { return false; }
+}
+function msgTamanho(b){ return b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+
+async function msgEscolherVideo(input){
+  const f = input.files && input.files[0];
+  input.value = '';
+  if (!f) return;
+  if (!/^video\//.test(f.type || '') && !/\.(mp4|mov|3gp|webm|m4v)$/i.test(f.name)) { showToast('⚠️ Escolha um arquivo de vídeo.'); return; }
+  if (f.size > 100 * 1048576) { showToast('⚠️ Vídeo muito grande (máx. 100 MB). Diminua a qualidade ou use o link.'); return; }
+  const ok = await idbSetArquivo(msgVideoChave(), { blob: f, nome: f.name, tipo: f.type || 'video/mp4', tamanho: f.size, quando: new Date().toISOString() });
+  if (!ok) { showToast('⚠️ Não consegui guardar o vídeo neste aparelho.'); return; }
+  await msgCarregarVideo();
+  renderMensagensTab();
+  showToast('✅ Vídeo guardado neste aparelho.');
+}
+async function msgRemoverVideo(){
+  if (!confirm('Remover o vídeo guardado neste aparelho?')) return;
+  await idbDeleteArquivo(msgVideoChave());
+  msgVideoCache = null;
+  renderMensagensTab();
+}
+function msgVerVideo(){
+  if (!msgVideoCache) return;
+  const url = URL.createObjectURL(msgVideoCache);
+  openModal(`<div class="between"><h2 style="margin:0">🎬 Seu vídeo</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <video src="${url}" controls playsinline style="width:100%;max-height:70vh;margin-top:10px;border-radius:10px;background:#000"></video>`);
+}
+function msgRenderVideoBox(){
+  const box = document.getElementById('msgVideoBox');
+  if (!box) return;
+  if (!msgVideoCarregado) { box.innerHTML = '<small class="muted">Carregando…</small>'; msgCarregarVideo().then(msgRenderVideoBox); return; }
+  box.innerHTML = msgVideoCache
+    ? `<div class="row" style="gap:8px;align-items:center;flex-wrap:wrap"><span>🎬 <b>${esc(msgVideoCache.name)}</b> <small class="muted">${msgTamanho(msgVideoCache.size)}</small></span>
+        <button class="tc-btn" onclick="msgVerVideo()">Assistir</button>
+        <label class="tc-btn" style="cursor:pointer">Trocar<input type="file" accept="video/*" style="display:none" onchange="msgEscolherVideo(this)"></label>
+        <button class="tc-btn perigo" onclick="msgRemoverVideo()">Remover</button></div>`
+    : `<label class="btn" style="cursor:pointer;display:inline-block">📤 Carregar vídeo deste aparelho<input type="file" accept="video/*" style="display:none" onchange="msgEscolherVideo(this)"></label>`;
+}
+
+function msgEnviarComVideo(btn){
+  const lead = db.leads.find(l => l.id === msgEnvio.leadId);
+  const texto = (document.getElementById('msgTextoEnvio')?.value || '').trim();
+  if (!lead || !msgVideoCache) return;
+  if (!msgPodeCompartilharVideo()) { showToast('⚠️ Este aparelho não deixa enviar arquivo direto. Faça pelo celular ou use o link do vídeo.'); return; }
+  // copia o texto também: se o WhatsApp não puxar a legenda, é só colar
+  try { if (texto && navigator.clipboard) navigator.clipboard.writeText(texto).catch(() => {}); } catch (e) {}
+  const dados = { files: [msgVideoCache] };
+  if (texto) dados.text = texto;
+  navigator.share(dados).then(() => {
+    if (document.getElementById('msgRegistrarNota')?.checked) msgRegistrarEnvio(lead, true);
+    closeModal();
+  }).catch(err => {
+    if (err && err.name === 'AbortError') return;   // cancelou no compartilhar
+    showToast('⚠️ Não deu para compartilhar o vídeo: ' + (err && err.message ? err.message : 'erro'));
+  });
 }
 
 function limparFiltrosLeads(){
@@ -22036,7 +22119,7 @@ const ASSIST_BASE = [
 { id: 'lead_notas', t: 'Como anoto o que conversei com o cliente (follow-up)?', k: 'anotacao, follow up, comentario, mural de negociacao, notas do cliente, historico do cliente, retorno',
   r: '1. Em **Leads & Carteira**, toque em **Notas** na linha do cliente.\n2. Escreva a anotação no **Mural de Negociação**.\n3. Se quiser lembrar de voltar a falar, escolha **data e hora**: o retorno aparece na sua **Agenda**.\n4. Escolha a situação (em aberto, encerrado ou só anotação) e toque em **Publicar**.', aba: 'leads' },
 { id: 'mensagensProntas', t: 'Como mandar mensagem pronta no WhatsApp?', k: 'mensagens prontas, whatsapp, mensagem pronta, script, nicho, fase, apresentacao, fechamento, video explicativo, modelo de mensagem',
-  r: 'Toque no **📲 WhatsApp** do lead (na lista de Leads, nas Notas ou na Agenda). Escolha o **nicho**, depois a mensagem pela **fase** (Apresentação, O que eu faço, Vídeo explicativo, Follow-up, Fechamento, Pós-venda). O nome do cliente e o seu já vão preenchidos; ajuste se quiser e toque em **Enviar no WhatsApp**. Para editar, criar mensagens ou colocar o link do seu vídeo: **Leads & Carteira** › **💬 Mensagens Prontas**.', aba: 'leads' },
+  r: 'Toque no **📲 WhatsApp** do lead (na lista de Leads, nas Notas ou na Agenda). Escolha o **nicho**, depois a mensagem pela **fase** (Apresentação, O que eu faço, Vídeo explicativo, Follow-up, Fechamento, Pós-venda). O nome do cliente e o seu já vão preenchidos; ajuste se quiser e toque em **Enviar no WhatsApp**. Para editar, criar mensagens ou colocar o seu vídeo (link ou arquivo guardado no aparelho): **Leads & Carteira** › **💬 Mensagens Prontas**. No celular, a mensagem de vídeo tem o botão **🎬 Enviar com o vídeo**, que manda o arquivo pelo compartilhar do WhatsApp.', aba: 'leads' },
 { id: 'indicadores', t: 'O que é "Meus Indicadores"?', k: 'indicadores, quem indicou, indicacao, parceiros que indicam, cadastrar indicador',
   r: 'São as pessoas que **indicam clientes** para você. Em **Leads & Carteira** › **🤝 Meus Indicadores** você cadastra cada uma. Depois, ao cadastrar um lead com origem "Indicação", escolha **Quem indicou?**. Assim você vê quanto cada indicador trouxe.', aba: 'leads' },
 { id: 'importar_planilha', t: 'Como importo uma planilha de clientes?', k: 'subir lista, subir contatos, importar planilha, importar excel, subir lista de clientes, importar csv, carregar contatos',
