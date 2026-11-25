@@ -10114,61 +10114,40 @@ const MSG_FASE_ICONE = { 'Apresentação':'👋', 'O que eu faço':'💡', 'Víd
 // ficam livres para você editar (não dependem mais desta tabela).
 const MSG_NICHOS_BASE = [
   { n:'Geral', ic:'📣', tr:'', obj:'imóvel, carro ou investimento',
-    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, consultor da Ademicon.\n\nEu ajudo pessoas a conquistar imóvel, veículo ou fazer o patrimônio crescer *sem pagar juros de financiamento*.\n\nPosso te explicar em 15 minutos como funciona? Fica melhor pra você amanhã de manhã ou à tarde?',
-    faco:'Funciona assim, {nome}: em vez de pagar juros no banco, você entra num grupo de consórcio com parcelas planejadas. Todo mês tem assembleia, e você pode ser contemplado por sorteio ou por lance. Quando sai a carta, você compra à vista o imóvel ou o carro que escolher.\n\nResultado: o bem sai bem mais barato do que no financiamento, e o dinheiro fica protegido da inflação até lá.',
-    fecha:'{nome}, pelo que conversamos, a carta que faz sentido pra você já está separada. Pra garantir sua cota neste grupo, só preciso de uma foto do RG/CNH e de um comprovante de endereço. Te mando o link para assinar agora mesmo. Pode ser?' },
+    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, consultor da Ademicon.\n\nEu ajudo pessoas a conquistar imóvel, veículo ou fazer o patrimônio crescer *sem pagar juros de financiamento*.\n\nPosso te explicar em 15 minutos como funciona? Fica melhor pra você amanhã de manhã ou à tarde?' },
   { n:'Indicação', ic:'🙋', tr:'', obj:'imóvel, carro ou investimento',
-    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, da Ademicon. O(a) *{indicador}* me passou seu contato e disse que você é uma pessoa que pensa no futuro.\n\nEu ajudo pessoas a comprar imóvel, carro ou investir *sem pagar juros de financiamento*. Posso te explicar em 15 minutos como funciona? Melhor amanhã de manhã ou à tarde?',
-    faco:'{nome}, o que eu fiz com o(a) {indicador} foi um planejamento pelo consórcio: parcelas que cabem no bolso, sem juros, e a carta de crédito pra comprar à vista quando for contemplado (por sorteio ou lance).\n\nÉ por isso que ele(a) lembrou de você. Quer que eu monte uma simulação no seu perfil?',
-    fecha:'{nome}, a simulação que te mostrei é a que mais combina com o seu objetivo. Pra garantir a cota neste grupo, me manda uma foto do RG/CNH e um comprovante de endereço que eu já te envio o link para assinar. Vamos?' },
+    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, da Ademicon. O(a) *{indicador}* me passou seu contato e disse que você é uma pessoa que pensa no futuro.\n\nEu ajudo pessoas a comprar imóvel, carro ou investir *sem pagar juros de financiamento*. Posso te explicar em 15 minutos como funciona? Melhor amanhã de manhã ou à tarde?' },
   { n:'Indicadores', ic:'🤝', tr:'', obj:'imóvel, carro, reforma ou investimento',
-    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, da Ademicon. Estou montando um grupo de parceiros que me indicam pessoas que querem comprar imóvel, carro ou investir, e você foi uma das primeiras pessoas que eu lembrei.\n\nPosso te explicar em 10 minutos como funciona a parceria?',
-    faco:'{nome}, é simples: você me passa o nome e o telefone de quem tem vontade de comprar imóvel, trocar de carro, reformar ou investir. Eu faço todo o atendimento, com cuidado e sem pressão, e te mantenho informado de cada indicação.\n\nVocê não precisa vender nada, só lembrar de mim quando alguém comentar esses planos.',
-    fecha:'{nome}, vamos começar? Me manda agora os 3 primeiros nomes e telefones que vierem na sua cabeça de quem está pensando em imóvel ou carro. Eu já começo o atendimento hoje e te dou retorno de cada um. 🙏' },
+    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, da Ademicon. Estou montando um grupo de parceiros que me indicam pessoas que querem comprar imóvel, carro ou investir, e você foi uma das primeiras pessoas que eu lembrei.\n\nPosso te explicar em 10 minutos como funciona a parceria?' },
   { n:'Corretores', ic:'🏠', tr:'', obj:'imóvel',
-    apres:'{saudacao}, {nome}! Aqui é o {meu_nome}, consultor da Ademicon aqui da região. Sei que muito cliente de corretor trava no financiamento: banco recusa, juros altos ou entrada que não fecha.\n\nO consórcio pode ser a saída pra esse cliente, e o imóvel volta pra você vender quando a carta sair. Topa um café de 20 minutos pra falarmos de uma parceria?',
-    faco:'{nome}, a parceria funciona assim: o cliente que não aprovou financiamento, ou que quer comprar daqui a 1 ou 2 anos, você me indica. Eu cuido dele no consórcio e, quando a carta for contemplada, ele compra à vista com você.\n\nVocê não perde o cliente e ainda passa a ter compradores com dinheiro na mão. Também trabalho com cartas contempladas, que servem pra fechar negócio mais rápido.',
-    fecha:'{nome}, vamos oficializar a parceria? Me passa os clientes que travaram no financiamento nos últimos meses que eu já entro em contato esta semana, sempre falando em seu nome. Combinado?' },
+    apres:'{saudacao}, {nome}! Aqui é o {meu_nome}, consultor da Ademicon aqui da região. Sei que muito cliente de corretor trava no financiamento: banco recusa, juros altos ou entrada que não fecha.\n\nO consórcio pode ser a saída pra esse cliente, e o imóvel volta pra você vender quando a carta sair. Topa um café de 20 minutos pra falarmos de uma parceria?' },
   { n:'Produtores rurais', ic:'🚜', tr:'', obj:'trator, máquinas, caminhão ou terra',
-    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, da Ademicon. Tenho ajudado produtores da região a comprar trator, máquinas, caminhão e até terra *sem pagar juros*, planejando a compra de acordo com a safra.\n\nPosso passar aí na propriedade ou te ligar 15 minutos pra mostrar como funciona?',
-    faco:'{nome}, o consórcio é um planejamento: você paga parcelas que cabem no fluxo da propriedade e, quando é contemplado (por sorteio ou lance), recebe a carta pra comprar à vista a máquina, o caminhão ou a terra.\n\nDá pra usar o lance pra antecipar a contemplação depois de uma boa safra. É uma forma de crescer sem ficar preso a juros.',
-    fecha:'{nome}, a carta que montamos garante a máquina que você precisa no prazo que você quer. Pra reservar a cota neste grupo, me manda uma foto do RG/CNH e um comprovante de endereço que eu te envio o contrato para assinar. Fechamos?' },
+    apres:'{saudacao}, {nome}! Tudo bem? Aqui é o {meu_nome}, da Ademicon. Tenho ajudado produtores da região a comprar trator, máquinas, caminhão e até terra *sem pagar juros*, planejando a compra de acordo com a safra.\n\nPosso passar aí na propriedade ou te ligar 15 minutos pra mostrar como funciona?' },
   { n:'Contabilidade', ic:'📊', tr:'', obj:'sede própria, frota ou equipamentos',
-    apres:'{saudacao}, {nome}! Aqui é o {meu_nome}, consultor da Ademicon. Muitos clientes de escritório contábil querem comprar sede, veículo ou equipamento e acabam pagando juros altos no banco.\n\nO consórcio é uma alternativa de planejamento que o contador pode indicar com segurança. Posso te apresentar em 20 minutos e conversarmos sobre uma parceria?',
-    faco:'{nome}, para os seus clientes empresas, o consórcio funciona como investimento em patrimônio sem descapitalizar o caixa: parcelas planejadas, sem juros, e a carta de crédito para comprar sede, frota ou equipamentos à vista.\n\nPara o escritório, é mais um serviço de valor para oferecer na consultoria, e eu faço todo o atendimento.',
-    fecha:'{nome}, que tal começarmos com 2 ou 3 clientes que você sabe que têm plano de expansão? Você me apresenta, eu faço a análise e te mantenho informado de tudo. Posso contar com você?' },
+    apres:'{saudacao}, {nome}! Aqui é o {meu_nome}, consultor da Ademicon. Muitos clientes de escritório contábil querem comprar sede, veículo ou equipamento e acabam pagando juros altos no banco.\n\nO consórcio é uma alternativa de planejamento que o contador pode indicar com segurança. Posso te apresentar em 20 minutos e conversarmos sobre uma parceria?' },
   { n:'Advogados', ic:'⚖️', tr:'Dr(a). ', obj:'escritório próprio, carro ou patrimônio',
-    apres:'{saudacao}, Dr(a). {nome}! Aqui é o {meu_nome}, da Ademicon. Tenho ajudado profissionais do Direito a conquistar o escritório próprio, o carro ou montar patrimônio *sem juros de financiamento*.\n\nPosso te mostrar em 15 minutos, no horário que for melhor pra você?',
-    faco:'Dr(a). {nome}, o consórcio é um planejamento patrimonial: parcelas sem juros e, na contemplação (sorteio ou lance), a carta de crédito para comprar à vista o imóvel ou o veículo.\n\nTambém é uma boa ferramenta para clientes seus que recebem valores de partilha, inventário ou indenização e querem transformar o dinheiro em patrimônio.',
-    fecha:'Dr(a). {nome}, a carta que simulamos atende bem o seu objetivo. Para garantir a cota neste grupo, me envie uma foto do RG/CNH e um comprovante de endereço, que te mando o contrato para assinatura digital. Podemos seguir?' },
+    apres:'{saudacao}, Dr(a). {nome}! Aqui é o {meu_nome}, da Ademicon. Tenho ajudado profissionais do Direito a conquistar o escritório próprio, o carro ou montar patrimônio *sem juros de financiamento*.\n\nPosso te mostrar em 15 minutos, no horário que for melhor pra você?' },
   { n:'Oficinas', ic:'🔧', tr:'', obj:'equipamentos, ampliação ou carro de serviço',
-    apres:'{saudacao}, {nome}! Aqui é o {meu_nome}, da Ademicon. Tenho ajudado donos de oficina a comprar equipamento novo, ampliar o barracão ou trocar o carro de serviço *sem pagar juros de financiamento*.\n\nPosso passar aí 15 minutos pra te mostrar como funciona?',
-    faco:'{nome}, funciona assim: você paga parcelas planejadas, sem juros, e quando é contemplado (sorteio ou lance) recebe a carta pra comprar à vista o elevador, o scanner, o barracão ou o veículo.\n\nE tem mais: os clientes que passam aí pensando em trocar de carro ou caminhão, você pode me indicar que eu cuido deles.',
-    fecha:'{nome}, com essa carta você garante o equipamento que vai aumentar o faturamento da oficina. Pra reservar a cota, me manda foto do RG/CNH e um comprovante de endereço que eu te envio o contrato. Vamos fechar?' },
+    apres:'{saudacao}, {nome}! Aqui é o {meu_nome}, da Ademicon. Tenho ajudado donos de oficina a comprar equipamento novo, ampliar o barracão ou trocar o carro de serviço *sem pagar juros de financiamento*.\n\nPosso passar aí 15 minutos pra te mostrar como funciona?' },
   { n:'Saúde', ic:'🩺', tr:'Dr(a). ', obj:'consultório, equipamentos ou imóvel',
-    apres:'{saudacao}, Dr(a). {nome}! Aqui é o {meu_nome}, da Ademicon. Tenho ajudado profissionais da saúde a montar ou ampliar o consultório e trocar equipamentos *sem pagar juros de financiamento*.\n\nPosso te mostrar em 15 minutos, no horário entre atendimentos que for melhor pra você?',
-    faco:'Dr(a). {nome}, o consórcio é um planejamento: parcelas sem juros e, na contemplação (sorteio ou lance), a carta de crédito para comprar à vista a sala, o imóvel ou os equipamentos da clínica.\n\nÉ uma forma de crescer o patrimônio sem comprometer o caixa com juros.',
-    fecha:'Dr(a). {nome}, a carta que simulamos encaixa bem no seu plano. Para garantir a cota neste grupo, me envie uma foto do RG/CNH e um comprovante de endereço, que te mando o contrato para assinatura digital. Podemos seguir?' }
+    apres:'{saudacao}, Dr(a). {nome}! Aqui é o {meu_nome}, da Ademicon. Tenho ajudado profissionais da saúde a montar ou ampliar o consultório e trocar equipamentos *sem pagar juros de financiamento*.\n\nPosso te mostrar em 15 minutos, no horário entre atendimentos que for melhor pra você?' }
 ];
 
 function msgPadroes(){
-  const lista = [];
-  MSG_NICHOS_BASE.forEach(b => {
-    const t = b.tr ? b.tr + '{nome}' : '{nome}';
-    lista.push({ nicho:b.n, fase:'Apresentação', titulo:'Primeiro contato', texto:b.apres });
-    lista.push({ nicho:b.n, fase:'O que eu faço', titulo:'Como funciona', texto:b.faco });
-    lista.push({ nicho:b.n, fase:'Vídeo explicativo', titulo:'Vídeo de como funciona', texto:`${t}, preparei um vídeo curtinho explicando como funciona o consórcio para quem quer ${b.obj}. Leva menos de 3 minutos:\n\n🎬 {video}\n\nDepois me conta o que achou, que eu tiro qualquer dúvida. — {meu_nome}` });
-    lista.push({ nicho:b.n, fase:'Follow-up', titulo:'Retorno após conversa', texto:`Oi, ${t}! Tudo bem? Aqui é o {meu_nome}. Fiquei pensando na nossa conversa e preparei uma simulação certinha pra você. Posso te mandar agora ou prefere que eu te ligue 5 minutinhos?` });
-    lista.push({ nicho:b.n, fase:'Follow-up', titulo:'Sem resposta', texto:`Oi, ${t}! {meu_nome} aqui de novo. Sei que a rotina é corrida, então vou ser rápido: ainda faz sentido conversarmos sobre ${b.obj} sem juros? Se não for o momento, sem problema, é só me avisar. 🙂` });
-    lista.push({ nicho:b.n, fase:'Fechamento', titulo:'Fechar a cota', texto:b.fecha });
-    lista.push({ nicho:b.n, fase:'Pós-venda e indicações', titulo:'Pedir indicações', texto:`${t}, muito obrigado pela confiança! 🙏 Uma ajuda: quem são as pessoas que você conhece que têm vontade de ${b.n === 'Corretores' || b.n === 'Indicadores' ? 'comprar imóvel, carro ou investir' : 'conquistar ' + b.obj}? Pode me mandar o nome e o telefone aqui mesmo. Prometo cuidar delas com o mesmo carinho. — {meu_nome}` });
-  });
-  // Extras gerais
-  lista.push({ nicho:'Geral', fase:'Follow-up', titulo:'Confirmar reunião', texto:'Oi, {nome}! Passando pra confirmar nossa conversa. Está de pé? Qualquer imprevisto me avisa que a gente remarca. Até logo! — {meu_nome}' });
-  lista.push({ nicho:'Geral', fase:'Follow-up', titulo:'Reativar lead frio', texto:'Oi, {nome}! Quanto tempo! Aqui é o {meu_nome}, da Ademicon. Lembrei de você e queria saber: ainda tem aquele plano de comprar imóvel ou carro? Posso te mandar uma simulação atualizada, sem compromisso.' });
-  lista.push({ nicho:'Geral', fase:'Pós-venda e indicações', titulo:'Lembrete de assembleia', texto:'Oi, {nome}! Aqui é o {meu_nome}. A assembleia do seu grupo está chegando. Se quiser conversar sobre estratégia de lance, estou à disposição! 🍀' });
-  lista.push({ nicho:'Geral', fase:'Pós-venda e indicações', titulo:'Feliz aniversário', texto:'Feliz aniversário, {nome}! 🎉 Que Deus abençoe muito o seu novo ano, com saúde, paz e muitas conquistas. Um abraço, {meu_nome}.' });
-  return lista;
+  // Só a mensagem de apresentação (início de conversa) de cada nicho.
+  // As outras fases você cria em Leads › 💬 Mensagens Prontas.
+  return MSG_NICHOS_BASE.map(b => ({ nicho: b.n, fase: 'Apresentação', titulo: 'Primeiro contato', texto: b.apres }));
+}
+
+// Mensagens padrão que existiam antes e foram retiradas (só some quem ainda
+// está com o título padrão; as mensagens que você criou continuam).
+const MSG_RETIRADAS = { 'O que eu faço': ['Como funciona'], 'Vídeo explicativo': ['Vídeo de como funciona'], 'Follow-up': ['Retorno após conversa', 'Sem resposta', 'Confirmar reunião', 'Reativar lead frio'], 'Fechamento': ['Fechar a cota'], 'Pós-venda e indicações': ['Pedir indicações', 'Lembrete de assembleia', 'Feliz aniversário'] };
+function msgLimparAntigas(d){
+  if (!d || d.soApresentacao) return false;
+  const nichos = MSG_NICHOS_BASE.map(b => b.n);
+  d.lista = (d.lista || []).filter(m => !(nichos.includes(m.nicho) && (MSG_RETIRADAS[m.fase] || []).includes(m.titulo)));
+  d.soApresentacao = true;
+  return true;
 }
 
 function msgUid(){ return currentUser ? (currentUser.id || currentUser.nome || 'geral') : 'geral'; }
@@ -10182,9 +10161,10 @@ function msgDados(){
   let d = db.mensagensProntas[uid];
   if (!d || !Array.isArray(d.lista)) {
     try { d = JSON.parse(localStorage.getItem(msgChaveLocal()) || 'null'); } catch (e) { d = null; }
-    if (!d || !Array.isArray(d.lista)) d = { lista: msgPadroes().map(m => Object.assign({ id: msgNovoId() }, m)), meuNome: '', video: '' };
+    if (!d || !Array.isArray(d.lista)) d = { lista: msgPadroes().map(m => Object.assign({ id: msgNovoId() }, m)), meuNome: '', video: '', soApresentacao: true };
     db.mensagensProntas[uid] = d;
   }
+  if (msgLimparAntigas(d)) { try { localStorage.setItem(msgChaveLocal(), JSON.stringify(d)); } catch (e) {} }
   return d;
 }
 function msgLista(){ return msgDados().lista; }
@@ -10270,6 +10250,7 @@ function msgRenderEnvio(){
 
   // Passo 2: escolher a mensagem pela fase
   const doNicho = msgLista().filter(m => (m.nicho || 'Geral') === msgEnvio.nicho);
+  if (doNicho.length === 1 && !msgEnvio.sel) { msgEnvio.sel = doNicho[0].id; msgEnvio.texto = msgPreencher(doNicho[0].texto, lead); }
   const blocos = msgFases().map(f => {
     const itens = doNicho.filter(m => (m.fase || 'Apresentação') === f);
     if (!itens.length) return '';
@@ -10450,7 +10431,7 @@ function msgExcluir(id){
   renderMensagensTab();
 }
 function msgRestaurarPadroes(){
-  if (!confirm('Trazer de volta as mensagens padrão que estiverem faltando? As suas mensagens e as que você editou continuam como estão.')) return;
+  if (!confirm('Trazer de volta a mensagem de apresentação padrão dos nichos que estiverem sem ela? As suas mensagens continuam como estão.')) return;
   const lista = msgLista();
   const chave = m => [m.nicho, m.fase, m.titulo].join('|').toLowerCase();
   const existentes = new Set(lista.map(chave));
