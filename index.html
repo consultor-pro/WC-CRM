@@ -10781,6 +10781,47 @@ function removerIndicador(id){
   renderLeads();
 }
 
+// Editar o nome de um indicador: troca também em todos os leads que
+// estavam marcados com o nome antigo. Se o novo nome já existir, junta os dois.
+function editarIndicador(id){
+  const ind = (db.indicadores || []).find(i => i.id === id);
+  if (!ind) return;
+  const qtd = db.leads.filter(l => l.indicador === ind.nome).length;
+  openModal(`<div class="between"><h2 style="margin:0">✏️ Editar indicador</h2><button class="btn" onclick="closeModal()">✕</button></div>
+    <div class="field" style="margin-top:12px"><label>Nome do indicador</label>
+      <input id="editIndicadorNome" value="${esc(ind.nome)}" onkeydown="if(event.key==='Enter') salvarEdicaoIndicador('${ind.id}')"></div>
+    <small class="muted">${qtd ? `O nome também vai ser trocado nos ${qtd} lead(s) indicados por ele.` : 'Nenhum lead marcado com este indicador ainda.'}</small>
+    <div class="row" style="gap:8px;margin-top:12px"><button class="btn primary" onclick="salvarEdicaoIndicador('${ind.id}')">💾 Salvar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>`);
+  setTimeout(() => { const el = document.getElementById('editIndicadorNome'); if (el) { el.focus(); el.select(); } }, 50);
+}
+function salvarEdicaoIndicador(id){
+  const ind = (db.indicadores || []).find(i => i.id === id);
+  if (!ind) return;
+  const novo = (document.getElementById('editIndicadorNome')?.value || '').trim().replace(/\s+/g, ' ');
+  if (!novo) { showToast('⚠️ Digite o nome do indicador.'); return; }
+  const antigo = ind.nome;
+  if (novo === antigo) { closeModal(); return; }
+  const outro = db.indicadores.find(i => i.id !== id && normalizarTextoImport(i.nome) === normalizarTextoImport(novo));
+  if (outro && !confirm(`Já existe o indicador "${outro.nome}". Juntar os dois? Os leads de "${antigo}" passam para "${outro.nome}".`)) return;
+  const nomeFinal = outro ? outro.nome : novo;
+  let n = 0;
+  db.leads.forEach(l => { if (l.indicador === antigo) { l.indicador = nomeFinal; n++; } });
+  if (outro) db.indicadores = db.indicadores.filter(i => i.id !== id);
+  else ind.nome = nomeFinal;
+  const filtro = document.getElementById('leadFilterIndicador');
+  if (filtro && filtro.value === antigo) filtro.value = nomeFinal;
+  save();
+  closeModal();
+  renderIndicadoresTab();
+  if (typeof populateIndicadorSelects === 'function') populateIndicadorSelects();
+  renderLeads();
+  showToast(`✅ Indicador ${outro ? 'juntado' : 'renomeado'}${n ? ` (${n} lead(s) atualizados)` : ''}.`);
+}
+function filtrarLeadsPorIndicadorId(id){
+  const ind = (db.indicadores || []).find(i => i.id === id);
+  if (ind) filtrarLeadsPorIndicador(ind.nome);
+}
+
 function renderIndicadoresTab(){
   const tbody = document.getElementById('indicadoresTable');
   if (!tbody) return;
@@ -10788,11 +10829,12 @@ function renderIndicadoresTab(){
   tbody.innerHTML = lista.map(ind => {
     const qtd = db.leads.filter(l => l.indicador === ind.nome).length;
     return `<tr>
-      <td>${esc(ind.nome)}</td>
+      <td><span class="tc-link" style="cursor:pointer" title="Clique para editar o nome" onclick="editarIndicador('${ind.id}')">${esc(ind.nome)}</span></td>
       <td>${qtd}</td>
       <td>
         <div class="row">
-          <button class="btn" style="font-size:11px" onclick="filtrarLeadsPorIndicador('${esc(ind.nome)}')">🔎 Ver Leads</button>
+          <button class="btn" style="font-size:11px" onclick="filtrarLeadsPorIndicadorId('${ind.id}')">🔎 Ver Leads</button>
+          <button class="btn" style="font-size:11px" onclick="editarIndicador('${ind.id}')">✏️ Editar</button>
           <button class="btn danger" style="font-size:11px" onclick="removerIndicador('${ind.id}')">🗑️ Remover</button>
         </div>
       </td>
